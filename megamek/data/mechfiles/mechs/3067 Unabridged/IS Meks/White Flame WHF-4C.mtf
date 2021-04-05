@@ -40,7 +40,7 @@ Weapons:7
 1 ISSNPPC, Right Torso
 1 ISTAG, Head
 
-Left Arm:
+Front Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -48,7 +48,7 @@ Foot Actuator
 Jump Jet
 Endo-Steel
 
-Right Arm:
+Front Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -106,7 +106,7 @@ Sensors
 ISTAG
 ISERMediumLaser
 
-Left Leg:
+Rear Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -114,10 +114,11 @@ Foot Actuator
 Jump Jet
 Endo-Steel
 
-Right Leg:
+Rear Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
 Foot Actuator
 Jump Jet
 Endo-Steel
+
