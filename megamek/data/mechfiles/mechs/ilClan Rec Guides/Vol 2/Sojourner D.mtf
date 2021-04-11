@@ -44,12 +44,12 @@ Lower Arm Actuator
 Hand Actuator
 CLMediumPulseLaser (omnipod)
 CLMediumPulseLaser (omnipod)
-CLDoubleHeatSink (omnipod)
-CLDoubleHeatSink (omnipod)
 Clan Endo Steel
 Clan Endo Steel
 Clan Ferro-Fibrous
 Clan Ferro-Fibrous
+-Empty-
+-Empty-
 
 Right Arm:
 Shoulder
@@ -66,11 +66,11 @@ ISAES
 -Empty-
 
 Left Torso:
+CLDoubleHeatSink
+CLDoubleHeatSink
 Clan Endo Steel
 Clan Endo Steel
 Clan Endo Steel
--Empty-
--Empty-
 -Empty-
 -Empty-
 -Empty-

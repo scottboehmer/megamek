@@ -18,14 +18,14 @@ Walk MP:5
 Jump MP:0
 
 Armor:Standard Armor
-LA Armor:22
-RA Armor:22
+FLL Armor:22
+FRL Armor:22
 LT Armor:15
 RT Armor:15
 CT Armor:21
 HD Armor:9
-LL Armor:22
-RL Armor:22
+RLL Armor:22
+RRL Armor:22
 RTL Armor:7
 RTR Armor:7
 RTC Armor:7
@@ -38,7 +38,7 @@ Weapons:6
 1 ISImprovedC3CPU, Center Torso
 1 ISStreakSRM2, Head
 
-Left Arm:
+Front Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -52,7 +52,7 @@ Endo-Steel
 -Empty-
 -Empty-
 
-Right Arm:
+Front Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -122,7 +122,7 @@ Life Support
 -Empty-
 -Empty-
 
-Left Leg:
+Rear Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -136,7 +136,7 @@ Endo-Steel
 -Empty-
 -Empty-
 
-Right Leg:
+Rear Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator

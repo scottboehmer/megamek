@@ -14,7 +14,7 @@ structure:Clan Endo Steel
 myomer:Standard
 
 heat sinks:10 Double
-base chassis heat sinks:7
+Base Chassis Heat Sinks:7
 walk mp:6
 jump mp:0
 
@@ -66,8 +66,8 @@ Clan Ferro-Fibrous
 Left Torso:
 Fusion Engine
 Fusion Engine
-CLDoubleHeatSink (omnipod)
-CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink
+CLDoubleHeatSink
 CLDoubleHeatSink
 CLDoubleHeatSink
 Clan Endo Steel

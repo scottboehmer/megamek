@@ -18,14 +18,14 @@ Walk MP:3
 Jump MP:0
 
 Armor:Commercial(Inner Sphere)
-LA Armor:3
-RA Armor:3
+FLL Armor:3
+FRL Armor:3
 LT Armor:7
 RT Armor:7
 CT Armor:8
 HD Armor:8
-LL Armor:3
-RL Armor:3
+RLL Armor:3
+RRL Armor:3
 RTL Armor:2
 RTR Armor:2
 RTC Armor:2
@@ -34,7 +34,7 @@ Weapons:2
 1 ISLRM5, Left Torso, Ammo:24
 1 ISLRM5, Right Torso
 
-Left Arm:
+Front Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -42,7 +42,7 @@ Foot Actuator
 -Empty-
 -Empty-
 
-Right Arm:
+Front Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -100,7 +100,7 @@ Cockpit
 Sensors
 Life Support
 
-Left Leg:
+Rear Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -108,7 +108,7 @@ Foot Actuator
 -Empty-
 -Empty-
 
-Right Leg:
+Rear Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
