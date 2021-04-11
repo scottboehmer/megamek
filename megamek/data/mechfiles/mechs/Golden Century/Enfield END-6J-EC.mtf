@@ -13,7 +13,7 @@ engine:250 XL Engine(IS)
 structure:IS Endo Steel
 myomer:Standard
 
-heat sinks:11 Double
+heat sinks:11 Double (Inner Sphere)
 walk mp:5
 jump mp:5
 
