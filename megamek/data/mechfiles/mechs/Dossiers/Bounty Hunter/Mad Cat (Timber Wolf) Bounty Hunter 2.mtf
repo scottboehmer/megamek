@@ -14,6 +14,7 @@ Structure:Endo Steel
 Myomer:Standard
 
 Heat Sinks:15 Double
+base chassis heat sinks:15
 Walk MP:5
 Jump MP:3
 
@@ -48,11 +49,11 @@ Left Arm:
 Shoulder
 Upper Arm Actuator
 Lower Arm Actuator
-CLLargePulseLaser
-CLLargePulseLaser
-Clan Ammo SRM-4
-CLTargeting Computer
-CLTargeting Computer
+CLLargePulseLaser (omnipod)
+CLLargePulseLaser (omnipod)
+Clan Ammo SRM-4 (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
 Ferro-Fibrous
 -Empty-
 -Empty-
@@ -62,8 +63,8 @@ Right Arm:
 Shoulder
 Upper Arm Actuator
 Lower Arm Actuator
-CLERMediumLaser
-CLERMediumLaser
+CLERMediumLaser (omnipod)
+CLERMediumLaser (omnipod)
 Ferro-Fibrous
 -Empty-
 -Empty-
@@ -75,13 +76,13 @@ Ferro-Fibrous
 Left Torso:
 Fusion Engine
 Fusion Engine
-Jump Jet
-CLSRM4
-CLSRM4
-CLSRM4
-CLAPGaussRifle
-CLAPGaussRifle Ammo
-Clan Coolant Pod
+Jump Jet (omnipod)
+CLSRM4 (omnipod)
+CLSRM4 (omnipod)
+CLSRM4 (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle Ammo (omnipod)
+Clan Coolant Pod (omnipod)
 Endo Steel
 Ferro-Fibrous
 Ferro-Fibrous
@@ -89,13 +90,13 @@ Ferro-Fibrous
 Right Torso:
 Fusion Engine
 Fusion Engine
-Jump Jet
-CLStreakSRM4
-CLStreakSRM4
-CLStreakSRM4
-CLERSmallLaser
-CLAPGaussRifle
-Clan Streak SRM 4 Ammo
+Jump Jet (omnipod)
+CLStreakSRM4 (omnipod)
+CLStreakSRM4 (omnipod)
+CLStreakSRM4 (omnipod)
+CLERSmallLaser (omnipod)
+CLAPGaussRifle (omnipod)
+Clan Streak SRM 4 Ammo (omnipod)
 Endo Steel
 Ferro-Fibrous
 Ferro-Fibrous
@@ -111,7 +112,7 @@ Gyro
 Fusion Engine
 Fusion Engine
 Fusion Engine
-Jump Jet
+Jump Jet (omnipod)
 Endo Steel
 
 Head:
@@ -155,6 +156,7 @@ Endo Steel
 -Empty-
 -Empty-
 -Empty-
+
 
 overview:The Timber Wolf is a fast, heavy OmniMech. A signature design of the Clans' military might, it was arguably the first Clan OmniMech encountered by Inner Sphere forces (as opposed to periphery forces) on The Rock in 3049 by Phelan Kell.
 
