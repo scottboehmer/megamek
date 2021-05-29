@@ -20,14 +20,14 @@ Walk MP:16
 Jump MP:0
 
 Armor:Impact-Resistant(Inner Sphere)
-LA Armor:2
-RA Armor:2
+FLL Armor:2
+FRL Armor:2
 LT Armor:4
 RT Armor:4
 CT Armor:5
 HD Armor:4
-LL Armor:2
-RL Armor:2
+RLL Armor:2
+RRL Armor:2
 RTL Armor:1
 RTR Armor:1
 RTC Armor:1
@@ -37,7 +37,7 @@ Weapons:3
 1 Spikes, Left Torso
 1 ISDroneOperatingSystem, Right Torso
 
-Left Arm:
+Front Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -45,7 +45,7 @@ Foot Actuator
 IS Impact-Resistant
 IS Impact-Resistant
 
-Right Arm:
+Front Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -103,7 +103,7 @@ Sensors
 -Empty-
 -Empty-
 
-Left Leg:
+Rear Left Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
@@ -111,7 +111,7 @@ Foot Actuator
 IS Impact-Resistant
 IS Impact-Resistant
 
-Right Leg:
+Rear Right Leg:
 Hip
 Upper Leg Actuator
 Lower Leg Actuator
