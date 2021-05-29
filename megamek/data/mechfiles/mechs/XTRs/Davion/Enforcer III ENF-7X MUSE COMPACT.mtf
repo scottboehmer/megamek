@@ -10,7 +10,7 @@ rules level:4
 
 mass:50
 engine:250 XL (Clan) Engine
-structure:IS Endo Steel
+structure:Clan Endo Steel
 myomer:Standard
 cockpit:Standard Cockpit
 gyro:XL Gyro
@@ -44,11 +44,11 @@ Binary Laser (Blazer) Cannon
 Binary Laser (Blazer) Cannon
 Binary Laser (Blazer) Cannon
 Binary Laser (Blazer) Cannon
-IS Endo Steel
-IS Endo Steel
-IS Endo Steel
-IS Ferro-Fibrous
-IS Ferro-Fibrous
+Clan Endo Steel
+Clan Endo Steel
+Clan Endo Steel
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
 
 Right Arm:
 Shoulder
@@ -58,11 +58,11 @@ Binary Laser (Blazer) Cannon
 Binary Laser (Blazer) Cannon
 Binary Laser (Blazer) Cannon
 Binary Laser (Blazer) Cannon
-IS Endo Steel
-IS Endo Steel
-IS Ferro-Fibrous
-IS Ferro-Fibrous
-IS Ferro-Fibrous
+Clan Endo Steel
+Clan Endo Steel
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
 
 Left Torso:
 Fusion Engine
@@ -75,8 +75,8 @@ Improved Jump Jet
 Improved Jump Jet
 Improved Jump Jet
 Improved Jump Jet
-IS Endo Steel
-IS Ferro-Fibrous
+Clan Endo Steel
+Clan Ferro-Fibrous
 
 Right Torso:
 Fusion Engine
@@ -89,8 +89,8 @@ Improved Jump Jet
 Improved Jump Jet
 Improved Jump Jet
 Improved Jump Jet
-IS Endo Steel
-IS Ferro-Fibrous
+Clan Endo Steel
+Clan Ferro-Fibrous
 
 Center Torso:
 Fusion Engine
