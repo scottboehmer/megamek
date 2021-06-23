@@ -224,7 +224,6 @@ public class BoardEditor extends JPanel
     private CommonSettingsDialog setdlg;
     private ITerrainFactory TF = Terrains.getTerrainFactory();
     private JDialog minimapW;
-    private MiniMap minimap;
     private MegaMekController controller;
     
     // The current files
@@ -274,7 +273,6 @@ public class BoardEditor extends JPanel
     private JButton butBoardSave;
     private JButton butBoardSaveAs;
     private JButton butBoardSaveAsImage;
-    private JButton butMiniMap;
     private JButton butBoardValidate;
     private JButton butSourceFile;
     private MapSettings mapSettings = MapSettings.getInstance();
@@ -910,10 +908,6 @@ public class BoardEditor extends JPanel
         butTerrUp = prepareButton("ButtonTLUP", "Increase Terrain Level", null, BASE_ARROWBUTTON_ICON_WIDTH);
         butTerrDown = prepareButton("ButtonTLDN", "Decrease Terrain Level", null, BASE_ARROWBUTTON_ICON_WIDTH);
 
-        // Minimap Toggle
-        butMiniMap = new JButton(Messages.getString("BoardEditor.butMiniMap"));
-        butMiniMap.setActionCommand(ClientGUI.VIEW_MINI_MAP);
-
         // Exits
         cheTerrExitSpecified = new JCheckBox(Messages.getString("BoardEditor.cheTerrExitSpecified"));
         cheTerrExitSpecified.addActionListener(e -> {
@@ -1005,14 +999,13 @@ public class BoardEditor extends JPanel
         butSourceFile.setActionCommand(FILE_SOURCEFILE);
 
         addManyActionListeners(butBoardValidate, butBoardSaveAsImage, butBoardSaveAs, butBoardSave);
-        addManyActionListeners(butBoardOpen, butExpandMap, butBoardNew, butMiniMap);
+        addManyActionListeners(butBoardOpen, butExpandMap, butBoardNew);
         addManyActionListeners(butDelTerrain, butAddTerrain, butSourceFile);
         
         JPanel panButtons = new JPanel(new GridLayout(3, 2, 2, 2));
         addManyButtons(panButtons, List.of(butBoardNew, butBoardSave, butBoardOpen,
                 butExpandMap, butBoardSaveAs, butBoardSaveAsImage));
         panButtons.add(butBoardValidate);
-        panButtons.add(butMiniMap);
         if (Desktop.isDesktopSupported()) {
             panButtons.add(butSourceFile);
         }
@@ -1036,20 +1029,8 @@ public class BoardEditor extends JPanel
         scrCenterPanel.getVerticalScrollBar().setUnitIncrement(16);
         add(scrCenterPanel, BorderLayout.CENTER);
         add(panButtons, BorderLayout.PAGE_END);
-
-        // Set up the minimap 
-        minimapW = new JDialog(frame, Messages.getString("BoardEditor.minimapW"), false);
-        minimapW.setLocation(guip.getMinimapPosX(), guip.getMinimapPosY());
-        try {
-            minimap = new MiniMap(minimapW, game, bv);
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(frame,
-                    Messages.getString("BoardEditor.CouldNotInitialiseMinimap") + e,
-                    Messages.getString("BoardEditor.FatalError"), JOptionPane.ERROR_MESSAGE);
-            frame.dispose();
-        }
-        minimapW.add(minimap);
-        minimapW.setVisible(true);
+        minimapW = MiniMap.createMinimap(frame, bv, game, null);
+        minimapW.setVisible(guip.getMinimapEnabled());
     }
     
     /**
@@ -1262,11 +1243,12 @@ public class BoardEditor extends JPanel
     }
     
     /**
-     * Add to the terrain from one of the easy access buttons
+     * Cycle the terrain level (mouse wheel behavior) from the easy access buttons
      */
     private void addSetTerrainEasy(int type, int level) {
-        boolean exitsSpecified = cheTerrExitSpecified.isSelected();
-        int exits = texTerrExits.getNumber();
+        ITerrain present = curHex.getTerrain(type);
+        boolean exitsSpecified = present.hasExitsSpecified();
+        int exits = present.getExits();
         ITerrain toAdd = Terrains.getTerrainFactory().createTerrain(type, level, exitsSpecified, exits);
         curHex.addTerrain(toAdd);
         TerrainTypeHelper toSelect = new TerrainTypeHelper(toAdd);
@@ -1463,6 +1445,7 @@ public class BoardEditor extends JPanel
         try (InputStream is = new FileInputStream(fc.getSelectedFile())) {            
             // tell the board to load!
             board.load(is, null, true);
+            Set<String> boardTags = board.getTags();
             // Board generation in a game always calls BoardUtilities.combine
             // This serves no purpose here, but is necessary to create 
             // flipBGVert/flipBGHoriz lists for the board, which is necessary 
@@ -1470,6 +1453,10 @@ public class BoardEditor extends JPanel
             board = BoardUtilities.combine(board.getWidth(), board.getHeight(), 1, 1, 
                     new IBoard[]{board}, Collections.singletonList(false), MapSettings.MEDIUM_GROUND);
             game.setBoard(board);
+            // BoardUtilities.combine does not preserve tags, so add them back
+            for (String tag : boardTags) {
+                board.addTag(tag);
+            }
             cheRoadsAutoExit.setSelected(board.getRoadsAutoExit());
             mapSettings.setBoardSize(board.getWidth(), board.getHeight());
             
@@ -1517,7 +1504,7 @@ public class BoardEditor extends JPanel
         waitD.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         // save!
         try {
-            ImageIO.write(bv.getEntireBoardImage(ignoreUnits), "png", curfileImage);
+            ImageIO.write(bv.getEntireBoardImage(ignoreUnits, false), "png", curfileImage);
         } catch (IOException e) {
             MegaMek.getLogger().error(e);
         }
@@ -1857,16 +1844,14 @@ public class BoardEditor extends JPanel
             updateWhenSelected();
         } else if (ae.getSource().equals(butExitUp)) {
             cheTerrExitSpecified.setSelected(true);
-            if (texTerrExits.getNumber() < 63) {
-                texTerrExits.incValue();
-            }
+            texTerrExits.incValue();
             updateWhenSelected();
         } else if (ae.getSource().equals(butExitDown)) {
             texTerrExits.decValue();
             cheTerrExitSpecified.setSelected(texTerrExits.getNumber() != 0);
             updateWhenSelected();
         } else if (ae.getActionCommand().equals(ClientGUI.VIEW_MINI_MAP)) {
-            minimapW.setVisible(!minimapW.isVisible());
+            minimapW.setVisible(guip.getMinimapEnabled());
         } else if (ae.getActionCommand().equals(ClientGUI.HELP_ABOUT)) {
             showAbout();
         } else if (ae.getActionCommand().equals(ClientGUI.HELP_CONTENTS)) {
@@ -1897,16 +1882,20 @@ public class BoardEditor extends JPanel
         } else if (ae.getSource().equals(buttonWa)) {
             buttonUpDn.setSelected(false);
             if ((ae.getModifiers() & ActionEvent.CTRL_MASK) != 0) {
-                addSetTerrainEasy(Terrains.RAPIDS, curHex.containsTerrain(Terrains.RAPIDS, 1) ? 2 : 1);
+                int rapidsLevel = curHex.containsTerrain(Terrains.RAPIDS, 1) ? 2 : 1;
                 if (!curHex.containsTerrain(Terrains.WATER)
                         || (curHex.getTerrain(Terrains.WATER).getLevel() == 0)) {
-                    addSetTerrainEasy(Terrains.WATER, 1);
+                    setConvenientTerrain(ae, TF.createTerrain(Terrains.RAPIDS, rapidsLevel), 
+                            TF.createTerrain(Terrains.WATER, 1));
+                } else {
+                    setConvenientTerrain(ae, TF.createTerrain(Terrains.RAPIDS, rapidsLevel),
+                            curHex.getTerrain(Terrains.WATER));
                 }
             } else {
                 if ((ae.getModifiers() & ActionEvent.SHIFT_MASK) == 0) {
                     curHex.removeAllTerrains();
                 }
-                addSetTerrainEasy(Terrains.WATER, 1);
+                setConvenientTerrain(ae, TF.createTerrain(Terrains.WATER, 1));
             }
         } else if (ae.getSource().equals(buttonSw)) {
             setConvenientTerrain(ae, TF.createTerrain(Terrains.SWAMP, 1));
@@ -2047,7 +2036,7 @@ public class BoardEditor extends JPanel
     
     /** Adapts the whole Board Editor UI to the current guiScale. */
     private void adaptToGUIScale() {
-        Font scaledFont = new Font("Dialog", Font.PLAIN, UIUtil.scaleForGUI(UIUtil.FONT_SCALE1));
+        Font scaledFont = UIUtil.getScaledFont();
 
         butAddTerrain.setFont(scaledFont);
         butBoardNew.setFont(scaledFont);
@@ -2056,7 +2045,6 @@ public class BoardEditor extends JPanel
         butBoardSaveAs.setFont(scaledFont);
         butBoardSaveAsImage.setFont(scaledFont);
         butBoardValidate.setFont(scaledFont);
-        butMiniMap.setFont(scaledFont);
         butExpandMap.setFont(scaledFont);
         butSourceFile.setFont(scaledFont);
         

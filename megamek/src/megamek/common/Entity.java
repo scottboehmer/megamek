@@ -346,7 +346,6 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     protected int mpUsedLastRound = 0;
     public boolean gotPavementBonus = false;
     public int wigeBonus = 0;
-    public boolean hitThisRoundByAntiTSM = false;
     public boolean inReverse = false;
     protected boolean struck = false;
     protected boolean fell = false;
@@ -3165,6 +3164,24 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             }
         }
         return Entity.LOC_NONE;
+    }
+
+    /**
+     * Joins the abbreviations for the locations into a String with / as the separator.
+     * If the number of locations exceeds the provided limit, the result is
+     * abbreviated. By default the abbreviation is simply an asterisk, but Mechs have
+     * specific abbreviations locations that include all torso or leg positions.
+     *
+     * @param locations A list of location indices
+     * @param limit     The maximum number of locations to show in full
+     * @return          A string formatted for display that shows the locations
+     */
+    public String joinLocationAbbr(List<Integer> locations, int limit) {
+        if (locations.size() > limit) {
+            return "*";
+        } else {
+            return locations.stream().map(l -> getLocationAbbr(l)).collect(Collectors.joining("/"));
+        }
     }
 
     /**
@@ -6343,7 +6360,6 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         wigeLiftoffHover = false;
         gotPavementBonus = false;
         wigeBonus = 0;
-        hitThisRoundByAntiTSM = false;
         inReverse = false;
         hitBySwarmsEntity.clear();
         hitBySwarmsWeapon.clear();
@@ -6801,16 +6817,19 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         iNarcPods.clear();
     }
 
-    /**
-     * Do we have any iNarc Pods attached?
-     *
-     * @return true iff one or more iNarcPods are attached.
-     */
+    /** Returns true if any iNarc pods are attached to this unit. */
     public boolean hasINarcPodsAttached() {
-        if (iNarcPods.size() > 0) {
-            return true;
-        }
-        return false;
+        return !iNarcPods.isEmpty();
+    }
+    
+    /** Returns true if any Narc pods are attached to this unit. (Ignores iNarc) */
+    public boolean hasNarcPodsAttached() {
+        return !narcPods.isEmpty();
+    }
+    
+    /** Returns true if any Narc or iNarc pods are attached to this unit. */
+    public boolean hasAnyTypeNarcPodsAttached() {
+        return hasINarcPodsAttached() || hasNarcPodsAttached();
     }
 
     /**
@@ -9271,6 +9290,16 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             }
         }
         return found;
+    }
+
+    /**
+     * Check for vulnerability to anti-TSM munitions. ATSM affects mechs with prototype TSM and
+     * any industrial TSM created before 3050, and conventional infantry with TSM implants.
+     *
+     * @return Whether the unit is affected by ATSM munitions
+     */
+    public boolean antiTSMVulnerable() {
+        return false;
     }
 
     /**
