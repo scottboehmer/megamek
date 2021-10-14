@@ -40,10 +40,6 @@ troopspace:8.0
 BattleArmorHandles - troopers:-1
 </transporters>
 
-<transporters>
-troopspace:8.0
-</transporters>
-
 <cruiseMP>
 5
 </cruiseMP>
