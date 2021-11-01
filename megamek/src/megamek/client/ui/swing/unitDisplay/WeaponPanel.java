@@ -51,7 +51,7 @@ import megamek.common.Configuration;
 import megamek.common.Coords;
 import megamek.common.Entity;
 import megamek.common.FighterSquadron;
-import megamek.common.IGame;
+import megamek.common.Game;
 import megamek.common.IHex;
 import megamek.common.ILocationExposureStatus;
 import megamek.common.Infantry;
@@ -69,6 +69,7 @@ import megamek.common.WeaponComparatorDamage;
 import megamek.common.WeaponComparatorNum;
 import megamek.common.WeaponComparatorRange;
 import megamek.common.WeaponType;
+import megamek.common.enums.GamePhase;
 import megamek.common.options.OptionsConstants;
 import megamek.common.util.fileUtils.MegaMekFile;
 import megamek.common.weapons.bayweapons.BayWeapon;
@@ -139,10 +140,6 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
                 for (int i = 0; i < srcModel.getSize(); i++) {
                     Mounted m = srcModel.getWeaponAt(i);
                     ent.setCustomWeaponOrder(m, i);
-                }
-                if (unitDisplay.getClientGUI() != null) {
-                    unitDisplay.getClientGUI().getMenuBar()
-                            .updateSaveWeaponOrderMenuItem();
                 }
             }
             addListeners();
@@ -245,7 +242,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
         public String getElementAt(int index) {
             final Mounted mounted = weapons.get(index);
             final WeaponType wtype = (WeaponType) mounted.getType();
-            IGame game = null;
+            Game game = null;
             if (unitDisplay.getClientGUI() != null) {
                 game = unitDisplay.getClientGUI().getClient().getGame();
             }
@@ -947,7 +944,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
         removeListeners();
         
         // Grab a copy of the game.
-        IGame game = null;
+        Game game = null;
 
         if (unitDisplay.getClientGUI() != null) {
             game = unitDisplay.getClientGUI().getClient().getGame();
@@ -1062,7 +1059,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
             ((WeaponListModel) weaponList.getModel()).addWeapon(mounted);
             if (mounted.isUsedThisRound()
                 && (game.getPhase() == mounted.usedInPhase())
-                && (game.getPhase() == IGame.Phase.PHASE_FIRING)) {
+                && (game.getPhase() == GamePhase.FIRING)) {
                 hasFiredWeapons = true;
                 // add heat from weapons fire to heat tracker
                 if (entity.usesWeaponBays()) {
@@ -2089,7 +2086,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
                 // set the standard ranges, depending on capital or no
                 //boolean isCap = wtype.isCapital();
                 int rangeMultiplier = wtype.isCapital() ? 2 : 1;
-                final IGame game = unitDisplay.getClientGUI().getClient().getGame();
+                final Game game = unitDisplay.getClientGUI().getClient().getGame();
                 if (game.getBoard().onGround()) {
                     rangeMultiplier *= 8;
                 }
@@ -2746,10 +2743,6 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
         } else { // Default
             entity.setWeaponSortOrder(Entity.WeaponSortOrder.DEFAULT);
             weapComparator = new WeaponComparatorNum(entity);
-        }
-        if (unitDisplay.getClientGUI() != null) {
-            unitDisplay.getClientGUI().getMenuBar()
-                    .updateSaveWeaponOrderMenuItem();
         }
         ((WeaponListModel)weaponList.getModel()).sort(weapComparator);
     }

@@ -336,8 +336,14 @@ public class PacketTool extends Frame implements Runnable {
             System.out.print("null");
         } else {
             switch (packet.getCommand()) {
+                case Packet.COMMAND_SERVER_VERSION_CHECK:
+                    System.out.println("COMMAND_SERVER_VERSION_CHECK");
+                    break;
                 case Packet.COMMAND_SERVER_GREETING:
                     System.out.print("COMMAND_SERVER_GREETING");
+                    break;
+                case Packet.COMMAND_ILLEGAL_CLIENT_VERSION:
+                    System.out.println("COMMAND_ILLEGAL_CLIENT_VERSION");
                     break;
                 case Packet.COMMAND_CLIENT_NAME:
                     System.out.print("COMMAND_CLIENT_NAME");
@@ -465,8 +471,8 @@ public class PacketTool extends Frame implements Runnable {
                 case Packet.COMMAND_REROLL_INITIATIVE:
                     System.out.print("COMMAND_REROLL_INITIATIVE");
                     break;
-                case Packet.COMMAND_SET_ARTYAUTOHITHEXES:
-                    System.out.print("COMMAND_SET_ARTYAUTOHITHEXES");
+                case Packet.COMMAND_SET_ARTILLERY_AUTOHIT_HEXES:
+                    System.out.print("COMMAND_SET_ARTILLERY_AUTOHIT_HEXES");
                     break;
                 default:
                     System.out.print("unknown");

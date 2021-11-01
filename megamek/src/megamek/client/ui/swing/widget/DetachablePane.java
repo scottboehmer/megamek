@@ -28,9 +28,6 @@ import javax.swing.JComponent;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
-
-import megamek.client.ui.swing.util.UIUtil;
 
 /**
  * Holds a component that can be collapsed and detached into a
@@ -53,7 +50,6 @@ public class DetachablePane extends JComponent {
         private ActionButton(Action action) {
             super(action);
             setMargin(new Insets(2, 2, 2, 2));
-            setHideActionText(true);
         }
 
         @Override
@@ -63,9 +59,6 @@ public class DetachablePane extends JComponent {
         }
 
     }
-
-    private final static String FILENAME_ATTACH = "step-in-symbolic.png"; //$NON-NLS-1$
-    private final static String FILENAME_DETACH = "detach-symbolic.png"; //$NON-NLS-1$
 
     /** Defines the different modes the pane may be in. */
     public enum Mode {
@@ -84,10 +77,10 @@ public class DetachablePane extends JComponent {
 
     // The component that gets moved between this base pane and the
     // window
-    private Box root;
+    private JComponent root;
 
     private JLabel title;
-    private JPanel header;
+    private JComponent header;
     private JComponent content;
     private JFrame window;
 
@@ -101,41 +94,43 @@ public class DetachablePane extends JComponent {
         this.title = new JLabel();
         this.title.setAlignmentX(0.0f);
 
-        this.detach = new AbstractAction("Detach") {
+        this.detach = new AbstractAction("D") {
                 public void actionPerformed(ActionEvent e) {
                     detachPane();
                 }
             };
+        this.detach.putValue(Action.NAME, "D");
         this.detach.putValue(Action.SHORT_DESCRIPTION, "Detach this pane");
-        this.detach.putValue(Action.SMALL_ICON, UIUtil.loadWidgetIcon(FILENAME_DETACH, 16));
 
-        this.attach = new AbstractAction("Attach") {
+        this.attach = new AbstractAction("A") {
                 public void actionPerformed(ActionEvent e) {
                     attachPane();
                 }
             };
+        this.attach.putValue(Action.NAME, "A");
         this.attach.putValue(Action.SHORT_DESCRIPTION, "Attach this pane");
-        this.attach.putValue(Action.SMALL_ICON, UIUtil.loadWidgetIcon(FILENAME_ATTACH, 16));
 
         var buttons = Box.createHorizontalBox();
         buttons.add(new ActionButton(this.attach));
         buttons.add(new ActionButton(this.detach));
 
-        this.header = new JPanel(new BorderLayout(0, 8));
+        this.header = Box.createHorizontalBox();
         this.header.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-        this.header.add(this.title, BorderLayout.CENTER);
-        this.header.add(buttons, BorderLayout.EAST);
+        this.header.add(this.title);
+        this.header.add(Box.createHorizontalGlue());
+        this.header.add(buttons);
 
         this.content = content;
 
         this.root = Box.createVerticalBox();
         this.root.add(this.header);
         this.root.add(this.content);
+        this.root.add(Box.createVerticalGlue());
 
         this.window = new JFrame();
         this.window.addWindowListener(new WindowAdapter() {
                 @Override
-                public void windowClosing​(WindowEvent e) {
+                public void windowClosing(WindowEvent e) {
                     attachPane();
                 }
             });
@@ -193,6 +188,7 @@ public class DetachablePane extends JComponent {
                     super.setVisible(false);
 
                     this.window.add(this.root, BorderLayout.CENTER);
+                    this.window.setAlwaysOnTop(true);
                     this.window.pack();
                     this.window.setVisible(true);
 

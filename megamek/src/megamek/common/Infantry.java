@@ -27,6 +27,7 @@ import java.util.Vector;
 import java.util.stream.Collectors;
 
 import megamek.MegaMek;
+import megamek.common.enums.GamePhase;
 import megamek.common.options.OptionsConstants;
 import megamek.common.weapons.infantry.InfantryWeapon;
 
@@ -73,6 +74,8 @@ public class Infantry extends Entity {
             | FIRE_ENGINEERS | MINE_ENGINEERS | SENSOR_ENGINEERS
             | TRENCH_ENGINEERS;
 
+    public static final double PRIMARY_WEAPON_DAMAGE_CAP = 0.6;
+    
     /**
      * squad size and number
      */
@@ -1778,8 +1781,8 @@ public class Infantry extends Entity {
     }
 
     @Override
-    public boolean isEligibleFor(IGame.Phase phase) {
-        if ((turnsLayingExplosives > 0) && (phase != IGame.Phase.PHASE_PHYSICAL)) {
+    public boolean isEligibleFor(GamePhase phase) {
+        if ((turnsLayingExplosives > 0) && (phase != GamePhase.PHYSICAL)) {
             return false;
         }
         if ((dugIn != DUG_IN_COMPLETE) && (dugIn != DUG_IN_NONE)) {
@@ -2275,11 +2278,25 @@ public class Infantry extends Entity {
             return 0;
         }
 
-        double damage = primaryW.getInfantryDamage() * (squadsize - secondn);
+        // per 09/2021 errata, primary infantry weapon damage caps out at .6
+        double adjustedDamage = Math.min(PRIMARY_WEAPON_DAMAGE_CAP, primaryW.getInfantryDamage());
+        double damage = adjustedDamage * (squadsize - secondn);
         if(null != secondW) {
             damage += secondW.getInfantryDamage() * secondn;
         }
         return damage/squadsize;
+    }
+    
+    public boolean primaryWeaponDamageCapped() {
+        return getPrimaryWeaponDamage() > PRIMARY_WEAPON_DAMAGE_CAP;
+    }
+    
+    public double getPrimaryWeaponDamage() {
+        if (null == primaryW) {
+            return 0;
+        }
+        
+        return primaryW.getInfantryDamage();
     }
 
     public boolean isSquad() {
@@ -2680,7 +2697,7 @@ public class Infantry extends Entity {
      * @param elevation
      * @return
      */
-    public static boolean hasValidCover(IGame game, Coords pos, int elevation) {
+    public static boolean hasValidCover(Game game, Coords pos, int elevation) {
         // Can't do anything if we don't have a position
         // If elevation > 0, we're either flying, or in a building
         // In either case, we shouldn't be allowed to take cover
