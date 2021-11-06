@@ -85,24 +85,18 @@ IS Light Machine Gun Ammo - Full
 <Front Equipment>
 </Front Equipment>
 
-<Front Right Equipment>
+<Right Equipment>
 ISAntiMissileSystem(ST)
 Light Machine Gun(ST)
 Light Machine Gun(ST)
 ISSponsonTurret
-</Front Right Equipment>
+</Right Equipment>
 
-<Front Left Equipment>
+<Left Equipment>
 ISAntiMissileSystem(ST)
 Light Machine Gun(ST)
 Light Machine Gun(ST)
-</Front Left Equipment>
-
-<Rear Right Equipment>
-</Rear Right Equipment>
-
-<Rear Left Equipment>
-</Rear Left Equipment>
+</Left Equipment>
 
 <Rear Equipment>
 Light Machine Gun
