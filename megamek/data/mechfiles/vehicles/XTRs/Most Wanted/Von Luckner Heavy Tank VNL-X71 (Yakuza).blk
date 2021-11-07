@@ -79,8 +79,8 @@ IS Ammo SRM-4 Artemis-capable
 <Turret Equipment>
 ISLBXAC20
 SRM 4
-ISMediumPulseLaser
 ISArtemisIV
+ISMediumPulseLaser
 </Turret Equipment>
 
 <source>

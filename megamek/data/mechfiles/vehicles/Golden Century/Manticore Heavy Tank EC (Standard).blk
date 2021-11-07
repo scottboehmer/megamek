@@ -13,10 +13,11 @@ Tank
 </UnitType>
 
 <Name>
-Manticore Heavy Tank EC
+Manticore Heavy Tank
 </Name>
 
 <Model>
+EC
 </Model>
 
 <year>

@@ -13,10 +13,11 @@ Tank
 </UnitType>
 
 <Name>
-Patton Tank-SB
+Patton Tank
 </Name>
 
 <Model>
+-SB
 </Model>
 
 <year>
