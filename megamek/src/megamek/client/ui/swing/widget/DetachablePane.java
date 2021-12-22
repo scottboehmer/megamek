@@ -68,9 +68,7 @@ public class DetachablePane extends JComponent {
         DETACHED;
     }
 
-    // Default to detached so that when explicitly updating the state
-    // in the ctor, the effects are applied.
-    private Mode state = Mode.DETACHED;
+    private Mode state = Mode.EXPANDED;
 
     private Action detach;
     private Action attach;
@@ -95,6 +93,7 @@ public class DetachablePane extends JComponent {
         this.title.setAlignmentX(0.0f);
 
         this.detach = new AbstractAction("D") {
+                @Override
                 public void actionPerformed(ActionEvent e) {
                     detachPane();
                 }
@@ -103,6 +102,7 @@ public class DetachablePane extends JComponent {
         this.detach.putValue(Action.SHORT_DESCRIPTION, "Detach this pane");
 
         this.attach = new AbstractAction("A") {
+                @Override
                 public void actionPerformed(ActionEvent e) {
                     attachPane();
                 }
@@ -136,7 +136,7 @@ public class DetachablePane extends JComponent {
             });
 
         setTitle(title);
-        setState(Mode.EXPANDED);
+        setStateImpl(this.state);
     }
 
     /**
@@ -165,35 +165,7 @@ public class DetachablePane extends JComponent {
      */
     public void setState(Mode newState) {
         if (this.state != newState) {
-            switch (newState) {
-                case EXPANDED:
-                    this.attach.setEnabled(false);
-                    this.detach.setEnabled(true);
-
-                    this.window.setVisible(false);
-                    this.window.remove(this.root);
-
-                    add(this.root, BorderLayout.CENTER);
-                    revalidate();
-                    super.setVisible(true);
-
-                    break;
-
-                case DETACHED:
-                    this.attach.setEnabled(true);
-                    this.detach.setEnabled(false);
-
-                    remove(this.root);
-                    revalidate();
-                    super.setVisible(false);
-
-                    this.window.add(this.root, BorderLayout.CENTER);
-                    this.window.setAlwaysOnTop(true);
-                    this.window.pack();
-                    this.window.setVisible(true);
-
-                    break;
-            }
+            setStateImpl(newState);
             this.state = newState;
         }
     }
@@ -237,4 +209,37 @@ public class DetachablePane extends JComponent {
         }
     }
 
+    /**
+     * Common state change implementation.
+     */
+    private void setStateImpl(Mode newState) {
+        switch (newState) {
+            case EXPANDED:
+                this.attach.setEnabled(false);
+                this.detach.setEnabled(true);
+
+                this.window.setVisible(false);
+                this.window.remove(this.root);
+
+                add(this.root, BorderLayout.CENTER);
+                revalidate();
+                super.setVisible(true);
+
+                break;
+
+            case DETACHED:
+                this.attach.setEnabled(true);
+                this.detach.setEnabled(false);
+
+                remove(this.root);
+                revalidate();
+                super.setVisible(false);
+
+                this.window.add(this.root, BorderLayout.CENTER);
+                this.window.setAlwaysOnTop(true);
+                this.window.setVisible(true);
+
+                break;
+        }
+    }
 }

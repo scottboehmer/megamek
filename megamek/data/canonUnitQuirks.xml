@@ -416,13 +416,17 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<unitType>Aero</unitType>
 		<quirk>internal_bomb</quirk>
 	</unit>
-
+		
 	<unit>
-		<chassis>Gurzil Support Tank</chassis>
-		<model>(Standard)</model>
-		<unitType>Tank</unitType>
-		<quirk>variable_range_long</quirk>
+		<chassis>Goth</chassis>
+		<model>Prime</model>
+		<unitType>Aero</unitType>
+		<quirk>combat_computer</quirk>
+		<quirk>easy_maintain</quirk>
+		<quirk>atmo_instability</quirk>
+		<quirk>obsolete</quirk>
 	</unit>
+
 
 	<unit>
 		<chassis>Hammerhead</chassis>
@@ -522,6 +526,15 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>prototype</quirk>
 		<quirk>bad_rep_is</quirk>
 		<quirk>non_standard</quirk>
+	</unit>
+		
+	<unit>
+		<chassis>Issedone</chassis>
+		<model>Prime</model>
+		<unitType>Aero</unitType>
+		<quirk>easy_maintain</quirk>
+		<quirk>rugged_2</quirk>
+		<quirk>obsolete</quirk>
 	</unit>
 
 	<unit>
@@ -680,6 +693,13 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>combat_computer</quirk>
 		<quirk>atmo_instability</quirk>
 	</unit>
+	
+	<unit>
+		<chassis>Ogotai</chassis>
+		<model>Prime</model>
+		<unitType>Aero</unitType>
+		<quirk>atmo_instability</quirk>
+	</unit>
 
 	<unit>
 		<chassis>Oo-Suzumebachi</chassis>
@@ -731,6 +751,16 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<unitType>Aero</unitType>
 		<quirk>atmo_flyer</quirk>
 		<quirk>imp_com</quirk>
+	</unit>
+	
+	<unit>
+		<chassis>Qasar</chassis>
+		<model>Prime</model>
+		<unitType>Aero</unitType>
+		<quirk>atmo_flyer</quirk>
+		<quirk>easy_pilot</quirk>
+		<quirk>obsolete</quirk>
+		<quirk>weak_undercarriage</quirk>
 	</unit>
 
 	<unit>
@@ -914,12 +944,12 @@ Example: You can define quirks that affect all units of a given chassis and then
 		</weaponQuirk>
 	</unit>
 	
-	<unit>
+		<unit>
 		<chassis>Starfire</chassis>
 		<model>SF-1X</model>
+		<unitType>Aero</unitType>
 		<quirk>atmo_flyer</quirk>
 		<quirk>obsolete</quirk>
-		<unitType>Aero</unitType>
 		<weaponQuirk>
 			<weaponQuirkName>mod_weapons</weaponQuirkName>
 			<location>NOS</location>
@@ -1012,6 +1042,15 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>bad_rep_is</quirk>
 		<quirk>easy_pilot</quirk>
 	</unit>
+	
+	<unit>
+		<chassis>Torrent Heavy Bomber</chassis>
+		<unitType>Aero</unitType>
+		<quirk>atmo_flyer</quirk>
+		<quirk>internal_bomb</quirk>
+		<quirk>poor_performance</quirk>
+	</unit>
+
 
 	<unit>
 		<chassis>Transit</chassis>
@@ -2880,7 +2919,19 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>BSW-S2r</model>
 		<unitType>Mech</unitType>
 		<quirk>low_profile</quirk>
-		<quirk>no_twist</quirk>
+	</unit>
+
+	<unit>
+		<chassis>Bushwacker</chassis>
+		<model>BSW-X4</model>
+		<unitType>Mech</unitType>
+		<quirk>low_profile</quirk>
+		<weaponQuirk>
+			<weaponQuirkName>stable_weapon</weaponQuirkName>
+			<location>CT</location>
+			<slot>10</slot>
+			<weaponName>ISERLargeLaser</weaponName>
+		</weaponQuirk>
 	</unit>
 
 	<unit>
@@ -2888,7 +2939,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>BSW-X1</model>
 		<unitType>Mech</unitType>
 		<quirk>low_profile</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>stable_weapon</weaponQuirkName>
 			<location>CT</location>
@@ -2902,7 +2952,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>BSW-S2</model>
 		<unitType>Mech</unitType>
 		<quirk>low_profile</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>stable_weapon</weaponQuirkName>
 			<location>CT</location>
@@ -2916,7 +2965,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>BSW-X2</model>
 		<unitType>Mech</unitType>
 		<quirk>low_profile</quirk>
-		<quirk>no_twist</quirk>
 	</unit>
 
 <!-- BEGIN C. Mechs -->
@@ -4812,6 +4860,13 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>low_profile</quirk>
 		<quirk>no_twist</quirk>
 	</unit>
+	
+	<unit>
+		<chassis>Drift Shag</chassis>
+		<unitType>Mech</unitType>
+		<quirk>low_profile</quirk>
+		<quirk>bad_rep_clan</quirk>
+	</unit>
 
 	<unit>
 		<chassis>Duan Gung</chassis>
@@ -5642,6 +5697,13 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>easy_maintain</quirk>
 		<quirk>imp_life_support</quirk>
 		<quirk>no_arms</quirk>
+	</unit>
+	
+	<unit>
+		<chassis>Fox</chassis>
+		<model>CS-1</model>
+		<unitType>Mech</unitType>
+		<quirk>variable_range_long</quirk>
 	</unit>
 
 <!-- BEGIN G Mechs. -->
@@ -7609,6 +7671,14 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>pro_actuator</quirk>
 		<quirk>weak_head_2</quirk>
 	</unit>
+	
+	<unit>
+		<chassis>Kontio</chassis>
+		<unitType>Mech</unitType>
+		<quirk>distracting</quirk>
+		<quirk>bad_rep_clan</quirk>
+		<quirk>bad_rep_is</quirk>
+	</unit>
 
 	<unit>
 		<chassis>Koschei</chassis>
@@ -9331,6 +9401,21 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<chassis>Masakari (Warhawk)</chassis>
 		<unitType>Mech</unitType>
 		<quirk>imp_target_long</quirk>
+	</unit>	
+	
+	<unit>
+		<chassis>Masauwu</chassis>
+		<unitType>Mech</unitType>
+		<quirk>easy_maintain</quirk>
+		<quirk>rugged_1</quirk>
+	</unit>
+
+	<unit>
+		<chassis>Mastodon</chassis>
+		<unitType>Mech</unitType>
+		<quirk>imp_target_long</quirk>
+		<quirk>rugged_1</quirk>
+		<quirk>em_inter_whole</quirk>
 	</unit>
 
 	<unit>
@@ -9669,6 +9754,20 @@ Example: You can define quirks that affect all units of a given chassis and then
 			<weaponName>Medium Laser</weaponName>
 		</weaponQuirk>
 	</unit>
+	
+	<unit>
+		<chassis>Mongoose</chassis>
+		<model>C</model>
+		<unitType>Mech</unitType>
+		<quirk>easy_pilot</quirk>
+	</unit>
+		
+	<unit>
+		<chassis>Mongoose</chassis>
+		<model>C 2</model>
+		<unitType>Mech</unitType>
+		<quirk>easy_pilot</quirk>
+	</unit>
 
 	<unit>
 		<chassis>Mongoose II</chassis>
@@ -9784,6 +9883,19 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<unitType>Mech</unitType>
 		<quirk>cowl</quirk>
 		<quirk>stable</quirk>
+	</unit>
+	
+	<unit>
+		<chassis>Naja</chassis>
+		<unitType>Mech</unitType>
+		<quirk>easy_maintain</quirk>
+	</unit>
+		
+	<unit>
+		<chassis>Naja</chassis>
+		<model>KTO-19b-EC</model>
+		<unitType>Mech</unitType>
+		<quirk>easy_maintain</quirk>
 	</unit>
 
 	<unit>
@@ -10165,6 +10277,12 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<unitType>Mech</unitType>
 		<quirk>pro_actuator</quirk>
 		<quirk>rugged_1</quirk>
+	</unit>
+	
+	<unit>
+		<chassis>Omni-Corvis</chassis>
+		<unitType>Mech</unitType>
+		<quirk>prototype</quirk>
 	</unit>
 	
 	<unit>
@@ -11435,6 +11553,37 @@ Example: You can define quirks that affect all units of a given chassis and then
 			<weaponName>ISEHERPPC</weaponName>
 		</weaponQuirk>
 	</unit>
+	
+	<unit>
+		<chassis>Pulverizer</chassis>
+		<model>PUL-3R</model>
+		<unitType>Mech</unitType>
+		<quirk>easy_maintain</quirk>
+		<quirk>pro_actuator</quirk>
+		<quirk>bad_rep_clan</quirk>
+		<weaponQuirk>
+			<weaponQuirkName>accurate</weaponQuirkName>
+			<location>RT</location>
+			<slot>3</slot>
+			<weaponName>CLWERPPC</weaponName>
+		</weaponQuirk>
+	</unit>
+	
+	<unit>
+		<chassis>Pulverizer</chassis>
+		<model>(Standard)</model>
+		<unitType>Mech</unitType>
+		<quirk>easy_maintain</quirk>
+		<quirk>pro_actuator</quirk>
+		<quirk>bad_rep_clan</quirk>
+		<weaponQuirk>
+			<weaponQuirkName>accurate</weaponQuirkName>
+			<location>RT</location>
+			<slot>2</slot>
+			<weaponName>CLERPPC</weaponName>
+		</weaponQuirk>
+	</unit>
+
 
 	<unit>
 		<chassis>Puma (Adder)</chassis>
@@ -11714,6 +11863,12 @@ Example: You can define quirks that affect all units of a given chassis and then
 	</unit>
 
 	<unit>
+		<chassis>Regent</chassis>
+		<unitType>Mech</unitType>
+		<quirk>easy_maintain</quirk>
+	</unit>
+
+	<unit>
 		<chassis>Revenant</chassis>
 		<model>all</model>
 		<unitType>Mech</unitType>
@@ -11937,6 +12092,14 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>searchlight</quirk>
 		<quirk>obsolete</quirk>
 	</unit>
+	
+	<unit>
+		<chassis>Rime Otter</chassis>
+		<unitType>Mech</unitType>
+		<quirk>imp_sensors</quirk>
+		<quirk>rugged_1</quirk>
+		<quirk>difficult_maintain</quirk>
+	</unit>
 
 	<unit>
 		<chassis>Roadrunner (Emerald Harrier)</chassis>
@@ -12090,7 +12253,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-5WB</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 	</unit>
 
 	<unit>
@@ -12098,7 +12260,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-3KB</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>ammo_feed_problems</weaponQuirkName>
 			<location>RT</location>
@@ -12112,7 +12273,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-3L</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>ammo_feed_problems</weaponQuirkName>
 			<location>RT</location>
@@ -12126,7 +12286,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-C</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>ammo_feed_problems</weaponQuirkName>
 			<location>RT</location>
@@ -12140,7 +12299,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-3Lb</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 	</unit>
 
 	<unit>
@@ -12148,7 +12306,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-3M</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>ammo_feed_problems</weaponQuirkName>
 			<location>RT</location>
@@ -12162,7 +12319,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-4D</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 	</unit>
 
 	<unit>
@@ -12170,7 +12326,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-1S</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 	</unit>
 
 	<unit>
@@ -12178,7 +12333,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-3K</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>ammo_feed_problems</weaponQuirkName>
 			<location>RT</location>
@@ -12192,7 +12346,6 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<model>STN-3KA</model>
 		<unitType>Mech</unitType>
 		<quirk>imp_com</quirk>
-		<quirk>no_twist</quirk>
 		<weaponQuirk>
 			<weaponQuirkName>ammo_feed_problems</weaponQuirkName>
 			<location>RT</location>
@@ -12849,6 +13002,13 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<unitType>Mech</unitType>
 		<quirk>imp_sensors</quirk>
 	</unit>
+		
+	<unit>
+		<chassis>Spartan</chassis>
+		<model>C</model>
+		<unitType>Mech</unitType>
+		<quirk>imp_target_short</quirk>
+	</unit>
 
 	<unit>
 		<chassis>Spatha</chassis>
@@ -12856,6 +13016,7 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>difficult_maintain</quirk>
 		<quirk>non_standard</quirk>
 	</unit>
+
 
 	<unit>
 		<chassis>Spector</chassis>
@@ -13067,6 +13228,13 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<unitType>Mech</unitType>
 		<quirk>rugged_2</quirk>
 	</unit>
+		
+	<unit>
+		<chassis>Storm Giant</chassis>
+		<unitType>Mech</unitType>
+		<quirk>rugged_1</quirk>
+		<quirk>oversized</quirk>
+	</unit>
 
 	<unit>
 		<chassis>Storm Raider</chassis>
@@ -13150,6 +13318,14 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<chassis>Striker</chassis>
 		<unitType>Mech</unitType>
 		<quirk>easy_maintain</quirk>
+	</unit>
+	
+	<unit>
+		<chassis>Sun Bear</chassis>
+		<unitType>Mech</unitType>
+		<quirk>easy_maintain</quirk>
+		<quirk>rugged_1</quirk>
+		<quirk>difficult_eject</quirk>
 	</unit>
 
 	<unit>
@@ -16123,6 +16299,13 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>non_standard</quirk>
 		<quirk>oversized</quirk>
 		<quirk>poor_performance</quirk>
+	</unit>	
+	
+	<unit>
+		<chassis>Gurzil Support Tank</chassis>
+		<model>(Standard)</model>
+		<unitType>Tank</unitType>
+		<quirk>variable_range_long</quirk>
 	</unit>
 
 	<unit>
@@ -16728,6 +16911,12 @@ Example: You can define quirks that affect all units of a given chassis and then
 		<quirk>gas_hog</quirk>
 		<quirk>non_standard</quirk>
 		<quirk>imp_com</quirk>
+	</unit>
+	
+	<unit>
+		<chassis>SM5 Field Commander</chassis>
+		<unitType>Tank</unitType>
+		<quirk>prototype</quirk>
 	</unit>
 
 	<unit>

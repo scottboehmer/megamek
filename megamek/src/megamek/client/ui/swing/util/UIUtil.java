@@ -13,33 +13,29 @@
 */ 
 package megamek.client.ui.swing.util;
 
-import java.util.*;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.Insets;
-import java.awt.Image;
-import java.awt.LayoutManager;
-import java.awt.Point;
-import java.awt.Window;
-import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.MouseEvent;
-import javax.swing.*;
-import javax.swing.border.*;
-
 import megamek.client.ui.Messages;
+import megamek.client.ui.baseComponents.MMComboBox;
 import megamek.client.ui.swing.ClientGUI;
 import megamek.client.ui.swing.GUIPreferences;
 import megamek.client.ui.swing.MMToggleButton;
 import megamek.common.Configuration;
-import megamek.common.IPlayer;
+import megamek.common.Player;
 import megamek.common.util.ImageUtil;
 import megamek.common.util.fileUtils.MegaMekFile;
+
+import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import java.awt.*;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 public final class UIUtil {
 
@@ -186,7 +182,7 @@ public final class UIUtil {
      * oneself from the GUIPreferences depending on the relation
      * of the given player1 and player2. 
      */
-    public static Color teamColor(IPlayer player1, IPlayer player2) {
+    public static Color teamColor(Player player1, Player player2) {
         if (player1.getId() == player2.getId()) {
             return GUIPreferences.getInstance().getMyUnitColor();
         } else if (player1.isEnemyOf(player2)) {
@@ -300,7 +296,7 @@ public final class UIUtil {
     }
     
     public static int scaleForGUI(int value) {
-        return Math.round(scaleForGUI((float)value));
+        return Math.round(scaleForGUI((float) value));
     }
     
     public static float scaleForGUI(float value) {
@@ -309,7 +305,7 @@ public final class UIUtil {
     
     public static Dimension scaleForGUI(Dimension dim) {
         float scale = GUIPreferences.getInstance().getGUIScale();
-        return new Dimension((int)(scale * dim.width), (int)(scale * dim.height));
+        return new Dimension((int) (scale * dim.width), (int) (scale * dim.height));
     }
     
     /** 
@@ -374,35 +370,36 @@ public final class UIUtil {
                 comp.setFont(scaledFont);
             }
             if (comp instanceof JScrollPane 
-                    && ((JScrollPane)comp).getViewport().getView() instanceof JComponent) {
-                adjustDialog((JViewport)((JScrollPane)comp).getViewport());
+                    && ((JScrollPane) comp).getViewport().getView() instanceof JComponent) {
+                adjustDialog(((JScrollPane) comp).getViewport());
             }
             if (comp instanceof JPanel) {
-                JPanel panel = (JPanel)comp;
+                JPanel panel = (JPanel) comp;
                 Border border = panel.getBorder();
-                if ((border != null) && (border instanceof TitledBorder)) {
-                    ((TitledBorder)border).setTitleFont(scaledFont);
+                if ((border instanceof TitledBorder)) {
+                    ((TitledBorder) border).setTitleFont(scaledFont);
                 }
-                if ((border != null) && (border instanceof EmptyBorder)) {
-                    Insets i = ((EmptyBorder)border).getBorderInsets();
+
+                if ((border instanceof EmptyBorder)) {
+                    Insets i = ((EmptyBorder) border).getBorderInsets();
                     int top = scaleForGUI(i.top);
                     int bottom = scaleForGUI(i.bottom);
                     int left = scaleForGUI(i.left);
                     int right = scaleForGUI(i.right);
                     panel.setBorder(BorderFactory.createEmptyBorder(top, left, bottom, right));
                 }
-                adjustDialog((JPanel)comp);
+                adjustDialog((JPanel) comp);
             }
             if (comp instanceof JTabbedPane) {
                 comp.setFont(scaledFont);
-                JTabbedPane tpane = (JTabbedPane)comp;
+                JTabbedPane tpane = (JTabbedPane) comp;
                 for (int i=0; i<tpane.getTabCount();i++) {
                     Component sc = tpane.getTabComponentAt(i);
                     if (sc instanceof JPanel) {
-                        adjustDialog((JPanel)sc);
+                        adjustDialog((JPanel) sc);
                     }
                 }
-                adjustDialog((JTabbedPane)comp);
+                adjustDialog((JTabbedPane) comp);
             }
         }
     }
@@ -412,7 +409,7 @@ public final class UIUtil {
         for (Component comp: popup.getComponents()) {
             if ((comp instanceof JMenuItem)) {
                 comp.setFont(getScaledFont());
-                scaleJMenuItem((JMenuItem)comp);
+                scaleJMenuItem((JMenuItem) comp);
             } 
         }
     }
@@ -501,19 +498,20 @@ public final class UIUtil {
      * Used in the player settings and planetary settings dialogs.
      */
     public static class TipLabel extends JLabel {
-        private static final long serialVersionUID = -338233022633675883L;
-        
-        private JDialog parentDialog;
 
-        public TipLabel(String text, int align, JDialog parent) {
+        public TipLabel(String text) {
+            super(text);
+        }
+
+        public TipLabel(String text, int align) {
             super(text, align);
-            parentDialog = parent;
         }
 
         @Override
         public Point getToolTipLocation(MouseEvent event) {
-            Point p = SwingUtilities.convertPoint(this, 0, 0, parentDialog);
-            return new Point(parentDialog.getWidth() - p.x, 0);
+            Window win = SwingUtilities.getWindowAncestor(this);
+            Point origin = SwingUtilities.convertPoint(this, 0, 0, win);
+            return new Point(win.getWidth() - origin.x, 0);
         }
         
         @Override
@@ -522,6 +520,11 @@ public final class UIUtil {
             tip.setBackground(alternateTableBGColor());
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
+        }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
         }
     }
     
@@ -550,21 +553,31 @@ public final class UIUtil {
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
         }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
+        }
     }
     
     /** 
-     * A JComboBox with a specialized tooltip display. Displays the tooltip to the right side
+     * A MMComboBox with a specialized tooltip display. Displays the tooltip to the right side
+
      * of the parent dialog, not following the mouse. 
-     * Used in the player settings and planetary settings dialogs.
+     * Used in the player settings dialog.
      */
-    public static class TipCombo<E> extends JComboBox<E> {
+    public static class TipCombo<E> extends MMComboBox<E> {
         
-        public TipCombo() {
-            super();
+        public TipCombo(String name) {
+            super(name);
         }
         
-        public TipCombo(E[] items) {
-            super(items);
+        public TipCombo(String name, E[] items) {
+            super(name, items);
+        }
+
+        public TipCombo(String name, final ComboBoxModel<E> model) {
+            super(name, model);
         }
 
         @Override
@@ -580,6 +593,11 @@ public final class UIUtil {
             tip.setBackground(alternateTableBGColor());
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
+        }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
         }
     }
     
@@ -611,6 +629,11 @@ public final class UIUtil {
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
         }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
+        }
     }
     
     /** 
@@ -620,8 +643,7 @@ public final class UIUtil {
      * Used in the player settings and planetary settings dialogs.
      */
     public static class TipTextField extends JTextField {
-        private static final long serialVersionUID = -2226586551388519966L;
-        
+
         String hintText;
         
         public TipTextField(int n) {
@@ -666,10 +688,12 @@ public final class UIUtil {
         }
         
         FocusListener l = new FocusListener() {
+            @Override
             public void focusLost(FocusEvent e) {
                 updateHint();
             };
             
+            @Override
             public void focusGained(FocusEvent e) {
                 if (getText().equals(hintText)) {
                     setText("");
@@ -691,6 +715,11 @@ public final class UIUtil {
             tip.setBackground(alternateTableBGColor());
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
+        }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
         }
     }
     
@@ -722,6 +751,11 @@ public final class UIUtil {
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
         }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
+        }
     }
     
     /** 
@@ -749,6 +783,11 @@ public final class UIUtil {
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
         }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
+        }
     }
     
     /** 
@@ -775,6 +814,11 @@ public final class UIUtil {
             tip.setBorder(BorderFactory.createLineBorder(uiGray(), 4));
             return tip;
         }
+
+        @Override
+        public void setToolTipText(String text) {
+            super.setToolTipText(formatSideTooltip(text));
+        }
     }
     
     /** 
@@ -782,8 +826,8 @@ public final class UIUtil {
      * its width and adding HTML tags. 
      */
     public static String formatSideTooltip(String text) {
-        String result = "<P WIDTH=" + UIUtil.scaleForGUI(TOOLTIP_WIDTH) + " style=padding:5>" + text;
-        return UIUtil.scaleStringForGUI(result);
+        String result = "<P WIDTH=" + scaleForGUI(TOOLTIP_WIDTH) + " style=padding:5>" + text;
+        return scaleStringForGUI(result);
     }
     
     /**
@@ -854,10 +898,8 @@ public final class UIUtil {
     public static Font getScaledFont() {
         return new Font("Dialog", Font.PLAIN, scaleForGUI(FONT_SCALE1));
     }
-    
-    
-    
-    // PRIVATE 
+
+    // PRIVATE
     
     private final static Color LIGHTUI_GREEN = new Color(20, 140, 20);
     private final static Color DARKUI_GREEN = new Color(40, 180, 40);
@@ -878,7 +920,7 @@ public final class UIUtil {
     
     /** Returns an HTML FONT Size String, according to GUIScale (e.g. "style=font-size:22"). */
     private static String sizeString() {
-        int fontSize = (int)(GUIPreferences.getInstance().getGUIScale() * FONT_SCALE1);
+        int fontSize = (int) (GUIPreferences.getInstance().getGUIScale() * FONT_SCALE1);
         return " style=font-size:" + fontSize + " ";
     }
     
@@ -893,7 +935,7 @@ public final class UIUtil {
         float guiScale = GUIPreferences.getInstance().getGUIScale();
         float boundedScale = Math.max(ClientGUI.MIN_GUISCALE, guiScale + deltaScale);
         boundedScale = Math.min(ClientGUI.MAX_GUISCALE, boundedScale);
-        int fontSize = (int)(boundedScale * FONT_SCALE1);
+        int fontSize = (int) (boundedScale * FONT_SCALE1);
         return " style=font-size:" + fontSize + " ";
     }
     
@@ -934,7 +976,7 @@ public final class UIUtil {
     private static void scaleJMenuItem(final JMenuItem menuItem) {
         Font scaledFont = getScaledFont();
         if (menuItem instanceof JMenu) {
-            JMenu menu = (JMenu)menuItem;
+            JMenu menu = (JMenu) menuItem;
             menu.setFont(scaledFont);
             for (int i = 0; i < menu.getItemCount(); i++) {
                 scaleJMenuItem(menu.getItem(i));
@@ -943,6 +985,39 @@ public final class UIUtil {
             menuItem.setFont(scaledFont);
         } 
     }
-    
+
+    /**
+     * Ensures an on-screen window fits within the bounds of a display.
+     */
+    public static void updateWindowBounds(Window window) {
+        var bounds = new Rectangle();
+        var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        var gs = ge.getScreenDevices();
+        for (var gd : gs) {
+            var gc = gd.getConfigurations();
+            for (var element : gc) {
+                bounds = bounds.union(element.getBounds());
+            }
+        }
+
+        var size = window.getSize();
+        var location = window.getLocation();
+
+        if ((location.x < bounds.getMinX()) || ((location.x + size.width) > bounds.getMaxX())) {
+            location.x = 0;
+        }
+        if ((location.y < bounds.getMinY()) || ((location.y + size.height) > bounds.getMaxY())) {
+            location.y = 0;
+        }
+        if (size.width > bounds.width) {
+            size.width = bounds.width;
+        }
+        if (size.height > bounds.height) {
+            size.height = bounds.height;
+        }
+
+        window.setLocation(location);
+        window.setSize(size);
+    }
 
 }
