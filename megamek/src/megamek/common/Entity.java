@@ -1,6 +1,6 @@
 /*
 * MegaMek -
-* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005 Ben Mazur (bmazur@sev.org)
+* Copyright (C) 2000-2005 Ben Mazur (bmazur@sev.org)
 * Copyright (C) 2018 The MegaMek Team
 *
 * This program is free software; you can redistribute it and/or modify it under
@@ -17,11 +17,11 @@ package megamek.common;
 
 import megamek.client.bot.princess.FireControl;
 import megamek.client.ui.swing.GUIPreferences;
-import megamek.common.Building.BasementType;
 import megamek.common.MovePath.MoveStepType;
 import megamek.common.actions.*;
 import megamek.common.annotations.Nullable;
 import megamek.common.enums.AimingMode;
+import megamek.common.enums.BasementType;
 import megamek.common.enums.GamePhase;
 import megamek.common.event.GameEntityChangeEvent;
 import megamek.common.force.Force;
@@ -1252,9 +1252,9 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     //Tech Progression tweaked to combine IntOps with TRO Prototypes/3145 NTNU RS
     protected static final TechAdvancement TA_ARMORED_COMPONENT = new TechAdvancement(TECH_BASE_ALL)
             .setISAdvancement(3061, 3082,DATE_NONE,DATE_NONE,DATE_NONE)
-            .setISApproximate(false,true,false,false,false)
+            .setISApproximate(false, true, false, false, false)
             .setClanAdvancement(3061, 3082,DATE_NONE,DATE_NONE,DATE_NONE)
-            .setClanApproximate(false,true,false,false,false)
+            .setClanApproximate(false, true, false, false, false)
             .setPrototypeFactions(F_CSF,F_FW).setProductionFactions(F_CJF,F_FW)
             .setTechRating(RATING_E).setAvailability(RATING_X, RATING_X, RATING_F, RATING_E)
             .setStaticTechLevel(SimpleTechLevel.ADVANCED);
@@ -2048,27 +2048,25 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
                         || (retVal > bldnex)) {
                     retVal = bldnex;
                 } else if ((bldnex + next.getLevel()) > (bldcur + current.getLevel())) {
-                    int nextBasement = next.terrainLevel(Terrains.BLDG_BASEMENT_TYPE);
+                    BasementType nextBasement = BasementType.getType(next.terrainLevel(Terrains.BLDG_BASEMENT_TYPE));
                     int collapsedBasement = next.terrainLevel(Terrains.BLDG_BASE_COLLAPSED);
                     if (climb || isJumpingNow) {
                         retVal = bldnex + next.getLevel();
                     // If the basement is collapsed, there is no level 0
                     } else if ((assumedElevation == 0)
-                            && (nextBasement > BasementType.NONE.getValue())
+                            && !nextBasement.isUnknownOrNone()
                             && (collapsedBasement > 0)) {
-                        retVal -= BasementType.getType(
-                                next.terrainLevel(Terrains.BLDG_BASEMENT_TYPE)).getDepth();
+                        retVal -= nextBasement.getDepth();
                     } else {
                         retVal += current.getLevel();
                         retVal -= next.getLevel();
                     }
                 } else if (elevation == -(current.depth(true))) {
+                    BasementType currentBasement = BasementType.getType(current.terrainLevel(Terrains.BLDG_BASEMENT_TYPE));
                     if (climb || isJumpingNow) {
                         retVal = bldnex + next.getLevel();
-                    } else if ((current.terrainLevel(Terrains.BLDG_BASEMENT_TYPE) > BasementType.NONE.getValue())
-                               && (assumedElevation == -BasementType
-                            .getType(current.terrainLevel(Terrains.BLDG_BASEMENT_TYPE))
-                            .getDepth())) {
+                    } else if (!currentBasement.isUnknownOrNone()
+                               && (assumedElevation == -currentBasement.getDepth())) {
                         retVal = -BasementType.getType(next.terrainLevel(Terrains.BLDG_BASEMENT_TYPE)).getDepth();
                     } else {
                         retVal += current.getLevel();
@@ -2076,6 +2074,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
                     }
                 }
             }
+
             if ((getMovementMode() != EntityMovementMode.NAVAL)
                     && (getMovementMode() != EntityMovementMode.HYDROFOIL)
                     && (next.containsTerrain(Terrains.BRIDGE) || current
@@ -2147,11 +2146,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             case INF_JUMP:
             case INF_LEG:
             case INF_MOTORIZED:
-                minAlt -= Math.max(
-                        0,
-                        BasementType.getType(
-                                hex.terrainLevel(Terrains.BLDG_BASEMENT_TYPE))
-                                    .getDepth());
+                minAlt -= Math.max(0, BasementType.getType(hex.terrainLevel(Terrains.BLDG_BASEMENT_TYPE)).getDepth());
                 break;
             case WIGE:
                 // Per errata, WiGEs have flotation hull, which makes no sense unless it changes the rule
@@ -2215,12 +2210,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             case BIPED:
             case QUAD:
                 if (this instanceof Protomech) {
-                    minAlt -= Math
-                            .max(0,
-                                 BasementType
-                                         .getType(
-                                                 hex.terrainLevel(Terrains.BLDG_BASEMENT_TYPE))
-                                         .getDepth());
+                    minAlt -= Math.max(0, BasementType.getType(hex.terrainLevel(Terrains.BLDG_BASEMENT_TYPE)).getDepth());
                 } else {
                     return false;
                 }
@@ -2409,7 +2399,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
 
     /**
      * Returns the elevation of the entity's highest point relative to
-     * the surface of the hex the entity is in , i.e.
+     * the surface of the hex the entity is in, i.e.
      * relHeight() == getElevation() + getHeight()
      */
     @Override
@@ -2417,7 +2407,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         return getElevation() + height();
     }
 
-    /*
+    /**
      * Convenience method to determine whether this entity is on a ground map with an atmosphere
      */
     public boolean isOnAtmosphericGroundMap() {
@@ -5063,7 +5053,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
 
     /**
      * Does the mech have an active shield This should only be called by
-     * hasActiveShield(location,rear)
+     * hasActiveShield(location, rear)
      */
     public boolean hasActiveShield(int location) {
         return false;
@@ -5079,7 +5069,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
 
     /**
      * Does the mech have a passive shield This should only be called by
-     * hasPassiveShield(location,rear)
+     * hasPassiveShield(location, rear)
      */
     public boolean hasPassiveShield(int location) {
         return false;
@@ -6167,8 +6157,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
 
         // Active Mek Stealth prevents entity from participating in C3.
         // Turn off the stealth, and your back in the network.
-        if (((this instanceof Mech) || (this instanceof Tank))
-            && isStealthActive()) {
+        if (((this instanceof Mech) || (this instanceof Tank)) && isStealthActive()) {
             return false;
         }
         if (((e instanceof Mech) || (e instanceof Tank)) && e.isStealthActive()) {
@@ -6181,16 +6170,14 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             if (ignoreECM) {
                 return true;
             }
-            return !(ComputeECM.isAffectedByECM(e, e.getPosition(),
-                                                e.getPosition()))
-                   && !(ComputeECM.isAffectedByECM(this, getPosition(),
-                                                   getPosition()));
+            return !(ComputeECM.isAffectedByECM(e, e.getPosition(), e.getPosition()))
+                   && !(ComputeECM.isAffectedByECM(this, getPosition(), getPosition()));
         }
 
         // NC3 is easy too - if they both have NC3, and their net ID's match,
         // they're on the same network!
         if (hasNavalC3() && e.hasNavalC3() && getC3NetId().equals(e.getC3NetId())) {
-            int distance = Compute.effectiveDistance(game,this,e,false);
+            int distance = Compute.effectiveDistance(game, this, e, false);
             //Naval C3 is not affected by ECM, but nodes must be within 60 hexes of one another
             if (game.getRoundCount() > 0) {
                 if (distance > 60) {
@@ -9764,9 +9751,9 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
      */
     public boolean isEligibleFor(GamePhase phase) {
         // only deploy in deployment phase
-        if ((phase == GamePhase.DEPLOYMENT) == isDeployed()) {
-            if (!isDeployed() && isEligibleForTargetingPhase()
-                    && game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_ON_MAP_PREDESIGNATE)) {
+        if (phase.isDeployment() == isDeployed()) {
+            if (!isDeployed() && phase.isSetArtilleryAutohitHexes()
+                    && isEligibleForArtyAutoHitHexes()) {
                 LogManager.getLogger().debug("Artillery Units Present and Advanced PreDesignate option enabled");
             } else {
                 return false;
@@ -10050,8 +10037,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
      */
     public boolean isEligibleForArtyAutoHitHexes() {
         return isEligibleForTargetingPhase()
-               && (isOffBoard() || game.getOptions().booleanOption(
-                OptionsConstants.ADVCOMBAT_ON_MAP_PREDESIGNATE));
+               && (isOffBoard() || game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_ON_MAP_PREDESIGNATE));
     }
 
     public boolean isEligibleForTargetingPhase() {
@@ -14687,14 +14673,8 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             return;
         }
 
-        // System.out.println("Loading quirks for " + getChassis() + " " +
-        // getModel());
-
         // Load all the unit's quirks.
         for (QuirkEntry q : quirks) {
-
-            // System.out.print("  " + q.toLog() + "... ");
-
             // If the quirk doesn't have a location, then it is a unit quirk,
             // not a weapon quirk.
             if (StringUtil.isNullOrEmpty(q.getLocation())) {
@@ -14706,13 +14686,10 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
                                        + " - Invalid quirk!");
                     continue;
                 }
-                getQuirks().getOption(q.getQuirk()).setValue(true);
-                // System.out.println("Loaded.");
-                continue;
+                getQuirks().getOption(q.getQuirk()).setValue(true);continue;
             }
 
             // Get the weapon in the indicated location and slot.
-            // System.out.print("Getting CriticalSlot... ");
             CriticalSlot cs = getCritical(getLocationFromAbbr(q.getLocation()),
                                           q.getSlot());
             if (cs == null) {
@@ -14731,7 +14708,6 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             }
 
             // Make sure this is a weapon.
-            // System.out.print("Getting WeaponType... ");
             if (!(m.getType() instanceof WeaponType)
                     && !(m.getType().hasFlag(MiscType.F_CLUB))) {
                 System.out.println(q.toLog() + " failed for " + getChassis()
@@ -14741,12 +14717,10 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             }
 
             // Make sure it is the weapon we expect.
-            // System.out.print("Matching weapon... ");
             boolean matchFound = false;
             Enumeration<String> typeNames = m.getType().getNames();
             while (typeNames.hasMoreElements()) {
                 String typeName = typeNames.nextElement();
-                // System.out.print(typeName + "... ");
                 if (typeName.equals(q.getWeaponName())) {
                     matchFound = true;
                     break;
@@ -14760,14 +14734,12 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             }
 
             // Activate the weapon quirk.
-            // System.out.print("Activating quirk... ");
             if (m.getQuirks().getOption(q.getQuirk()) == null) {
                 System.out.println(q.toLog() + " failed for " + getChassis()
                                    + " " + getModel() + " - Invalid quirk!");
                 continue;
             }
             m.getQuirks().getOption(q.getQuirk()).setValue(true);
-            // System.out.println("Loaded.");
         }
     }
 

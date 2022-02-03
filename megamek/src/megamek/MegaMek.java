@@ -15,10 +15,11 @@
  */
 package megamek;
 
-import megamek.client.ui.preferences.MMPreferences;
+import megamek.client.ui.preferences.SuitePreferences;
 import megamek.client.ui.swing.ButtonOrderPreferences;
 import megamek.client.ui.swing.MegaMekGUI;
 import megamek.common.*;
+import megamek.common.annotations.Nullable;
 import megamek.common.preference.PreferenceManager;
 import megamek.common.util.AbstractCommandLineParser;
 import megamek.common.util.fileUtils.MegaMekFile;
@@ -35,24 +36,22 @@ import java.security.NoSuchAlgorithmException;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.Date;
+import java.util.Locale;
 import java.util.Vector;
 
 /**
- * @author mev This is the class where the execution of the megamek game starts.
+ * This is the primary MegaMek class.
+ * @author mev
  */
 public class MegaMek {
-    private static MMPreferences preferences = null;
-
-    public static long TIMESTAMP = new File(PreferenceManager.getClientPreferences().getLogDirectory()
-            + File.separator + "timestamp").lastModified();
+    private static final SuitePreferences mmPreferences = new SuitePreferences();
+    private static final MMOptions mmOptions = new MMOptions();
 
     private static final NumberFormat commafy = NumberFormat.getInstance();
     private static final String INCORRECT_ARGUMENTS_MESSAGE = "Incorrect arguments:";
     private static final String ARGUMENTS_DESCRIPTION_MESSAGE = "Arguments syntax:\n\t MegaMek "
             + "[-log <logfile>] [(-gui <guiname>)|(-dedicated)|(-validate)|(-export)|(-eqdb)|"
             + "(-eqedb) (-oul)] [<args>]";
-    public static final String PREFERENCES_FILE = "mmconf/megamek.preferences";
 
     public static void main(String... args) {
         // First, create a global default exception handler
@@ -65,8 +64,7 @@ public class MegaMek {
         });
 
         // Second, let's handle logging
-        showInfo();
-        handleLegacyLogging();
+        initializeLogging(MMConstants.PROJECT_NAME);
 
         // Third, Command Line Arguments and Startup
         try {
@@ -79,7 +77,7 @@ public class MegaMek {
                 return;
             }
 
-            getPreferences().loadFromFile(PREFERENCES_FILE);
+            getMMPreferences().loadFromFile(MMConstants.MM_PREFERENCES_FILE);
 
             if (cp.ratGenEditor()) {
                 RATGeneratorEditor.main(restArgs);
@@ -94,6 +92,13 @@ public class MegaMek {
             LogManager.getLogger().fatal(message);
             System.exit(1);
         }
+    }
+
+    public static void initializeLogging(final String originProject) {
+        final String initialMessage = getUnderlyingInformation(originProject);
+        LogManager.getLogger().info(initialMessage);
+        handleLegacyLogging();
+        System.out.println(initialMessage);
     }
 
     /**
@@ -129,21 +134,20 @@ public class MegaMek {
         }
     }
 
-    public static MMPreferences getPreferences() {
-        if (preferences == null) {
-            preferences = new MMPreferences();
-        }
+    public static SuitePreferences getMMPreferences() {
+        return mmPreferences;
+    }
 
-        return preferences;
+    public static MMOptions getMMOptions() {
+        return mmOptions;
     }
 
     /**
      * Calculates the SHA-256 hash of the MegaMek.jar file
-     * Used primarily for purposes of checksum comparison when
-     * connecting a new client.
+     * Used primarily for purposes of checksum comparison when connecting a new client.
      * @return String representing the SHA-256 hash
      */
-    public static String getMegaMekSHA256() {
+    public static @Nullable String getMegaMekSHA256() {
         StringBuilder sb = new StringBuilder();
         byte[] buffer = new byte[8192];
 
@@ -167,7 +171,9 @@ public class MegaMek {
         }
         try (InputStream is = new FileInputStream(filename);
              InputStream dis = new DigestInputStream(is, md)) {
-            while (0 < dis.read(buffer)) { }
+            while (0 < dis.read(buffer)) {
+
+            }
             // gets digest
             byte[] digest = md.digest();
             // convert the byte to hex format
@@ -182,8 +188,7 @@ public class MegaMek {
     }
 
     /**
-     * This function returns the memory used in the heap (heap memory - free
-     * memory).
+     * This function returns the memory used in the heap (heap memory - free memory).
      *
      * @return memory used in kB
      */
@@ -195,8 +200,7 @@ public class MegaMek {
 
     /**
      * Starts a dedicated server with the arguments in args. See
-     * {@link megamek.server.DedicatedServer#start(String[])} for more
-     * information.
+     * {@link DedicatedServer#start(String[])} for more information.
      *
      * @param args the arguments to the dedicated server.
      */
@@ -214,25 +218,25 @@ public class MegaMek {
     }
 
     /**
-     * Prints some information about MegaMek. Used in log files to figure out the JVM and
-     * version of MegaMek.
+     * @param originProject the project that launched MegaMek
+     * @return the underlying information for this launch of MegaMek
      */
-    public static void showInfo() {
-        final long TIMESTAMP = new File(PreferenceManager.getClientPreferences().getLogDirectory()
-                + File.separator + "timestamp").lastModified();
-        // echo some useful stuff
-        String msg = "Starting MegaMek v" + MegaMekConstants.VERSION;
-        if (TIMESTAMP > 0) {
-            msg += "\n\tCompiled on " + new Date(TIMESTAMP);
-        }
-        msg += "\n\tToday is " + LocalDate.now()
-                + "\n\tJava Vendor: " + System.getProperty("java.vendor")
-                + "\n\tJava Version: " + System.getProperty("java.version")
-                + "\n\tPlatform: " + System.getProperty("os.name") + " " + System.getProperty("os.version")
-                + " (" + System.getProperty("os.arch") + ")"
-                + "\n\tTotal memory available to MegaMek: "
-                + NumberFormat.getInstance().format(Runtime.getRuntime().maxMemory()) + " GB";
-        LogManager.getLogger().info(msg);
+    public static String getUnderlyingInformation(final String originProject) {
+        return MegaMek.getUnderlyingInformation(originProject, MMConstants.PROJECT_NAME);
+    }
+
+    /**
+     * @param originProject the launching project
+     * @param currentProject the currently described project
+     * @return the underlying information for this launch
+     */
+    public static String getUnderlyingInformation(final String originProject, final String currentProject) {
+        return String.format("Starting %s v%s\n\tRelease Date: %s\n\tToday: %s\n\tOrigin Project: %s\n\tJava Vendor: %s\n\tJava Version: %s\n\tPlatform: %s %s (%s)\n\tSystem Locale: %s\n\tTotal memory available to %s: %,.0f GB",
+                currentProject, MMConstants.VERSION, MMConstants.RELEASE_DATE, LocalDate.now(),
+                originProject, System.getProperty("java.vendor"), System.getProperty("java.version"),
+                System.getProperty("os.name"), System.getProperty("os.version"),
+                System.getProperty("os.arch"), Locale.getDefault(), currentProject,
+                Runtime.getRuntime().maxMemory() / Math.pow(2, 30));
     }
 
     /**

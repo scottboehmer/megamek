@@ -1,5 +1,5 @@
 /*
- * MegaMek - Copyright (C) 2000,2001,2002,2003,2004 Ben Mazur (bmazur@sev.org)
+ * MegaMek - Copyright (C) 2000-2004 Ben Mazur (bmazur@sev.org)
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -3146,11 +3146,11 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
         
         // Follow-the-leader LRMs
         if (bFTL) {
-            toHit.addModifier(2,atype.getSubMunitionName()
+            toHit.addModifier(2, atype.getSubMunitionName()
                     + Messages.getString("WeaponAttackAction.AmmoMod"));
         }
         
-        // Heat Seeking Missles
+        // Heat Seeking Missiles
         if (bHeatSeeking) {
             Hex hexTarget = game.getBoard().getHex(target.getPosition());
             // -2 bonus if shooting at burning hexes or buildings
@@ -3161,9 +3161,9 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
                 // -2 bonus if the target is on fire
                 if (te.infernos.isStillBurning()) {
                     toHit.addModifier(-2, Messages.getString("WeaponAttackAction.AmmoMod"));
+
                 }
-                if ((te.isAirborne())
-                        && (toHit.getSideTable() == ToHitData.SIDE_REAR)) {
+                if ((te.isAirborne()) && (toHit.getSideTable() == ToHitData.SIDE_REAR)) {
                     // -2 bonus if shooting an Aero through the rear arc
                     toHit.addModifier(-2, atype.getSubMunitionName()
                             + Messages.getString("WeaponAttackAction.AmmoMod"));
@@ -3180,8 +3180,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
             }
 
             // +2 penalty if shooting into or through a burning hex
-            if (LosEffects.hasFireBetween(ae.getPosition(),
-                    target.getPosition(), game)) {
+            if (LosEffects.hasFireBetween(ae.getPosition(), target.getPosition(), game)) {
                 toHit.addModifier(2, Messages.getString("WeaponAttackAction.HsmThruFire"));
             }
         }
@@ -3917,14 +3916,6 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
         }
 
         if (ae.isConventionalInfantry()) {
-            // check for pl-masc
-            // the rules are a bit vague, but assume that if the infantry didn't
-            // move or jumped, then they shouldn't get the penalty
-            if (ae.hasAbility(OptionsConstants.MD_PL_MASC)
-                    && ((ae.moved == EntityMovementType.MOVE_WALK) || (ae.moved == EntityMovementType.MOVE_RUN))) {
-                toHit.addModifier(+1, Messages.getString("WeaponAttackAction.PlMasc"));
-            }
-
             // check for cyber eye laser sighting on ranged attacks
             if (ae.hasAbility(OptionsConstants.MD_CYBER_IMP_LASER)
                     && !(wtype instanceof InfantryAttack)) {
@@ -4012,6 +4003,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
                     && te.moved == EntityMovementType.MOVE_RUN) {
                 toHit.addModifier(+1, Messages.getString("WeaponAttackAction.SwampBeast"));
             }
+
         }
         return toHit;
     }
@@ -4289,9 +4281,17 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
         }
 
         // infantry squads are also hard to hit
-        if ((te != null) && te.isConventionalInfantry() && ((Infantry) te).isSquad()) {
+        if ((te instanceof Infantry) && te.isConventionalInfantry() && ((Infantry) te).isSquad()) {
             toHit.addModifier(1, Messages.getString("WeaponAttackAction.SquadTarget"));
         }
+
+        // pl-masc makes foot infantry harder to hit - IntOps p.84
+        if ((te instanceof Infantry) && te.hasAbility(OptionsConstants.MD_PL_MASC)
+                && te.getMovementMode().isLegInfantry()
+                && te.isConventionalInfantry()) {
+            toHit.addModifier(1, Messages.getString("WeaponAttackAction.PlMasc"));
+        }
+
 
         // Ejected MechWarriors are harder to hit
         if (te instanceof MechWarrior) {

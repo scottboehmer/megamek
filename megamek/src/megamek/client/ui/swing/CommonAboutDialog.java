@@ -1,40 +1,29 @@
 /*
- * MegaMek - Copyright (C) 2003,2004,2005 Ben Mazur (bmazur@sev.org)
+ * MegaMek - Copyright (C) 2003, 2004, 2005 Ben Mazur (bmazur@sev.org)
  * Copyright (C) 2013 Edward Cullen (eddy@obsessedcomputers.co.uk)
  * MegaMek - Copyright (C) 2020 - The MegaMek Team  
- * 
- *  This program is free software; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the Free 
- *  Software Foundation; either version 2 of the License, or (at your option) 
- *  any later version.
- * 
- *  This program is distributed in the hope that it will be useful, but 
- *  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
- *  or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License 
- *  for more details.
+ *
+ * This program is free software; you can redistribute it and/or modify it 
+ * under the terms of the GNU General Public License as published by the Free 
+ * Software Foundation; either version 2 of the License, or (at your option) 
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License 
+ * for more details.
  */
 package megamek.client.ui.swing;
 
-import static megamek.MegaMek.TIMESTAMP;
-
-import java.awt.BorderLayout;
-import java.awt.Image;
-import java.awt.MediaTracker;
-import java.util.Date;
-
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
-
-import megamek.MegaMekConstants;
+import megamek.MMConstants;
+import megamek.MegaMek;
 import megamek.client.ui.Messages;
 import megamek.common.Configuration;
 import megamek.common.util.fileUtils.MegaMekFile;
+import org.apache.logging.log4j.LogManager;
+
+import javax.swing.*;
+import java.awt.*;
 
 /**
  * Every about dialog in MegaMek should have an identical look-and-feel.
@@ -65,10 +54,10 @@ public class CommonAboutDialog extends JDialog {
             try {
                 tracker.waitForID(0);
                 imgTitleImage = image;
-            } catch (InterruptedException exp) {
-                exp.printStackTrace();
+            } catch (Exception ex) {
+                LogManager.getLogger().error("", ex);
             }
-        } // End load-imgTitleImage
+        }
 
         return imgTitleImage;
     }
@@ -86,16 +75,7 @@ public class CommonAboutDialog extends JDialog {
         JLabel panTitle = new JLabel(new ImageIcon(imgSplash));
 
         // Version text
-        StringBuffer buff = new StringBuffer();
-        buff.append(Messages.getString("CommonAboutDialog.version"))
-                .append(MegaMekConstants.VERSION).append(
-                        Messages.getString("CommonAboutDialog.timestamp"))
-                .append(new Date(TIMESTAMP)).append(
-                        Messages.getString("CommonAboutDialog.javaVendor"))
-                .append(System.getProperty("java.vendor"))
-                .append(Messages.getString("CommonAboutDialog.javaVersion"))
-                .append(System.getProperty("java.version"));
-        JTextArea lblVersion = new JTextArea(buff.toString());
+        JTextArea lblVersion = new JTextArea(MegaMek.getUnderlyingInformation(MMConstants.PROJECT_NAME));
         lblVersion.setEditable(false);
         lblVersion.setOpaque(false);
         

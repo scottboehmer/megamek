@@ -1,6 +1,6 @@
 /*
 * MegaMek -
-* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005 Ben Mazur (bmazur@sev.org)
+* Copyright (C) 2000-2005 Ben Mazur (bmazur@sev.org)
 * Copyright (C) 2018 The MegaMek Team
 *
 * This program is free software; you can redistribute it and/or modify it under
@@ -15,11 +15,11 @@
 */
 package megamek.common;
 
-import megamek.common.Building.BasementType;
 import megamek.common.MovePath.MoveStepType;
 import megamek.common.actions.*;
 import megamek.common.annotations.Nullable;
 import megamek.common.enums.AimingMode;
+import megamek.common.enums.BasementType;
 import megamek.common.enums.IlluminationLevel;
 import megamek.common.options.OptionsConstants;
 import megamek.common.weapons.InfantryAttack;
@@ -3076,8 +3076,7 @@ public class Compute {
                 fHits = 2.0f * expectedHitsByRackSize[wt.getRackSize() / 2];
             }
             if (((wt.getAmmoType() == AmmoType.T_SRM_STREAK)
-                    || (wt.getAmmoType() == AmmoType.T_MRM_STREAK) || (wt
-                    .getAmmoType() == AmmoType.T_LRM_STREAK))
+                    || (wt.getAmmoType() == AmmoType.T_LRM_STREAK))
                     && !ComputeECM.isAffectedByAngelECM(attacker, attacker
                             .getPosition(), waa.getTarget(g).getPosition(),
                             allECMInfo)) {
@@ -5977,9 +5976,7 @@ public class Compute {
         int bldgHeight = curHex.terrainLevel(Terrains.BLDG_ELEV);
         int basement = 0;
         if (curHex.containsTerrain(Terrains.BLDG_BASEMENT_TYPE)) {
-            basement = BasementType.getType(
-                    curHex.terrainLevel(Terrains.BLDG_BASEMENT_TYPE))
-                                   .getDepth();
+            basement = BasementType.getType(curHex.terrainLevel(Terrains.BLDG_BASEMENT_TYPE)).getDepth();
         }
 
         // Return true if the entity is in the range of building elevations.
@@ -6126,16 +6123,7 @@ public class Compute {
         return null;
     }
 
-    /**
-     * Gets a new target hex for a flight of smoke missiles fired at a hex, if
-     * there are remaining missiles.
-     */
-
-    /**
-     * * STUFF FOR VECTOR MOVEMENT CALCULATIONS **
-     */
-    public static Coords getFinalPosition(Coords curpos, int[] v) {
-
+    public static @Nullable Coords getFinalPosition(Coords curpos, int... v) {
         if ((v == null) || (v.length != 6) || (curpos == null)) {
             return curpos;
         }
@@ -6798,9 +6786,6 @@ public class Compute {
                     case AmmoType.T_TBOLT_10:
                     case AmmoType.T_TBOLT_15:
                     case AmmoType.T_TBOLT_20:
-                    case AmmoType.T_PXLRM:
-                    case AmmoType.T_HSRM:
-                    case AmmoType.T_MRM_STREAK:
                     case AmmoType.T_HAG:
                     case AmmoType.T_ROCKET_LAUNCHER:
                         return false;
@@ -6971,7 +6956,7 @@ public class Compute {
         } else {
             // Medium and large support vehicle gunner requirements are based on weapon tonnage
             double tonnage = entity.getWeaponList().stream().filter(m -> !m.getType().hasFlag(WeaponType.F_AMS))
-                    .mapToDouble(m -> m.getTonnage()).sum();
+                    .mapToDouble(Mounted::getTonnage).sum();
             if (advFireCon) {
                 if (entity.getStructuralTechRating() == ITechnology.RATING_F) {
                     return (int) Math.ceil(tonnage / 6.0);
