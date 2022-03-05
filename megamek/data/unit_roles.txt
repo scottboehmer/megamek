@@ -6007,6 +6007,13 @@ Skinwalker (Ryoken III) C:STRIKER
 Skinwalker (Ryoken III) D:SCOUT
 Skinwalker (Ryoken III) E:SNIPER
 Skinwalker (Ryoken III) F:STRIKER
+Ryoken III (Skinwalker) Prime:STRIKER
+Ryoken III (Skinwalker) A:STRIKER
+Ryoken III (Skinwalker) B:STRIKER
+Ryoken III (Skinwalker) C:STRIKER
+Ryoken III (Skinwalker) D:SCOUT
+Ryoken III (Skinwalker) E:SNIPER
+Ryoken III (Skinwalker) F:STRIKER
 Grand Dragon DRG-12K:SKIRMISHER
 Flashman FLS-10E:SKIRMISHER
 Stalker STK-9F:JUGGERNAUT
@@ -6026,6 +6033,9 @@ Atlas C:JUGGERNAUT
 Atlas C 2:JUGGERNAUT
 Atlas C 3:SNIPER
 Atlas II AS7-DK-H:BRAWLER
+Elemental III Battle Armor [AP Gauss]:AMBUSHER
+Elemental III Battle Armor [Flamer]:AMBUSHER
+Elemental III Battle Armor [MicroPL]:AMBUSHER
 #Too Be Sorted
 Cheetah IIC:INTERCEPTOR
 Lucifer III C:FIRE_SUPPORT
