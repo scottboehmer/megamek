@@ -61,11 +61,11 @@ Clan BA Laser Reflective (Reflec/Glazed):Body
 Clan BA Laser Reflective (Reflec/Glazed):Body
 BABasicManipulator:LA
 BABasicManipulator:RA
+ISDetachableWeaponPack:RA
 Battle Armor LB-X AC:DWP
+ISDetachableWeaponPack:LA
 CLBAAPGaussRifle:DWP
 BattleArmorC3:Body
-ISDetachableWeaponPack:LA
-ISDetachableWeaponPack:RA
 </Point Equipment>
 
 <Trooper 1 Equipment>

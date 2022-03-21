@@ -54,11 +54,13 @@ Leg
 <Squad Equipment>
 BABasicManipulator:LA
 BABasicManipulator:RA
-ISBATubeArtillery:DWP
 ISDetachableWeaponPack:Body
+ISBATubeArtillery:DWP
 BA-Magnetic Clamp:Body
 ISBASmallLaser:LA
+ISDetachableWeaponPack:Body
 ISBATubeArtilleryAmmo:DWP:Shots4#
+ISDetachableWeaponPack:Body
 ISBATubeArtilleryAmmo:DWP:Shots4#
 IS BA Reactive (Blazer):Body
 IS BA Reactive (Blazer):Body

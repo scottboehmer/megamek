@@ -54,11 +54,11 @@ Clan BA Reflective:Body
 Clan BA Reflective:Body
 BABasicManipulator:LA
 BABasicManipulator:RA
+CLDetachableWeaponPack:LA
 CLBALBX:DWP
+CLDetachableWeaponPack:RA
 CLBAAPGaussRifle:DWP
 BattleArmorC3:Body
-CLDetachableWeaponPack:LA
-CLDetachableWeaponPack:RA
 </Point Equipment>
 
 <Trooper 1 Equipment>

@@ -60,7 +60,7 @@ InfantryAssaultRifle:APM:RA
 IS BA Stealth (Basic):Body
 IS BA Stealth (Basic):Body
 IS BA Stealth (Basic):Body
-CLBALightTAG:SSWM:LA
+ISBALightTAG:SSWM:LA
 SwarmMek
 SwarmWeaponMek
 StopSwarm

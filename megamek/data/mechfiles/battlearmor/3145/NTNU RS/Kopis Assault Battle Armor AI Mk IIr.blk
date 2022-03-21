@@ -40,10 +40,6 @@ biped
 10
 </Armor>
 
-<armor_type>
-2
-</armor_type>
-
 <Squad Equipment>
 BAHeavyBattleClaw:LA
 BAHeavyBattleClaw:RA

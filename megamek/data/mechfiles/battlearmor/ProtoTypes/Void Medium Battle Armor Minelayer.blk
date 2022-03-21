@@ -33,7 +33,7 @@ Jump
 </motion_type>
 
 <cruiseMP>
-3
+2
 </cruiseMP>
 
 <armor_type>
@@ -59,6 +59,7 @@ BAAPMount:LA
 ISBAMineDispenser:Body
 ISBAMineDispenser:Body
 InfantryAssaultRifle:LA:APM
+ISMechanicalJumpBooster:Body
 </Squad Equipment>
 
 <Trooper 1 Equipment>

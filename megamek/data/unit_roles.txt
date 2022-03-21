@@ -2585,6 +2585,9 @@ Kobold Battle Armor IIC:SCOUT
 Kobold Battle Armor X-C3:AMBUSHER
 Kobold Battle Armor [SL/Flamer]:AMBUSHER
 Kobold Battle Armor [SL/TAG]:AMBUSHER
+Kobold Battle Armor [GL/Flamer]:AMBUSHER
+Kobold Battle Armor [GL/TAG]:AMBUSHER
+Kobold Battle Armor [GL]:AMBUSHER
 Kodiak (Cale):JUGGERNAUT
 Kodiak (Standard):BRAWLER
 Kodiak 2:BRAWLER
