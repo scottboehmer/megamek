@@ -14,9 +14,6 @@
  */
 package megamek.common.verifier;
 
-import java.util.*;
-import java.util.function.Function;
-
 import megamek.common.*;
 import megamek.common.annotations.Nullable;
 import megamek.common.util.StringUtil;
@@ -31,6 +28,9 @@ import megamek.common.weapons.missiles.MRMWeapon;
 import megamek.common.weapons.missiles.RLWeapon;
 import megamek.common.weapons.srms.SRMWeapon;
 import megamek.common.weapons.srms.SRTWeapon;
+
+import java.util.*;
+import java.util.function.Function;
 
 /**
  * Class for testing and validating instantiations for Conventional Fighters and
@@ -376,7 +376,7 @@ public class TestAero extends TestEntity {
 
     /**
      * @return the maximum number of turns the given unit could fly at safe thrust given its fuel
-     * payload. Aerospace fighters consume 1 fuel point per thrust point spent up the the maximum
+     * payload. Aerospace fighters consume 1 fuel point per thrust point spent up the maximum
      * safe thrust, whereas conventional fighters with turbine engines consume 0.5 fuel points per
      * thrust point spent up to the maximum safe thrust.
      * See Strategic Operations pg 34.
@@ -398,7 +398,7 @@ public class TestAero extends TestEntity {
     /**
      * Computes and returns the maximum number of turns the given unit could
      * fly at max thrust given its fuel payload. Aerospace fighters consume
-     * 1 fuel point per thrust point spent up the the maximum safe thrust and
+     * 1 fuel point per thrust point spent up the maximum safe thrust and
      * 2 fuel points per thrust point afterwards, whereas conventional fighters 
      * with ICE engines consume 0.5 fuel points per thrust point spent up to 
      * the maximum safe thrust and 1 fuel point per thrust up to the maximum 
@@ -782,7 +782,7 @@ public class TestAero extends TestEntity {
                     if (linkedAT.getMunitionType() != AmmoType.M_STANDARD 
                             && !hasArtemisFCS 
                             && wt.getAmmoType() != AmmoType.T_AC_LBX
-                    		&& wt.getAmmoType() != AmmoType.T_SBGAUSS) {
+                            && wt.getAmmoType() != AmmoType.T_SBGAUSS) {
                         correct = false;
                         buff.append("Aeros may not use special munitions! ").append(m.getType().getInternalName())
                                 .append(" is using ").append(linkedAT.getInternalName()).append("\n");
@@ -957,7 +957,7 @@ public class TestAero extends TestEntity {
         }
         if (lateralMatch) {
             //We've already checked counts, so in the reverse direction we only need to see if there's
-            //anything not found on the other side.
+            // anything not found on the other side.
             for (EquipmentType eq : rightWing.keySet()) {
                 if (!leftWing.containsKey(eq)) {
                     lateralMatch = false;

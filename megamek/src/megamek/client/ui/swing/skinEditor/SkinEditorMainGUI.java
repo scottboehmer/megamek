@@ -226,7 +226,7 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
 
     /**
      * Have the client register itself as a listener wherever it's needed.
-     * <p/>
+     * <p>
      * According to
      * http://www-106.ibm.com/developerworks/java/library/j-jtp0618.html it is a
      * major bad no-no to perform these registrations before the constructor
@@ -330,7 +330,7 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
         // Tell all the displays to remove themselves as listeners.
         boolean reportHandled = false;
         if (bv != null) {
-            //cleanup our timers first
+            // cleanup our timers first
             bv.die();
         }
         Iterator<String> names = phaseComponents.keySet().iterator();
@@ -350,8 +350,8 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
         frame.setVisible(false);
         try {
             frame.dispose();
-        } catch (Throwable error) {
-            error.printStackTrace();
+        } catch (Throwable t) {
+            LogManager.getLogger().error("", t);
         }
 
         TimerSingleton.getInstance().killTimer();
@@ -392,8 +392,8 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
                 }
                 //ChatLounge cl = (ChatLounge) phaseComponents.get(
                 //        String.valueOf(Game.Phase.LOUNGE));
-                //cb.setDoneButton(cl.butDone);
-                //cl.add(cb.getComponent(), BorderLayout.SOUTH);
+                // cb.setDoneButton(cl.butDone);
+                // cl.add(cb.getComponent(), BorderLayout.SOUTH);
                 getBoardView().getTilesetManager().reset();
                 break;
             case DEPLOY_MINEFIELDS:
@@ -414,7 +414,7 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
             case VICTORY:
                 rD = (ReportDisplay) phaseComponents.get(String
                         .valueOf(GamePhase.INITIATIVE_REPORT));
-                //cb.setDoneButton(rD.butDone);
+                // cb.setDoneButton(rD.butDone);
                 //rD.add(cb.getComponent(), GBC.eol().fill(
                 //        GridBagConstraints.HORIZONTAL));
                 break;
@@ -682,7 +682,7 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
 
     /**
      * Pops up a dialog box asking a yes/no question
-     * <p/>
+     * <p>
      * The player will be given a chance to not show the dialog again.
      *
      * @param title
@@ -709,7 +709,7 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
     public void windowActivated(WindowEvent windowEvent) {
         // TODO: this is a kludge to fix a window iconify issue
         // For some reason when I click on the window button, the main UI
-        // window doesn't deiconify.  This fix doesn't allow me to iconify the
+        // window doesn't deiconify. This fix doesn't allow me to iconify the
         // window by clicking the window button, but it's better than the
         // alternative
         frame.setState(Frame.NORMAL);
@@ -737,7 +737,7 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
     public void windowDeiconified(WindowEvent windowEvent) {
         // TODO: this is a kludge to fix a window iconify issue
         // For some reason when I click on the window button, the main UI
-        // window doesn't deiconify.  This fix doesn't allow me to iconify the
+        // window doesn't deiconify. This fix doesn't allow me to iconify the
         // window by clicking the window button, but it's better than the
         // alternative
         frame.setState(Frame.NORMAL);
@@ -810,10 +810,12 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
 
     @Override
     public void componentHidden(ComponentEvent arg0) {
+
     }
 
     @Override
     public void componentMoved(ComponentEvent arg0) {
+
     }
 
     @Override
@@ -823,17 +825,16 @@ public class SkinEditorMainGUI extends JPanel implements WindowListener, BoardVi
 
     @Override
     public void componentShown(ComponentEvent arg0) {
+
     }
 
     /**
-     * Returns the panel for the current phase. The ClientGUI is split into the
-     * main panel (view) at the top, which takes up the majority of the view and
-     * the the "current panel" which has different controls based on the phase.
-     * 
-     * @return
+     * The ClientGUI is split into the main panel (view) at the top, which takes up the majority of
+     * the view and the "current panel" which has different controls based on the phase.
+     *
+     * @return the panel for the current phase
      */
     public JComponent getCurrentPanel() {
         return curPanel;
     }
-
 }

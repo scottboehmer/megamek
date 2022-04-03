@@ -22,6 +22,7 @@ import java.util.List;
 import megamek.common.enums.AimingMode;
 import megamek.common.options.OptionsConstants;
 import megamek.common.preference.PreferenceManager;
+import org.apache.logging.log4j.LogManager;
 
 public class QuadMech extends Mech {
     /**
@@ -185,7 +186,7 @@ public class QuadMech extends Mech {
     }
 
     /**
-     * Returns this mech's running/flank mp modified for leg loss & stuff.
+     * Returns this mech's running/flank mp modified for leg loss and stuff.
      */
 
     @Override
@@ -199,7 +200,7 @@ public class QuadMech extends Mech {
     }
 
     /**
-     * Returns run MP without considering MASC modified for leg loss & stuff.
+     * Returns run MP without considering MASC modified for leg loss and stuff.
      */
     @Override
     public int getRunMPwithoutMASC(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor) {
@@ -213,17 +214,18 @@ public class QuadMech extends Mech {
 
     @Override
     public boolean canChangeSecondaryFacing() {
-    	return hasQuirk(OptionsConstants.QUIRK_POS_EXT_TWIST) && !isProne();
+        return hasQuirk(OptionsConstants.QUIRK_POS_EXT_TWIST) && !isProne();
     }
     
-	@Override
-	public boolean isValidSecondaryFacing(int dir) {
-		int rotate = dir - getFacing();
-		if (canChangeSecondaryFacing()) {
-			return (rotate <= 1) || (rotate == 5);
-		} else
-			return rotate == 0;
-	}	 
+    @Override
+    public boolean isValidSecondaryFacing(int dir) {
+        int rotate = dir - getFacing();
+        if (canChangeSecondaryFacing()) {
+            return (rotate <= 1) || (rotate == 5);
+        } else {
+            return rotate == 0;
+        }
+    }
 
     /**
      * Returns true is the location is a leg
@@ -450,9 +452,10 @@ public class QuadMech extends Mech {
                         pw.print("\t");
                         pw.println(roll);
                     }
-                } catch (Throwable thrown) {
-                    thrown.printStackTrace();
+                } catch (Throwable t) {
+                    LogManager.getLogger().error("", t);
                 }
+
                 if (side == ToHitData.SIDE_FRONT) {
                     // normal front hits
                     switch (roll) {
@@ -621,9 +624,10 @@ public class QuadMech extends Mech {
                     pw.print("\t");
                     pw.println(roll);
                 }
-            } catch (Throwable thrown) {
-                thrown.printStackTrace();
+            } catch (Throwable t) {
+                LogManager.getLogger().error("", t);
             }
+
             if (side == ToHitData.SIDE_FRONT) {
                 switch (roll) {
                     case 1:
@@ -722,9 +726,10 @@ public class QuadMech extends Mech {
                     pw.print("\t");
                     pw.println(roll);
                 }
-            } catch (Throwable thrown) {
-                thrown.printStackTrace();
+            } catch (Throwable t) {
+                LogManager.getLogger().error("", t);
             }
+
             boolean left = (roll <= 3);
             if (side == ToHitData.SIDE_FRONT) {
                 if (left) {
@@ -764,8 +769,8 @@ public class QuadMech extends Mech {
                     pw.print("\t");
                     pw.println(roll);
                 }
-            } catch (Throwable thrown) {
-                thrown.printStackTrace();
+            } catch (Throwable t) {
+                LogManager.getLogger().error("", t);
             }
             // Swarm attack locations.
             switch (roll) {
@@ -917,7 +922,7 @@ public class QuadMech extends Mech {
         if (!retVal) {
             return false;
         }
-        //check the locations
+        // check the locations
         int[] locations = {Mech.LOC_RARM, Mech.LOC_LARM, Mech.LOC_LLEG, Mech.LOC_RLEG};
         int badLocs = 0;
         for ( int loc = locations.length -1; loc >= 0; loc--) {
@@ -928,7 +933,7 @@ public class QuadMech extends Mech {
         if (!(badLocs <2)) {
             return false;
         }
-        //check the Gyro
+        // check the Gyro
         return !isGyroDestroyed();
     }
 

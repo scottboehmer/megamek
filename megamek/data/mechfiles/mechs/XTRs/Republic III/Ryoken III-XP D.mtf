@@ -1,9 +1,10 @@
 Version:1.1
 Ryoken III-XP (Skinwalker)
 D
+mul id:7382
 
 Config:Biped Omnimech
-TechBase:Mixed (IS Chassis)
+techbase:Mixed (Clan Chassis)
 Era:3143
 Rules Level:4
 

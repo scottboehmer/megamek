@@ -158,7 +158,7 @@ public class TeleMissile extends Aero {
     }
 
     @Override
-    public int calculateBattleValue() {
+    public int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill) {
         return 0;
     }
     
@@ -206,7 +206,7 @@ public class TeleMissile extends Aero {
 
     @Override
     public boolean isOutControlTotal() {
-        //due to control roll, heat, shut down, or crew unconscious
+        // due to control roll, heat, shut down, or crew unconscious
         return (isOutControl() || outContact || shutDown || getCrew().isUnconscious());
     }
 

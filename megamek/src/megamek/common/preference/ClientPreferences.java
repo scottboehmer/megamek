@@ -19,8 +19,11 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.Locale;
 
+import megamek.MMConstants;
 import megamek.common.MovePath;
 import megamek.common.util.LocaleParser;
+import megamek.server.Server;
+import org.apache.logging.log4j.LogManager;
 
 public class ClientPreferences extends PreferenceStoreProxy {
     //region Variable Declarations
@@ -61,9 +64,9 @@ public class ClientPreferences extends PreferenceStoreProxy {
     //region Constructors
     public ClientPreferences(IPreferenceStore store) {
         this.store = store;
-        store.setDefault(LAST_CONNECT_ADDR, "localhost");
-        store.setDefault(LAST_CONNECT_PORT, 2346);
-        store.setDefault(LAST_SERVER_PORT, 2346);
+        store.setDefault(LAST_CONNECT_ADDR, MMConstants.LOCALHOST);
+        store.setDefault(LAST_CONNECT_PORT, MMConstants.DEFAULT_PORT);
+        store.setDefault(LAST_SERVER_PORT, MMConstants.DEFAULT_PORT);
         store.setDefault(MAP_TILESET, "saxarba.tileset");
         store.setDefault(MAX_PATHFINDER_TIME, MovePath.DEFAULT_PATHFINDER_TIME_LIMIT);
         store.setDefault(DATA_DIRECTORY, "data");
@@ -325,12 +328,12 @@ public class ClientPreferences extends PreferenceStoreProxy {
 
     protected void setMekHitLocLog() {
         String name = store.getString(MEK_HIT_LOC_LOG);
-        if (name.length() != 0) {
+        if (!name.isEmpty()) {
             try {
                 mekHitLocLog = new PrintWriter(new BufferedWriter(new FileWriter(name)));
                 mekHitLocLog.println("Table\tSide\tRoll");
-            } catch (Throwable thrown) {
-                thrown.printStackTrace();
+            } catch (Throwable t) {
+                LogManager.getLogger().error("", t);
                 mekHitLocLog = null;
             }
         }
