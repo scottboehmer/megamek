@@ -23,7 +23,7 @@ import megamek.common.actions.WeaponAttackAction;
 import megamek.common.annotations.Nullable;
 import megamek.common.enums.GamePhase;
 import megamek.common.event.*;
-import megamek.common.net.Packet;
+import megamek.common.net.packets.Packet;
 import megamek.common.options.OptionsConstants;
 import megamek.common.pathfinder.BoardClusterTracker;
 import megamek.common.preference.PreferenceManager;
@@ -127,31 +127,28 @@ public abstract class BotClient extends Client {
             @Override
             public void gameClientFeedbackRequest(GameCFREvent evt) {
                 switch (evt.getCFRType()) {
-                    case Packet.COMMAND_CFR_DOMINO_EFFECT:
+                    case CFR_DOMINO_EFFECT:
                         // This will always send a "no action" response.
-                        // In effect, it works the way it did before.  However..
-                        // TODO: Bots should figure out how to step out of a
-                        //   domino effect
+                        // In effect, it works the way it did before. However..
+                        // TODO: Bots should figure out how to step out of a domino effect
                         sendDominoCFRResponse(null);
                         break;
-                    case Packet.COMMAND_CFR_AMS_ASSIGN:
+                    case CFR_AMS_ASSIGN:
                         // Picks the WAA with the highest expected damage,
                         //  essentially same as if the auto_ams option was on
                         WeaponAttackAction waa = Compute.getHighestExpectedDamage(game, evt.getWAAs(), true);
                         sendAMSAssignCFRResponse(evt.getWAAs().indexOf(waa));
                         break;
-                    case Packet.COMMAND_CFR_APDS_ASSIGN:
+                    case CFR_APDS_ASSIGN:
                         // Picks the WAA with the highest expected damage,
                         //  essentially same as if the auto_ams option was on
-                        waa =
-                            Compute.getHighestExpectedDamage(game,
-                                    evt.getWAAs(), true);
+                        waa = Compute.getHighestExpectedDamage(game, evt.getWAAs(), true);
                         sendAPDSAssignCFRResponse(evt.getWAAs().indexOf(waa));
                         break;
-                    case Packet.COMMAND_CFR_HIDDEN_PBS:
+                    case CFR_HIDDEN_PBS:
                         try {
                             Vector<EntityAction> pointBlankShots = calculatePointBlankShot(evt.getEntityId(), evt.getTargetId());
-                            
+
                             if (pointBlankShots.isEmpty()) {
                                 sendHiddenPBSCFRResponse(null);
                             } else {
@@ -159,19 +156,19 @@ public abstract class BotClient extends Client {
                                 sendHiddenPBSCFRResponse(new Vector<>());
                                 sendHiddenPBSCFRResponse(pointBlankShots);
                             }
-                        } catch (Exception e) {
+                        } catch (Exception ex) {
                             // if we screw up, don't keep everyone else waiting
                             sendHiddenPBSCFRResponse(null);
-                            throw e;
+                            throw ex;
                         }
-
                         break;
-                    case Packet.COMMAND_CFR_TAG_TARGET:
+                    case CFR_TAG_TARGET:
                         sendTAGTargetCFRResponse(pickTagTarget(evt));
+                        break;
+                    default:
                         break;
                 }
             }
-
         });
     }
 
@@ -193,8 +190,8 @@ public abstract class BotClient extends Client {
     protected abstract void initFiring();
 
     /**
-     * Determines which entity should be moved next and then calls to {@link #continueMovementFor(Entity)} with
-     * that entity.
+     * Determines which entity should be moved next and then calls to {@link #continueMovementFor(Entity)}
+     * with that entity.
      *
      * @return The calculated move path.
      * @throws NullPointerException if no entity can be found to move.
@@ -203,7 +200,7 @@ public abstract class BotClient extends Client {
 
     protected abstract void calculateFiringTurn();
 
-    protected abstract void calculateDeployment();
+    protected abstract void calculateDeployment() throws Exception;
 
     protected void initTargeting() { }
     
@@ -507,13 +504,12 @@ public abstract class BotClient extends Client {
         // clear out transient data
         currentTurnEnemyEntities = null;
         currentTurnFriendlyEntities = null;
-        
+
         try {
             if (game.getPhase() == GamePhase.MOVEMENT) {
                 MovePath mp;
                 if (game.getTurn() instanceof GameTurn.SpecificEntityTurn) {
-                    GameTurn.SpecificEntityTurn turn = (GameTurn.SpecificEntityTurn) game
-                            .getTurn();
+                    GameTurn.SpecificEntityTurn turn = (GameTurn.SpecificEntityTurn) game.getTurn();
                     Entity mustMove = game.getEntity(turn.getEntityNum());
                     mp = continueMovementFor(mustMove);
                 } else {
@@ -552,7 +548,7 @@ public abstract class BotClient extends Client {
                 sendArtyAutoHitHexes(autoHitHexes);
             } else if ((game.getPhase() == GamePhase.TARGETING)
                        || (game.getPhase() == GamePhase.OFFBOARD)) {
-                // Princess implements arty targeting; no plans to do so for testbod
+                // Princess implements arty targeting
                 calculateTargetingOffBoardTurn();
             } else if ((game.getPhase() == GamePhase.PREMOVEMENT)
                     || (game.getPhase() == GamePhase.PREFIRING)) {
@@ -560,8 +556,8 @@ public abstract class BotClient extends Client {
             }
             
             return true;
-        } catch (Exception e) {
-            LogManager.getLogger().error("", e);
+        } catch (Exception ex) {
+            LogManager.getLogger().error("", ex);
             return false;
         }
     }
@@ -590,7 +586,8 @@ public abstract class BotClient extends Client {
      * method iterates through the list of Coords and returns the first Coords
      * that does not have a stacking violation.
      */
-    protected Coords getFirstValidCoords(Entity deployedUnit, List<Coords> possibleDeployCoords) {
+    protected @Nullable Coords getFirstValidCoords(Entity deployedUnit,
+                                                   List<Coords> possibleDeployCoords) {
         // Check all of the hexes in order.
         for (Coords dest : possibleDeployCoords) {
             Entity violation = Compute.stackingViolation(game, deployedUnit,
@@ -612,7 +609,7 @@ public abstract class BotClient extends Client {
             return dest;
         }
 
-        System.out.println("Returning no deployment position; THIS IS BAD!");
+        LogManager.getLogger().error("Returning no deployment position; THIS IS BAD!");
         // If NONE of them are acceptable, then just return null.
         return null;
     }
@@ -795,7 +792,7 @@ public abstract class BotClient extends Client {
                         coord.fitness -= board.getHex(x, y).depth();
                     }
                 }
-                //If building, make sure not too heavy to safely move out of
+                // If building, make sure not too heavy to safely move out of
                 coord.fitness -= potentialBuildingDamage(coord.getX(), coord.getY(),
                                                          deployed_ent);
             }
@@ -1149,14 +1146,16 @@ public abstract class BotClient extends Client {
     }
 
     @Override
-    protected void correctName(Packet inP) {
+    protected void correctName(Packet inP) throws Exception {
         // If we have a clientgui, it keeps track of a Name -> Client map, and
         //  we need to update that map with this name change.
         if (getClientGUI() != null) {
             Map<String, Client> bots = getClientGUI().getBots();
             String oldName = getName();
             String newName = (String) (inP.getObject(0));
-            assert (equals(bots.get(oldName)));
+            if (!this.equals(bots.get(oldName))) {
+                throw new Exception();
+            }
             bots.remove(oldName);
             bots.put(newName, this);
         }

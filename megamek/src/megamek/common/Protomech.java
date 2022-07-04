@@ -13,7 +13,9 @@
  */
 package megamek.common;
 
+import megamek.client.ui.swing.calculationReport.CalculationReport;
 import megamek.common.battlevalue.ProtoMekBVCalculator;
+import megamek.common.cost.ProtoMekCostCalculator;
 import megamek.common.enums.AimingMode;
 import megamek.common.preference.PreferenceManager;
 import org.apache.logging.log4j.LogManager;
@@ -43,7 +45,7 @@ public class Protomech extends Entity {
     private int[] pilotDamageTaken = { 0, 0, 0, 0, 0, 0, 0 };
 
     /**
-     * Not every Protomech has a main gun. N.B. Regardless of the value set
+     * Not every ProtoMek has a main gun. N.B. Regardless of the value set
      * here, the variable is initialized to <code>false</code> until after the
      * <code>Entity</code> is initialized, which is too late to allow main gun
      * armor, hence the convoluted reverse logic.
@@ -990,8 +992,8 @@ public class Protomech extends Entity {
     }
 
     @Override
-    protected int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill) {
-        return ProtoMekBVCalculator.calculateBV(this, ignoreSkill, bvText);
+    protected int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill, CalculationReport calculationReport) {
+        return ProtoMekBVCalculator.calculateBV(this, ignoreSkill, calculationReport);
     }
 
     @Override
@@ -1129,80 +1131,14 @@ public class Protomech extends Entity {
         return false;
     }
 
-    /**
-     * @return The cost in C-Bills of the ProtoMech in question.
-     */
     @Override
-    public double getCost(boolean ignoreAmmo) {
-        double retVal = 0;
-
-        // Add the cockpit, a constant cost.
-        if (weight >= 10) {
-            retVal += 800000;
-        } else {
-            retVal += 500000;
-        }
-
-        // Add life support, a constant cost.
-        retVal += 75000;
-
-        // Sensor cost is based on tonnage.
-        retVal += 2000 * weight;
-
-        // Musculature cost is based on tonnage.
-        retVal += 2000 * weight;
-
-        // Internal Structure cost is based on tonnage.
-        if (isGlider) {
-            retVal += 600 * weight;
-        } else if (isQuad) {
-            retVal += 500 * weight;
-        } else {
-            retVal += 400 * weight;
-        }
-
-        // Arm actuators are based on tonnage.
-        // Their cost is listed separately?
-        retVal += 2 * 180 * weight;
-
-        // Leg actuators are based on tonnage.
-        retVal += 540 * weight;
-
-        // Engine cost is based on tonnage and rating.
-        if (hasEngine()) {
-            retVal += (5000 * weight * getEngine().getRating()) / 75;
-        }
-
-        // Jump jet cost is based on tonnage and jump MP.
-        retVal += weight * getJumpMP() * getJumpMP() * 200;
-
-        // Heat sinks is constant per sink.
-        // per the construction rules, we need enough sinks to sink all energy
-        // weapon heat, so we just calculate the cost that way.
-        int sinks = 0;
-        for (Mounted mount : getWeaponList()) {
-            if (mount.getType().hasFlag(WeaponType.F_ENERGY)) {
-                WeaponType wtype = (WeaponType) mount.getType();
-                sinks += wtype.getHeat();
-            }
-        }
-        retVal += 2000 * sinks;
-
-        // Armor is linear on the armor value of the Protomech
-        retVal += getTotalArmor() * EquipmentType.getProtomechArmorCostPerPoint(getArmorType(firstArmorIndex()));
-
-        // Add in equipment cost.
-        retVal += getWeaponsAndEquipmentCost(ignoreAmmo);
-
-        // Finally, apply the Final ProtoMech Cost Multiplier
-        retVal *= getPriceMultiplier();
-
-        return retVal;
+    public double getCost(CalculationReport calcReport, boolean ignoreAmmo) {
+        return ProtoMekCostCalculator.calculateCost(this, calcReport, ignoreAmmo);
     }
 
     @Override
     public double getPriceMultiplier() {
-        return 1 + (weight / 100.0); // weight multiplier
+        return 1 + (weight / 100.0);
     }
 
     @Override
@@ -1492,10 +1428,8 @@ public class Protomech extends Entity {
     @Override
     public boolean isCrippled() {
         if ((getCrew() != null) && (getCrew().getHits() >= 4)) {
-            if (PreferenceManager.getClientPreferences().debugOutputOn())
-            {
-                System.out.println(getDisplayName()
-                        + " CRIPPLED: Pilot has taken 4+ damage.");
+            if (PreferenceManager.getClientPreferences().debugOutputOn()) {
+                LogManager.getLogger().debug(getDisplayName() + " CRIPPLED: Pilot has taken 4+ damage.");
             }
             return true;
         }
@@ -1505,10 +1439,9 @@ public class Protomech extends Entity {
                 return false;
             }
         }
-        if (PreferenceManager.getClientPreferences().debugOutputOn())
-        {
-            System.out.println(getDisplayName()
-                    + " CRIPPLED: has no more viable weapons.");
+
+        if (PreferenceManager.getClientPreferences().debugOutputOn()) {
+            LogManager.getLogger().debug(getDisplayName() + " CRIPPLED: has no more viable weapons.");
         }
         return true;
     }
@@ -1605,17 +1538,17 @@ public class Protomech extends Entity {
     }
     
     @Override
-    public PilotingRollData checkLandingInHeavyWoods(
-            EntityMovementType overallMoveType, Hex curHex) {
+    public PilotingRollData checkLandingInHeavyWoods(EntityMovementType overallMoveType,
+                                                     Hex curHex) {
         PilotingRollData roll = getBasePilotingRoll(overallMoveType);
-        roll.addModifier(TargetRoll.CHECK_FALSE,
-                         "Protomechs cannot fall");
+        roll.addModifier(TargetRoll.CHECK_FALSE, "ProtoMeks cannot fall");
         return roll;
     }
     
     /**
-     * Based on the protomech's current damage status, return valid brace locations.
+     * Based on the ProtoMek's current damage status, return valid brace locations.
      */
+    @Override
     public List<Integer> getValidBraceLocations() {
         List<Integer> validLocations = new ArrayList<>();
         

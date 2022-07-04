@@ -175,6 +175,7 @@ public class MechSummaryCache {
         return failedFiles;
     }
 
+    @SuppressWarnings("unused") // Used in MHQ
     public void loadMechData() {
         loadMechData(false);
     }
@@ -323,16 +324,17 @@ public class MechSummaryCache {
 
     private void saveCache(List<MechSummary> data) {
         loadReport.append("Saving unit cache.\n");
-        File unit_cache_path = new MegaMekFile(getUnitCacheDir(), FILENAME_UNITS_CACHE).getFile();
-        try (ObjectOutputStream wr = new ObjectOutputStream(
-                new BufferedOutputStream(new FileOutputStream(unit_cache_path)))) {
-            wr.writeObject(data.size());
+        try (FileOutputStream fos = new FileOutputStream(
+                new MegaMekFile(getUnitCacheDir(), FILENAME_UNITS_CACHE).getFile());
+             BufferedOutputStream bos = new BufferedOutputStream(fos);
+             ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+            oos.writeObject(data.size());
             for (MechSummary element : data) {
-                wr.writeObject(element);
+                oos.writeObject(element);
             }
-        } catch (Exception e) {
+        } catch (Exception ex) {
             loadReport.append(" Unable to save mech cache\n");
-            LogManager.getLogger().error("", e);
+            LogManager.getLogger().error("", ex);
         }
     }
 
@@ -401,21 +403,11 @@ public class MechSummaryCache {
             ms.setSuitWeight(((BattleArmor) e).getTrooperWeight());
         }
         ms.setBV(e.calculateBattleValue());
-        e.setUseGeometricBV(true);
-        ms.setGMBV(e.calculateBattleValue());
-        e.setUseGeometricBV(false);
-        e.setUseReducedOverheatModifierBV(true);
-        ms.setRHBV(e.calculateBattleValue());
-        e.setUseGeometricBV(true);
-        ms.setRHGMBV(e.calculateBattleValue());
-        e.setUseGeometricBV(false);
-        e.setUseReducedOverheatModifierBV(false);
         ms.setLevel(TechConstants.T_SIMPLE_LEVEL[e.getTechLevel()]);
         ms.setAdvancedYear(e.getProductionDate(e.isClan()));
         ms.setStandardYear(e.getCommonDate(e.isClan()));
         ms.setCost((long) e.getCost(false));
         ms.setDryCost((long) e.getCost(true));
-        ms.setUnloadedCost(((long) e.getCost(true)));
         ms.setAlternateCost((int) e.getAlternateCost());
         ms.setCanon(e.isCanon());
         ms.setWalkMp(e.getWalkMP(false, false));
@@ -462,7 +454,6 @@ public class MechSummaryCache {
             ms.setCockpitType(-2);
         }
 
-        // we can only test meks, vehicles, ASF, and Battlearmor right now
         TestEntity testEntity = null;
         if (e instanceof Mech) {
             testEntity = new TestMech((Mech) e, entityVerifier.mechOption, null);
@@ -732,16 +723,17 @@ public class MechSummaryCache {
     private void addLookupNames() {
         File lookupNames = new MegaMekFile(getUnitCacheDir(), FILENAME_LOOKUP).getFile();
         if (lookupNames.exists()) {
-            try (InputStream is = new FileInputStream(lookupNames);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            try (FileInputStream fis = new FileInputStream(lookupNames);
+                 InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
+                 BufferedReader br = new BufferedReader(isr)) {
                 String line;
                 String lookupName;
                 String entryName;
-                while (null != (line = reader.readLine())) {
+                while (null != (line = br.readLine())) {
                     if (line.startsWith("#")) {
                         continue;
                     }
-                    int index = line.indexOf("|");
+                    int index = line.indexOf('|');
                     if (index > 0) {
                         lookupName = line.substring(0, index);
                         entryName = line.substring(index + 1);
@@ -770,5 +762,4 @@ public class MechSummaryCache {
     public int getZipCount() {
         return zipCount;
     }
-
 }

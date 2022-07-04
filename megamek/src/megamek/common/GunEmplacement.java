@@ -14,7 +14,9 @@
  */
 package megamek.common;
 
+import megamek.client.ui.swing.calculationReport.CalculationReport;
 import megamek.common.battlevalue.GunEmplacementBVCalculator;
+import megamek.common.cost.CostCalculator;
 import megamek.common.enums.AimingMode;
 import org.apache.logging.log4j.LogManager;
 
@@ -113,7 +115,7 @@ public class GunEmplacement extends Tank {
     }
 
     @Override
-    public int getWalkMP(boolean gravity, boolean ignoreheat) {
+    public int getWalkMP(boolean gravity, boolean ignoreHeat) {
         return 0;
     }
 
@@ -183,8 +185,8 @@ public class GunEmplacement extends Tank {
     }
 
     @Override
-    public int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill) {
-        return GunEmplacementBVCalculator.calculateBV(this, ignoreC3, ignoreSkill, bvText);
+    public int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill, CalculationReport calculationReport) {
+        return GunEmplacementBVCalculator.calculateBV(this, ignoreC3, ignoreSkill, calculationReport);
     }
 
     @Override
@@ -307,8 +309,8 @@ public class GunEmplacement extends Tank {
     }
 
     @Override
-    public double getCost(boolean ignoreAmmo) {
-        // XXX no idea
+    public double getCost(CalculationReport calcReport, boolean ignoreAmmo) {
+        CostCalculator.addNoReportNote(calcReport, this);
         return 0;
     }
 
@@ -440,14 +442,19 @@ public class GunEmplacement extends Tank {
     public void setDeployed(boolean deployed) {
         super.setDeployed(deployed);
 
-        if (deployed) {
+        // very aggressive null defense
+        if (deployed && (getGame() != null) && (getGame().getBoard() != null) && 
+                (getPosition() != null)) {
             Building occupiedStructure = getGame().getBoard().getBuildingAt(getPosition());
             
-            initialBuildingCF = occupiedStructure.getCurrentCF(getPosition());
-            initialBuildingArmor = occupiedStructure.getArmor(getPosition());
-        } else {
-            initialBuildingCF = initialBuildingArmor = 0;
-        }
+            if (occupiedStructure != null) {
+                initialBuildingCF = occupiedStructure.getCurrentCF(getPosition());
+                initialBuildingArmor = occupiedStructure.getArmor(getPosition());
+                return;
+            }
+        }        
+        
+        initialBuildingCF = initialBuildingArmor = 0;
     }
     
     /**
@@ -468,5 +475,23 @@ public class GunEmplacement extends Tank {
         
         return (occupiedStructure.getCurrentCF(getPosition()) + occupiedStructure.getArmor(getPosition()))
                 / ((double) (initialBuildingCF + initialBuildingArmor));
+    }
+    
+    /**
+     * Gun emplacements don't have critical slots per se, so we
+     * simply return 1 if the piece of equipment has been hit and 0 otherwise.
+     */
+    @Override
+    public int getDamagedCriticals(int type, int index, int loc) {
+        Mounted m = null;
+        if (type == CriticalSlot.TYPE_EQUIPMENT) {
+            m = getEquipment(index);
+            
+            if (m != null && m.isHit()) {
+                return 1;
+            }
+        }
+        
+        return 0;
     }
 }

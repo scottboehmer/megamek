@@ -15,29 +15,23 @@
 */
 package megamek.common;
 
+import megamek.client.ui.swing.calculationReport.CalculationReport;
 import megamek.common.battlevalue.MekBVCalculator;
+import megamek.common.cost.MekCostCalculator;
 import megamek.common.enums.AimingMode;
+import megamek.common.enums.MPBoosters;
 import megamek.common.loaders.MtfFile;
 import megamek.common.options.OptionsConstants;
 import megamek.common.preference.PreferenceManager;
 import megamek.common.weapons.autocannons.ACWeapon;
-import megamek.common.weapons.autocannons.HVACWeapon;
 import megamek.common.weapons.autocannons.LBXACWeapon;
 import megamek.common.weapons.autocannons.UACWeapon;
 import megamek.common.weapons.gaussrifles.GaussWeapon;
-import megamek.common.weapons.lasers.CLImprovedHeavyLaserLarge;
-import megamek.common.weapons.lasers.CLImprovedHeavyLaserMedium;
-import megamek.common.weapons.lasers.CLImprovedHeavyLaserSmall;
-import megamek.common.weapons.lasers.ISRISCHyperLaser;
-import megamek.common.weapons.other.ISMekTaser;
-import megamek.common.weapons.other.TSEMPWeapon;
 import megamek.common.weapons.ppc.PPCWeapon;
-import megamek.common.weapons.prototypes.*;
 import org.apache.logging.log4j.LogManager;
 
 import java.io.PrintWriter;
 import java.math.BigInteger;
-import java.text.NumberFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -979,29 +973,11 @@ public abstract class Mech extends Entity {
         return extra + (hasEngine() ? getEngine().getWalkHeat(this) : 0);
     }
 
-    /**
-     * Returns whether this mech should use conditional ejection
-     *
-     * @return
-     */
-    /*
-     * public boolean shouldUseConditionalEject() { if (game !=null &&
-     * game.getOptions().booleanOption(OptionsConstants.RPG_CONDITIONAL_EJECTION)) { return true; }
-     *
-     * return false; }
-     */
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see megamek.common.Entity#getRunMP(boolean, boolean, boolean)
-     */
     @Override
-    public int getRunMP(boolean gravity, boolean ignoreHeat,
-            boolean ignoreModularArmor) {
+    public int getRunMP(boolean gravity, boolean ignoreHeat, boolean ignoreModularArmor) {
         MPBoosters mpBoosters = getArmedMPBoosters();
-        if (mpBoosters.hasMASCAndOrSupercharger()) {
-            return mpBoosters.calcRunMP(
+        if (!mpBoosters.isNone()) {
+            return mpBoosters.calculateRunMP(
                     getWalkMP(gravity, ignoreHeat, ignoreModularArmor))
                             - (hasMPReducingHardenedArmor() ? 1 : 0);
         }
@@ -1013,8 +989,8 @@ public abstract class Mech extends Entity {
     public int getRunMPwithOneMASC(boolean gravity, boolean ignoreHeat,
                                    boolean ignoreModularArmor) {
         MPBoosters mpBoosters = getArmedMPBoosters();
-        if (mpBoosters.hasMASCAndOrSupercharger()) {
-            return mpBoosters.MASC_ONLY.calcRunMP(
+        if (!mpBoosters.isNone()) {
+            return MPBoosters.MASC_ONLY.calculateRunMP(
                     getWalkMP(gravity, ignoreHeat, ignoreModularArmor))
                     - (hasMPReducingHardenedArmor() ? 1 : 0);
         }
@@ -1052,8 +1028,8 @@ public abstract class Mech extends Entity {
     @Override
     public String getRunMPasString() {
         MPBoosters mpBoosters = getMPBoosters();
-        if (mpBoosters.hasMASCAndOrSupercharger()) {
-            String str =  getRunMPwithoutMASC() + "(" + getRunMP()+")";
+        if (!mpBoosters.isNone()) {
+            String str = getRunMPwithoutMASC() + "(" + getRunMP()+")";
             if (game != null) {
                 MPBoosters armed = getArmedMPBoosters();
 
@@ -1102,8 +1078,8 @@ public abstract class Mech extends Entity {
         }
 
         MPBoosters mpBoosters = getArmedMPBoosters();
-        if (mpBoosters.hasMASCAndOrSupercharger()) {
-            return mpBoosters.calcSprintMP(
+        if (!mpBoosters.isNone()) {
+            return mpBoosters.calculateSprintMP(
                     getWalkMP(gravity, ignoreHeat, ignoreModularArmor))
             - (hasMPReducingHardenedArmor() ? 1 : 0);
         }
@@ -1119,14 +1095,13 @@ public abstract class Mech extends Entity {
     @Override
     public int getSprintMPwithOneMASC(boolean gravity, boolean ignoreHeat,
                                       boolean ignoreModularArmor) {
-
         if (hasHipCrit()) {
             return getRunMPwithoutMASC(gravity, ignoreHeat, ignoreModularArmor);
         }
 
         MPBoosters mpBoosters = getArmedMPBoosters();
-        if (mpBoosters.hasMASCAndOrSupercharger()) {
-            return mpBoosters.MASC_ONLY.calcSprintMP(
+        if (!mpBoosters.isNone()) {
+            return MPBoosters.MASC_ONLY.calculateSprintMP(
                     getWalkMP(gravity, ignoreHeat, ignoreModularArmor))
                     - (hasMPReducingHardenedArmor() ? 1 : 0);
         }
@@ -1171,10 +1146,9 @@ public abstract class Mech extends Entity {
     @Override
     public String getSprintMPasString() {
         MPBoosters armedBoosters = getArmedMPBoosters();
-        if (armedBoosters.hasMASCAndOrSupercharger()) {
-            return getRunMPwithoutMASC() + "(" + getSprintMP() + ")";
-        }
-        return Integer.toString(getSprintMP());
+        return !armedBoosters.isNone()
+                ? getRunMPwithoutMASC() + "(" + getSprintMP() + ")"
+                : Integer.toString(getSprintMP());
     }
 
     /*
@@ -1538,7 +1512,7 @@ public abstract class Mech extends Entity {
         EquipmentType sinkType = EquipmentType.get(sinkName);
 
         if (sinkType == null) {
-            System.out.println("Mech: can't find heat sink to add to engine");
+            LogManager.getLogger().info("Mech: can't find heat sink to add to engine");
         }
 
         int toAllocate = Math.min(
@@ -1562,14 +1536,13 @@ public abstract class Mech extends Entity {
         EquipmentType sinkType = EquipmentType.get(sinkName);
 
         if (sinkType == null) {
-            System.out.println("Mech: can't find heat sink to add to engine");
+            LogManager.getLogger().info("Mech: can't find heat sink to add to engine");
         }
 
         for (int i = 0; i < toAllocate; i++) {
             try {
-                addEquipment(new Mounted(this, sinkType), Entity.LOC_NONE,
-                        false);
-            } catch (LocationFullException ex) {
+                addEquipment(new Mounted(this, sinkType), Entity.LOC_NONE, false);
+            } catch (LocationFullException ignored) {
                 // um, that's impossible.
             }
         }
@@ -2880,16 +2853,17 @@ public abstract class Mech extends Entity {
         }
     }
 
-    /**
-     * Adds clan CASE in every location
-     */
+    @Override
     public void addClanCase() {
+        if (!isClan()) {
+            return;
+        }
         boolean explosiveFound = false;
         EquipmentType clCase = EquipmentType.get(EquipmentTypeLookup.CLAN_CASE);
         for (int i = 0; i < locations(); i++) {
             explosiveFound = false;
             for (Mounted m : getEquipment()) {
-                if (m.getType().isExplosive(m) && (m.getLocation() == i)) {
+                if (m.getType().isExplosive(m, true) && (m.getLocation() == i)) {
                     explosiveFound = true;
                 }
             }
@@ -3091,7 +3065,7 @@ public abstract class Mech extends Entity {
         return getTechAdvancement(getEntityType(), isPrimitive(), isIndustrial(), getWeightClass());
     }
 
-    private static final TechAdvancement[] GYRO_TA =  {
+    private static final TechAdvancement[] GYRO_TA = {
             new TechAdvancement(TECH_BASE_ALL).setAdvancement(2300, 2350, 2505)
                 .setApproximate(true, false, false).setPrototypeFactions(F_TA)
                 .setProductionFactions(F_TH).setTechRating(RATING_D)
@@ -3306,179 +3280,13 @@ public abstract class Mech extends Entity {
     }
 
     @Override
-    protected int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill) {
-        return MekBVCalculator.calculateBV(this, ignoreC3, ignoreSkill, bvText);
+    protected int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill, CalculationReport calculationReport) {
+        return MekBVCalculator.calculateBV(this, ignoreC3, ignoreSkill, calculationReport);
     }
 
-    /**
-     * Calculate the C-bill cost of the mech. Passing null as the argument will
-     * skip the detailed report processing.
-     *
-     * @return The cost in C-Bills of the 'Mech in question.
-     */
     @Override
-    public double getCost(boolean ignoreAmmo) {
-        double[] costs = new double[17 + locations()];
-        int i = 0;
-
-        double cockpitCost;
-        if (getCockpitType() == Mech.COCKPIT_TORSO_MOUNTED) {
-            cockpitCost = 750000;
-        } else if (getCockpitType() == Mech.COCKPIT_DUAL) {
-            // Solaris VII - The Game World (German) This is not actually
-            // canonical as it
-            // has never been repeated in any English language source including
-            // Tech Manual
-            cockpitCost = 40000;
-        } else if (getCockpitType() == Mech.COCKPIT_COMMAND_CONSOLE) {
-            // Command Consoles are listed as a cost of 500,000.
-            // That appears to be in addition to the primary cockpit.
-            cockpitCost = 700000;
-        } else if (getCockpitType() == Mech.COCKPIT_SMALL) {
-            cockpitCost = 175000;
-        } else if (getCockpitType() == Mech.COCKPIT_VRRP) {
-            cockpitCost = 1250000;
-        } else if (getCockpitType() == Mech.COCKPIT_INDUSTRIAL) {
-            cockpitCost = 100000;
-        } else if (getCockpitType() == Mech.COCKPIT_TRIPOD) {
-            cockpitCost = 400000;
-        } else if (getCockpitType() == Mech.COCKPIT_QUADVEE) {
-            cockpitCost = 375000;
-        } else if (getCockpitType() == Mech.COCKPIT_SUPERHEAVY) {
-            cockpitCost = 300000;
-        } else if (getCockpitType() == Mech.COCKPIT_SUPERHEAVY_COMMAND_CONSOLE) {
-            // The cost is the sum of both superheavy cockpit and command console
-            cockpitCost = 800000;
-        } else if (getCockpitType() == Mech.COCKPIT_SUPERHEAVY_TRIPOD) {
-            cockpitCost = 500000;
-        } else if (getCockpitType() == Mech.COCKPIT_SMALL_COMMAND_CONSOLE) {
-            // The cost is the sum of both small and command console
-            cockpitCost = 675000;            
-        } else {
-            cockpitCost = 200000;
-        }
-        if (hasEiCockpit()
-                && ((null != getCrew()) && hasAbility(OptionsConstants.UNOFF_EI_IMPLANT))) {
-            cockpitCost = 400000;
-        }
-        costs[i++] = cockpitCost;
-        costs[i++] = 50000;// life support
-        costs[i++] = weight * 2000;// sensors
-        int muscCost = hasSCM() ? 10000 : hasTSM(false) ? 16000 :
-                        hasTSM(true) ? 32000 : hasIndustrialTSM() ? 12000 : 2000;
-        costs[i++] = muscCost * weight;// musculature
-        double structureCost = EquipmentType.getStructureCost(structureType) * weight;// IS
-        costs[i++] = structureCost;
-        costs[i++] = getActuatorCost();// arm and/or leg actuators
-        if (hasEngine()) {
-            costs[i++] = (getEngine().getBaseCost() * getEngine().getRating() * weight) / 75.0;
-        }
-        if (getGyroType() == Mech.GYRO_XL) {
-            costs[i++] = 750000 * (int) Math
-                    .ceil((getOriginalWalkMP() * weight) / 100f) * 0.5;
-        } else if (getGyroType() == Mech.GYRO_COMPACT) {
-            costs[i++] = 400000 * (int) Math
-                    .ceil((getOriginalWalkMP() * weight) / 100f) * 1.5;
-        } else if (getGyroType() == Mech.GYRO_HEAVY_DUTY) {
-            costs[i++] = 500000 * (int) Math
-                    .ceil((getOriginalWalkMP() * weight) / 100f) * 2;
-        } else if (getGyroType() == Mech.GYRO_STANDARD) {
-            costs[i++] = 300000 * (int) Math
-                    .ceil((getOriginalWalkMP() * weight) / 100f);
-        }
-        double jumpBaseCost = 200;
-        // You cannot have JJ's and UMU's on the same unit.
-        if (hasUMU()) {
-            costs[i++] = Math.pow(getAllUMUCount(), 2.0) * weight
-                    * jumpBaseCost;
-            // We could have Jump boosters
-            if (getJumpType() == Mech.JUMP_BOOSTER) {
-                jumpBaseCost = 150;
-                costs[i++] = Math.pow(getOriginalJumpMP(), 2.0) * weight
-                        * jumpBaseCost;
-            }
-        } else {
-            if (getJumpType() == Mech.JUMP_BOOSTER) {
-                jumpBaseCost = 150;
-            } else if (getJumpType() == Mech.JUMP_IMPROVED) {
-                jumpBaseCost = 500;
-            }
-            costs[i++] = Math.pow(getOriginalJumpMP(), 2.0) * weight
-                    * jumpBaseCost;
-        }
-        // num of sinks we don't pay for
-        int freeSinks = hasDoubleHeatSinks() ? 0 : 10;
-        int sinkCost = hasDoubleHeatSinks() ? 6000 : 2000;
-        // cost of sinks
-        costs[i++] = sinkCost * (heatSinks() - freeSinks);
-        costs[i++] = hasFullHeadEject() ? 1725000 : 0;
-        // armored components
-        int armoredCrits = 0;
-        for (int j = 0; j < locations(); j++) {
-            int numCrits = getNumberOfCriticals(j);
-            for (int k = 0; k < numCrits; k++) {
-                CriticalSlot ccs = getCritical(j, k);
-                if ((ccs != null) && ccs.isArmored()
-                        && (ccs.getType() == CriticalSlot.TYPE_SYSTEM)) {
-                    armoredCrits++;
-                }
-            }
-        }
-        costs[i++] = armoredCrits * 150000;
-
-        // armor
-        if (hasPatchworkArmor()) {
-            for (int loc = 0; loc < locations(); loc++) {
-                costs[i++] += getArmorWeight(loc)
-                        * EquipmentType.getArmorCost(armorType[loc]);
-            }
-        } else {
-            costs[i++] += getArmorWeight()
-                    * EquipmentType.getArmorCost(armorType[0]);
-        }
-
-        double weaponCost = getWeaponsAndEquipmentCost(ignoreAmmo);
-        costs[i++] = weaponCost;
-
-        if (this instanceof LandAirMech) {
-            costs[i++] = (structureCost + weaponCost)
-                    * (((LandAirMech) this).getLAMType() == LandAirMech.LAM_BIMODAL? 0.65 : 0.75);
-        } else if (this instanceof QuadVee) {
-            costs[i++] = (structureCost + weaponCost) * 0.5;
-        } else {
-            costs[i++] = 0;
-        }
-
-        double cost = 0; // calculate the total
-        for (int x = 0; x < i; x++) {
-            cost += costs[x];
-        }
-        // TODO Decouple cost calculation from addCostDetails and eliminate duplicate code in getPriceMultiplier
-        double quirkMultiplier = 0;
-        if (hasQuirk(OptionsConstants.QUIRK_POS_GOOD_REP_1)) {
-            quirkMultiplier = 1.1f;
-            cost *= quirkMultiplier;
-        } else if (hasQuirk(OptionsConstants.QUIRK_POS_GOOD_REP_2)) {
-            quirkMultiplier = 1.25f;
-            cost *= quirkMultiplier;
-        }
-        costs[i++] = -quirkMultiplier; // negative just marks it as multiplier
-
-        double omniMultiplier = 0;
-        if (isOmni()) {
-            omniMultiplier = 1.25f;
-            cost *= omniMultiplier;
-        }
-        costs[i++] = -omniMultiplier; // negative just marks it as multiplier
-
-        double weightMultiplier = 1 + (weight / 100f);
-        if (isIndustrial()) {
-            weightMultiplier = 1 + (weight / 400f);
-        }
-        costs[i++] = -weightMultiplier; // negative just marks it as multiplier
-        cost = Math.round(cost * weightMultiplier);
-        addCostDetails(cost, costs);
-        return cost;
+    public double getCost(CalculationReport calcReport, boolean ignoreAmmo) {
+        return MekCostCalculator.calculateCost(this, calcReport, ignoreAmmo);
     }
 
     @Override
@@ -3504,7 +3312,7 @@ public abstract class Mech extends Entity {
     }
 
     @Override
-    protected int implicitClanCASE() {
+    public int implicitClanCASE() {
         if (!isClan()) {
             return 0;
         }
@@ -3523,71 +3331,7 @@ public abstract class Mech extends Entity {
         return Math.max(0, caseLocations.size() - explicit);
     }
 
-    private void addCostDetails(double cost, double... costs) {
-        bvText = new StringBuffer();
-        String[] left = { "Cockpit", "Life Support", "Sensors", "Myomer",
-                "Structure", "Actuators", "Engine", "Gyro", "Jump Jets",
-                "Heatsinks", "Full Head Ejection System",
-                "Armored System Components", "Armor", "Equipment",
-                "Conversion Equipment", "Quirk Multiplier", "Omni Multiplier", "Weight Multiplier" };
-
-        NumberFormat commafy = NumberFormat.getInstance();
-
-        bvText.append("<HTML><BODY><CENTER><b>Cost Calculations For ");
-        bvText.append(getChassis());
-        bvText.append(" ");
-        bvText.append(getModel());
-        bvText.append("</b></CENTER>");
-        bvText.append(nl);
-
-        bvText.append(startTable);
-        // find the maximum length of the columns.
-        for (int l = 0; l < left.length; l++) {
-
-            if (l == 13) {
-                getWeaponsAndEquipmentCost(true);
-            } else {
-                bvText.append(startRow);
-                bvText.append(startColumn);
-                bvText.append(left[l]);
-                bvText.append(endColumn);
-                bvText.append(startColumn);
-
-                if (costs[l] == 0) {
-                    bvText.append("N/A");
-                } else if (costs[l] < 0) {
-                    bvText.append("x ");
-                    bvText.append(commafy.format(-costs[l]));
-                } else {
-                    bvText.append(commafy.format(costs[l]));
-
-                }
-                bvText.append(endColumn);
-                bvText.append(endRow);
-            }
-        }
-        bvText.append(startRow);
-        bvText.append(startColumn);
-        bvText.append(endColumn);
-        bvText.append(startColumn);
-        bvText.append("-------------");
-        bvText.append(endColumn);
-        bvText.append(endRow);
-
-        bvText.append(startRow);
-        bvText.append(startColumn);
-        bvText.append("Total Cost:");
-        bvText.append(endColumn);
-        bvText.append(startColumn);
-        bvText.append(commafy.format(cost));
-        bvText.append(endColumn);
-        bvText.append(endRow);
-
-        bvText.append(endTable);
-        bvText.append("</BODY></HTML>");
-    }
-
-    protected double getActuatorCost() {
+    public double getActuatorCost() {
         return getArmActuatorCost() + getLegActuatorCost();
     }
 
@@ -3822,11 +3566,11 @@ public abstract class Mech extends Entity {
      */
     @Override
     public boolean isVoidSigActive() {
-        // per the rules questions forum, externally mounted BA invalidates Void
-        // Sig
-        if (getLoadedUnits().size() > 0) {
+        // per the rules questions forum, externally mounted BA invalidates Void Sig
+        if (!getLoadedUnits().isEmpty()) {
             return false;
         }
+
         if (!isShutDown()) {
             for (Mounted m : getMisc()) {
                 EquipmentType type = m.getType();
@@ -3863,11 +3607,11 @@ public abstract class Mech extends Entity {
      */
     @Override
     public boolean isChameleonShieldActive() {
-        // TO pg 300 states that generates heat but doesn't operate if the unit
-        //  has mounted BA
-        if (getLoadedUnits().size() > 0) {
+        // TO pg 300 states that generates heat but doesn't operate if the unit has mounted BA
+        if (!getLoadedUnits().isEmpty()) {
             return false;
         }
+
         if (!isShutDown()) {
             for (Mounted m : getMisc()) {
                 EquipmentType type = m.getType();
@@ -3996,10 +3740,8 @@ public abstract class Mech extends Entity {
             }
         }
 
-        // Return the result.
         return result;
-
-    } // End public TargetRoll getStealthModifier( char )
+    }
 
     /**
      * Determine if the unit can be repaired, or only harvested for spares.
@@ -4020,16 +3762,14 @@ public abstract class Mech extends Entity {
 
     @Override
     public boolean canCharge() {
-        // Mechs can charge, unless they are Clan and the "no clan physicals"
-        // option is set
+        // Mechs can charge, unless they are Clan and the "no clan physicals" option is set
         return super.canCharge()
                 && !(game.getOptions().booleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) && isClan());
     }
 
     @Override
     public boolean canDFA() {
-        // Mechs can DFA, unless they are Clan and the "no clan physicals"
-        // option is set
+        // Mechs can DFA, unless they are Clan and the "no clan physicals" option is set
         return super.canDFA()
                 && !(game.getOptions().booleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) && isClan());
     }
@@ -4041,6 +3781,7 @@ public abstract class Mech extends Entity {
             if (mounted.isDestroyed() || mounted.isBreached()) {
                 continue;
             }
+
             if (mounted.getType().hasFlag(MiscType.F_HEAT_SINK)) {
                 sinks++;
             } else if (mounted.getType().hasFlag(MiscType.F_DOUBLE_HEAT_SINK)) {
@@ -4073,6 +3814,7 @@ public abstract class Mech extends Entity {
                     break;
                 }
             }
+
             if (hasLaserHeatSinks == HAS_UNKNOWN) {
                 hasLaserHeatSinks = HAS_FALSE;
             }
@@ -4135,8 +3877,7 @@ public abstract class Mech extends Entity {
     }
 
     /**
-     * @param condEjectAmmo
-     *            The condEjectAmmo to set.
+     * @param condEjectAmmo The condEjectAmmo to set.
      */
     public void setCondEjectAmmo(boolean condEjectAmmo) {
         this.condEjectAmmo = condEjectAmmo;
@@ -4150,8 +3891,7 @@ public abstract class Mech extends Entity {
     }
 
     /**
-     * @param condEjectEngine
-     *            The condEjectEngine to set.
+     * @param condEjectEngine The condEjectEngine to set.
      */
     public void setCondEjectEngine(boolean condEjectEngine) {
         this.condEjectEngine = condEjectEngine;
@@ -4165,8 +3905,7 @@ public abstract class Mech extends Entity {
     }
 
     /**
-     * @param condEjectCTDest
-     *            The condEjectCTDest to set.
+     * @param condEjectCTDest The condEjectCTDest to set.
      */
     public void setCondEjectCTDest(boolean condEjectCTDest) {
         this.condEjectCTDest = condEjectCTDest;
@@ -4180,8 +3919,7 @@ public abstract class Mech extends Entity {
     }
 
     /**
-     * @param condEjectHeadshot
-     *            The condEjectHeadshot to set.
+     * @param condEjectHeadshot The condEjectHeadshot to set.
      */
     public void setCondEjectHeadshot(boolean condEjectHeadshot) {
         this.condEjectHeadshot = condEjectHeadshot;
@@ -4604,7 +4342,7 @@ public abstract class Mech extends Entity {
         }
         sb.append(newLine);
         sb.append(MtfFile.ERA).append(year).append(newLine);
-        if ((source != null) && (source.trim().length() > 0)) {
+        if ((source != null) && !source.isBlank()) {
             sb.append(MtfFile.SOURCE).append(source).append(newLine);
         }
         sb.append(MtfFile.RULES_LEVEL).append(
@@ -4761,62 +4499,63 @@ public abstract class Mech extends Entity {
             sb.append(newLine);
         }
 
-        if (getFluff().getOverview().trim().length() > 0) {
+        if (!getFluff().getOverview().isBlank()) {
             sb.append(MtfFile.OVERVIEW);
             sb.append(getFluff().getOverview());
             sb.append(newLine);
         }
 
-        if (getFluff().getCapabilities().trim().length() > 0) {
+        if (!getFluff().getCapabilities().isBlank()) {
             sb.append(MtfFile.CAPABILITIES);
             sb.append(getFluff().getCapabilities());
             sb.append(newLine);
         }
 
-        if (getFluff().getDeployment().trim().length() > 0) {
+        if (!getFluff().getDeployment().isBlank()) {
             sb.append(MtfFile.DEPLOYMENT);
             sb.append(getFluff().getDeployment());
             sb.append(newLine);
         }
 
-        if (getFluff().getHistory().trim().length() > 0) {
+        if (!getFluff().getHistory().isBlank()) {
             sb.append(MtfFile.HISTORY);
             sb.append(getFluff().getHistory());
             sb.append(newLine);
         }
 
-        if (getFluff().getManufacturer().trim().length() > 0) {
+        if (!getFluff().getManufacturer().isBlank()) {
             sb.append(MtfFile.MANUFACTURER);
             sb.append(getFluff().getManufacturer());
             sb.append(newLine);
         }
 
-        if (getFluff().getPrimaryFactory().trim().length() > 0) {
+        if (!getFluff().getPrimaryFactory().isBlank()) {
             sb.append(MtfFile.PRIMARY_FACTORY);
             sb.append(getFluff().getPrimaryFactory());
             sb.append(newLine);
         }
 
-        if (getFluff().getNotes().trim().length() > 0) {
+        if (!getFluff().getNotes().isBlank()) {
             sb.append(MtfFile.NOTES);
             sb.append(getFluff().getNotes());
             sb.append(newLine);
         }
 
-        if (getFluff().getMMLImagePath().trim().length() > 0) {
+        if (!getFluff().getMMLImagePath().isBlank()) {
             sb.append(MtfFile.IMAGE_FILE);
             sb.append(getFluff().getMMLImagePath());
             sb.append(newLine);
         }
 
         for (EntityFluff.System system : EntityFluff.System.values()) {
-            if (getFluff().getSystemManufacturer(system).length() > 0) {
+            if (!getFluff().getSystemManufacturer(system).isBlank()) {
                 sb.append(MtfFile.SYSTEM_MANUFACTURER);
                 sb.append(system.toString()).append(":");
                 sb.append(getFluff().getSystemManufacturer(system));
                 sb.append(newLine);
             }
-            if (getFluff().getSystemModel(system).length() > 0) {
+
+            if (!getFluff().getSystemModel(system).isBlank()) {
                 sb.append(MtfFile.SYSTEM_MODEL);
                 sb.append(system.toString()).append(":");
                 sb.append(getFluff().getSystemModel(system));
@@ -6130,9 +5869,9 @@ public abstract class Mech extends Entity {
         double move = getOriginalWalkMP();
 
         MPBoosters mpBooster = getMPBoosters();
-        if (mpBooster.hasMASCAndSupercharger()) {
+        if (mpBooster.isMASCAndSupercharger()) {
             move *= 1.5;
-        } else if (mpBooster.hasMASCXorSupercharger()) {
+        } else if (mpBooster.isMASCXorSupercharger()) {
             move *= 1.25;
         }
 

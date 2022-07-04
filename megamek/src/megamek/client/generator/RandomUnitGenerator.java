@@ -187,7 +187,8 @@ public class RandomUnitGenerator implements Serializable {
     }
 
     private void readRat(InputStream is, RatTreeNode node, String fileName, MechSummaryCache msc) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+        try (InputStreamReader isr = new InputStreamReader(is, StandardCharsets.UTF_8);
+             BufferedReader reader = new BufferedReader(isr)) {
             int lineNumber = 0;
             String key = "Huh";
             float totalWeight = 0.0f;
@@ -260,7 +261,7 @@ public class RandomUnitGenerator implements Serializable {
         RatTreeNode result = root;
         String[] pathElements = path.split("/", -1);
         for (int i = 0; i < pathElements.length - 1; i++) {
-            if (pathElements[i].length() == 0) {
+            if (pathElements[i].isBlank()) {
                 continue;
             }
             RatTreeNode subNode = null;
@@ -418,7 +419,7 @@ public class RandomUnitGenerator implements Serializable {
                     }
                     re = filtered;
                 }
-                if ((null != re) && (re.getUnits().size() > 0)) {
+                if ((null != re) && !re.getUnits().isEmpty()) {
                     for (int roll = 0; roll < numRolls; roll++) {
                         double rand = getRandom();
                         int i = 0;

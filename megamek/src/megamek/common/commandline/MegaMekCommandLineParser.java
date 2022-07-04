@@ -16,15 +16,12 @@ package megamek.common.commandline;
 import megamek.MMConstants;
 import megamek.MegaMek;
 import megamek.client.ui.Messages;
-import megamek.client.ui.swing.ClientGUI;
 import megamek.common.*;
-import megamek.common.commandline.AbstractCommandLineParser;
 import megamek.common.util.fileUtils.MegaMekFile;
 import megamek.common.verifier.*;
 import org.apache.logging.log4j.LogManager;
 
 import java.io.*;
-import java.util.Locale;
 import java.util.Vector;
 
 /**
@@ -200,7 +197,8 @@ public class MegaMekCommandLineParser extends AbstractCommandLineParser {
             }
 
             if (ms == null) {
-                LogManager.getLogger().error(new IOException(filename + " not found. Try using \"chassis model\" for input."));
+                LogManager.getLogger().error(filename + " not found. Try using \"chassis model\" for input.",
+                        new IOException());
             } else {
                 try {
                     Entity entity = new MechFileParser(ms.getSourceFile(),
@@ -269,7 +267,7 @@ public class MegaMekCommandLineParser extends AbstractCommandLineParser {
             }
             File file = new File("./docs/" + filename);
             try (Writer w = new FileWriter(file); BufferedWriter fw = new BufferedWriter(w)) {
-                fw.write("Megamek Unit BattleForce Converter");
+                fw.write("MegaMek Unit BattleForce Converter");
                 fw.newLine();
                 fw.write("This file can be regenerated with java -jar MegaMek.jar -bfc filename");
                 fw.newLine();
@@ -390,7 +388,7 @@ public class MegaMekCommandLineParser extends AbstractCommandLineParser {
                         bw.write(",");
                         bw.write(Long.toString(unit.getCost()));
                         bw.write(",");
-                        bw.write(Long.toString(unit.getUnloadedCost()));
+                        bw.write(Long.toString(unit.getDryCost()));
                         bw.write(",");
                         bw.write(Integer.toString(unit.getYear()));
                         bw.write(",");

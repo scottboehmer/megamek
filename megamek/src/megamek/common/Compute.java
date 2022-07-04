@@ -93,7 +93,9 @@ public class Compute {
     public static final int ARC_AFT_WPL = 47;
     public static final int ARC_LEFT_BROADSIDE_WPL = 48;
     public static final int ARC_RIGHT_BROADSIDE_WPL = 49;
-    
+
+    public static int DEFAULT_MAX_VISUAL_RANGE = 1;
+
     /** Lookup table for vehicular grenade launcher firing arc from facing */
     private static final int[] VGL_FIRING_ARCS = { ARC_VGL_FRONT, ARC_VGL_RF, ARC_VGL_RR,
             ARC_VGL_REAR, ARC_VGL_LR, ARC_VGL_LF
@@ -225,7 +227,8 @@ public class Compute {
     }
 
     /**
-     * Wrapper to random#randomInt(n)
+     * Generates a number between 0 and maxValue - 1.
+     * e.g. randomInt(2) will generate either 0s or 1s
      */
     public static int randomInt(int maxValue) {
         Roll roll = new MMRoll(random, maxValue);
@@ -2316,14 +2319,13 @@ public class Compute {
             // If we are a tank, we can have Crew Size - 1 targets before
             //  incurring a secondary target penalty (or crew size - 2 secondary
             //  targets without penalty)
-            maxPrimary =  attacker.getCrew().getSize() - 1;
+            maxPrimary = attacker.getCrew().getSize() - 1;
         }
         if (countTargets <= maxPrimary) {
             return null; // no modifier
         }
 
-        if ((primaryTarget == Entity.NONE)
-            || (primaryTarget == target.getTargetId())) {
+        if ((primaryTarget == Entity.NONE) || (primaryTarget == target.getTargetId())) {
             // current target is primary target
             return null; // no modifier
         }
@@ -2332,26 +2334,26 @@ public class Compute {
 
         // Stealthed Mechs can't be secondary targets (TW, pg. 142)
         if (((target instanceof Tank) || (target instanceof Mech) || (target instanceof Aero))
-            && ((Entity) target).isStealthActive()) {
+                && ((Entity) target).isStealthActive()) {
             return new ToHitData(TargetRoll.IMPOSSIBLE,
-                                 "Can't target unit with active stealth armor as " +
-                                 "secondary target");
+                    "Can't target unit with active stealth armor as a secondary target");
         }
 
         int mod = 2;
         if (curInFrontArc || (attacker instanceof BattleArmor)) {
             mod--;
         }
+
         if (attacker.hasAbility(OptionsConstants.GUNNERY_MULTI_TASKER)) {
             mod--;
         }
+
         return new ToHitData(mod, "secondary target modifier");
     }
 
     /**
      * Damage that a mech does with a accidental fall from above.
      */
-
     public static int getAffaDamageFor(Entity entity) {
         return (int) entity.getWeight() / 10;
     }
@@ -2360,15 +2362,14 @@ public class Compute {
      * Modifier to attacks due to attacker movement
      */
     public static ToHitData getAttackerMovementModifier(Game game, int entityId) {
-        return Compute.getAttackerMovementModifier(game, entityId,
-                                                   game.getEntity(entityId).moved);
+        return Compute.getAttackerMovementModifier(game, entityId, game.getEntity(entityId).moved);
     }
 
     /**
      * Modifier to attacks due to attacker movement
      */
-    public static ToHitData getAttackerMovementModifier(Game game,
-            int entityId, EntityMovementType movement) {
+    public static ToHitData getAttackerMovementModifier(Game game, int entityId,
+                                                        EntityMovementType movement) {
         final Entity entity = game.getEntity(entityId);
         ToHitData toHit = new ToHitData();
 
@@ -4639,11 +4640,44 @@ public class Compute {
         return roll >= tn;
     }
 
-    public static int getVisualRange(Game game, Entity ae, LosEffects los, boolean teIlluminated) {
-        int visualRange = game.getPlanetaryConditions().getVisualRange(ae, teIlluminated);
+    /**
+     * @return visual range in hexes along a specific line of sight
+     */
+    public static int getVisualRange(Game game, Entity ae, LosEffects los, boolean targetIlluminated) {
+        int visualRange = game.getPlanetaryConditions().getVisualRange(ae, targetIlluminated);
         visualRange -= los.getLightSmoke();
         visualRange -= 2 * los.getHeavySmoke();
         visualRange = Math.max(1, visualRange);
+        return visualRange;
+    }
+
+    /**
+     * @return visual range in hexes given current planetary conditions and no los obstruction
+     */
+    public static int getMaxVisualRange(Entity entity, boolean targetIlluminated ) {
+        Game game = entity.getGame();
+        if (game == null) {
+            return DEFAULT_MAX_VISUAL_RANGE;
+        }
+
+        int visualRange;
+        if (entity.isSpaceborne() && entity.getGame().getOptions().booleanOption(OptionsConstants.ADVAERORULES_STRATOPS_ADVANCED_SENSORS)) {
+            visualRange = 0;
+            //For squadrons. Default to the passive thermal/optical value used by component fighters
+            if (entity.hasETypeFlag(Entity.ETYPE_FIGHTER_SQUADRON)) {
+                visualRange = Sensor.ASF_OPTICAL_FIRING_SOLUTION_RANGE;
+            }
+            if (entity.getActiveSensor() != null) {
+                if (entity.getActiveSensor().getType() == Sensor.TYPE_AERO_SENSOR) {
+                    // required because the return on this from the method below is for ground maps
+                    visualRange = Sensor.ASF_RADAR_AUTOSPOT_RANGE;
+                } else {
+                    visualRange = (int) Math.ceil(entity.getActiveSensor().getRangeByBracket() / 10.0);
+                }
+            }
+        } else {
+            visualRange =  game.getPlanetaryConditions().getVisualRange(entity, targetIlluminated);
+        }
         return visualRange;
     }
 
@@ -6461,7 +6495,7 @@ public class Compute {
         // Vehicle flamers have damage and heat modes so lets make sure this is
         // an actual dial down Damage.
         if ((damage.trim().toLowerCase().indexOf("damage") == 0)
-            && (damage.trim().length() > 6)) {
+                && (damage.trim().length() > 6)) {
             toReturn = Integer.parseInt(damage.substring(6).trim());
         }
 

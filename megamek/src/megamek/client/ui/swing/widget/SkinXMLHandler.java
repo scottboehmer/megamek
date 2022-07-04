@@ -21,7 +21,7 @@ import megamek.client.ui.swing.widget.SkinSpecification.UIComponents;
 import megamek.common.Configuration;
 import megamek.common.annotations.Nullable;
 import megamek.common.util.fileUtils.MegaMekFile;
-import megamek.utils.MegaMekXmlUtil;
+import megamek.utilities.xml.MMXMLUtility;
 import org.apache.logging.log4j.LogManager;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -146,7 +146,7 @@ public class SkinXMLHandler {
             return false;
         }
         try {
-            DocumentBuilder builder = MegaMekXmlUtil.newSafeDocumentBuilder();
+            DocumentBuilder builder = MMXMLUtility.newSafeDocumentBuilder();
             Document doc = builder.parse(file);
             // TODO: Just validate against the XSD
             // Until that's done, just assume anything with UI_ELEMENT tags is
@@ -189,8 +189,8 @@ public class SkinXMLHandler {
 
         // Build the XML document.
         try {
-            DocumentBuilder builder = MegaMekXmlUtil.newSafeDocumentBuilder();
-            LogManager.getLogger().info("Parsing " + file.getName());
+            DocumentBuilder builder = MMXMLUtility.newSafeDocumentBuilder();
+            LogManager.getLogger().debug("Parsing " + file.getName());
             Document doc = builder.parse(file);
 
             // Get the list of units.
@@ -508,10 +508,9 @@ public class SkinXMLHandler {
      * @param filename
      */
     public static void writeSkinToFile(String filename) {
-        File filePath = new MegaMekFile(Configuration.skinsDir(), filename).getFile();
-
-        try (Writer output = new BufferedWriter(new OutputStreamWriter(
-                new FileOutputStream(filePath)))) {
+        try (FileOutputStream fos = new FileOutputStream(new MegaMekFile(Configuration.skinsDir(), filename).getFile());
+             OutputStreamWriter osw = new OutputStreamWriter(fos);
+             Writer output = new BufferedWriter(osw)) {
             output.write(SKIN_HEADER);
             for (String component : skinSpecs.keySet()) {
                 writeSkinComponent(component, output);

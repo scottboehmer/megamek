@@ -794,9 +794,9 @@ public class MiscType extends EquipmentType {
                 } else if (getSubType() == S_ELITE) { // only shielded
                     pct += 0.03;
                 }
-                //Jumpship is based on non-drive weight and rounded to ton
+                // JumpShip is based on non-drive weight and rounded to ton
                 if (entity.hasETypeFlag(Entity.ETYPE_JUMPSHIP)) {
-                    RoundWeight.nextTon((entity.getWeight() - ((Jumpship) entity).getJumpDriveWeight()) * pct);
+                    return RoundWeight.nextTon((entity.getWeight() - ((Jumpship) entity).getJumpDriveWeight()) * pct);
                 }
                 return defaultRounding.round(entity.getWeight() * pct, entity);
             } else if (subType == S_IMPROVED) {
@@ -2784,7 +2784,7 @@ public class MiscType extends EquipmentType {
         //Tech Progression tweaked to combine IntOps with TRO Prototypes/3145 NTNU RS   
         misc.techAdvancement.setTechBase(TECH_BASE_CLAN).setTechRating(RATING_F)
                 .setAvailability(RATING_X, RATING_X, RATING_F, RATING_E)
-                .setClanAdvancement(DATE_NONE, 3070, 3109, DATE_NONE, DATE_NONE)
+                .setClanAdvancement(3070, 3109, DATE_NONE, DATE_NONE, DATE_NONE)
                 .setClanApproximate(false, false, false, false, false).setPrototypeFactions(F_CSR)
                 .setProductionFactions(F_CSR).setStaticTechLevel(SimpleTechLevel.ADVANCED);
         return misc;
@@ -3823,7 +3823,7 @@ public class MiscType extends EquipmentType {
     public static MiscType createClothingLightInfArmor() {
         MiscType misc = new MiscType();
 
-        misc.name = "Clothing, Light/Naked ;)";
+        misc.name = "Clothing, Light (e.g. Summer Wear/None)";
         misc.setInternalName(misc.name);
         misc.addLookupName("ClothingLightNone");
         misc.damageDivisor = 0.5;
@@ -3972,7 +3972,7 @@ public class MiscType extends EquipmentType {
         misc.setInternalName(misc.name);
         misc.addLookupName("HeatSuit");
         misc.damageDivisor = 1.0;
-        misc.subType = S_COLD_WEATHER;
+        misc.subType = S_HOT_WEATHER;
         misc.cost = 100;
         misc.flags = misc.flags.or(F_INF_EQUIPMENT).or(F_ARMOR_KIT);
         misc.rulesRefs = "317, TO";
@@ -4122,7 +4122,7 @@ public class MiscType extends EquipmentType {
 
     public static MiscType createSnowSuitInfArmor() {
         MiscType misc = new MiscType();
-        misc.name = "Snow suit";
+        misc.name = "Snowsuit";
         misc.setInternalName(misc.name);
         misc.addLookupName("SnowSuit");
         misc.damageDivisor = 1.0;
@@ -4218,7 +4218,7 @@ public class MiscType extends EquipmentType {
     public static MiscType createComstarInfArmor() {
         MiscType misc = new MiscType();
 
-        misc.name = "Comstar Infantry Kit";
+        misc.name = "ComStar Infantry Kit";
         misc.setInternalName(misc.name);
         misc.addLookupName("CSInfKit");
         misc.addLookupName("ComstarKit");
@@ -7895,12 +7895,12 @@ public class MiscType extends EquipmentType {
         misc.addLookupName("CLSpaceMineDispenser");
         misc.cost = 15000;
         misc.tonnage = 10;
-        // TODO: implement game rules for this, analog to the mine for BAs
+        // TODO : implement game rules for this, analog to the mine for BAs
         misc.flags = misc.flags.or(F_SUPPORT_TANK_EQUIPMENT).or(F_FIGHTER_EQUIPMENT)
                 .or(F_SC_EQUIPMENT).or(F_DS_EQUIPMENT).or(F_JS_EQUIPMENT).or(F_WS_EQUIPMENT).or(F_SS_EQUIPMENT)
                 .or(F_SPACE_MINE_DISPENSER);
         misc.bv = 200; // because it includes 2 mines. 100 for each mine,
-                       // becaues it deals a max potential damage of 100
+                       // because it deals a max potential damage of 100
         misc.rulesRefs = "325, TO";
         misc.techAdvancement.setTechBase(TECH_BASE_ALL).setIntroLevel(false).setUnofficial(false)
                 .setTechRating(RATING_D).setAvailability(RATING_E, RATING_F, RATING_E, RATING_E)
