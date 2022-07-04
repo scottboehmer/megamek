@@ -52,13 +52,9 @@ Leg
 </armor_tech>
 
 <Squad Equipment>
-<<<<<<< HEAD:megamek/data/mechfiles/battlearmor/RS3058Uu/Cavalier Battle Armor [Flamer].blk
-ISBAFlamer:RA
-=======
 ISBASupportPPC:Body
 BABattleClaw:LA
 BABattleClaw:RA
->>>>>>> upstream/master:megamek/data/mechfiles/battlearmor/3075/Trinity Medium BA (Asterion) [MH] [PPC].blk
 SwarmMek
 SwarmWeaponMek
 StopSwarm

@@ -51,6 +51,10 @@ biped
 33
 </armor_type>
 
+<armor_tech>
+3
+</armor_tech>
+
 <Squad Equipment>
 ISBASmallLaser:RA
 BAAPMount:LA

@@ -52,25 +52,6 @@ UMU
 </armor_tech>
 
 <Squad Equipment>
-<<<<<<< HEAD:megamek/data/mechfiles/battlearmor/3145/Republic/Centaur BattleArmor (Standard).blk
-BABasicManipulator:LA
-BABasicManipulator:RA
-ISDetachableWeaponPack:Body
-ISBATubeArtillery:DWP
-BA-Magnetic Clamp:Body
-ISBASmallLaser:LA
-ISDetachableWeaponPack:Body
-ISBATubeArtilleryAmmo:DWP:Shots4#
-ISDetachableWeaponPack:Body
-ISBATubeArtilleryAmmo:DWP:Shots4#
-IS BA Reactive (Blazer):Body
-IS BA Reactive (Blazer):Body
-IS BA Reactive (Blazer):RA
-IS BA Reactive (Blazer):LA
-IS BA Reactive (Blazer):RA
-IS BA Reactive (Blazer):LA
-IS BA Reactive (Blazer):Body
-=======
 BACuttingTorch:RA
 ISBASRM1OS:LA
 CLBALightMG:Body
@@ -86,7 +67,6 @@ LegAttack
 IS BA Stealth (Basic):RA
 IS BA Stealth (Basic):Body
 IS BA Stealth (Basic):Body
->>>>>>> upstream/master:megamek/data/mechfiles/battlearmor/3145/Davion/Sea Fox Amphibious Armor [SF].blk
 </Squad Equipment>
 
 <Trooper 1 Equipment>
