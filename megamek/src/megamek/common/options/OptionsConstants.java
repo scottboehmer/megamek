@@ -63,6 +63,7 @@ public class OptionsConstants {
     public static final String QUIRK_POS_RUGGED_1 = "rugged_1" ; 
     public static final String QUIRK_POS_RUGGED_2 = "rugged_2" ; 
     public static final String QUIRK_POS_RUMBLE_SEAT= "rumble_seat"; 
+    public static final String QUIRK_POS_SCOUT_BIKE="scout_bike";
     public static final String QUIRK_POS_SEARCHLIGHT= "searchlight"; 
     public static final String QUIRK_POS_STABLE= "stable"; 
     public static final String QUIRK_POS_TRAILER_HITCH= "trailer_hitch"; 
@@ -281,8 +282,7 @@ public class OptionsConstants {
     public static final String BASE_TEAM_INITIATIVE= "team_initiative";  
     public static final String BASE_AUTOSAVE_MSG= "autosave_msg";  
     public static final String BASE_PARANOID_AUTOSAVE= "paranoid_autosave";  
-    public static final String BASE_EXCLUSIVE_DB_DEPLOYMENT= "exclusive_db_deployment";  
-    public static final String BASE_DEEP_DEPLOYMENT= "deep_deployment";  
+    public static final String BASE_EXCLUSIVE_DB_DEPLOYMENT= "exclusive_db_deployment";
     public static final String BASE_BLIND_DROP= "blind_drop";  
     public static final String BASE_REAL_BLIND_DROP= "real_blind_drop";  
     public static final String BASE_LOBBY_AMMO_DUMP= "lobby_ammo_dump";  
