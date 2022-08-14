@@ -49,8 +49,8 @@ Leg
 </armor_tech>
 
 <Squad Equipment>
-ISBAMediumVSPLaser:DWP
 ISDetachableWeaponPack:Body
+ISBAMediumVSPLaser:DWP
 BABattleClaw:LA
 BAArmoredGlove:RA
 Infantry Auto Rifle:APM
