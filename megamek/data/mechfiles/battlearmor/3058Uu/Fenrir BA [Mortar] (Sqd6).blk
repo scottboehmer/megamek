@@ -49,8 +49,8 @@ Leg
 </armor_tech>
 
 <Squad Equipment>
-CLBAHeavyMortar:TU
-CLBAMG:TU
+ISBAHeavyMortar:TU
+ISBAMG:TU
 </Squad Equipment>
 
 <Trooper 1 Equipment>

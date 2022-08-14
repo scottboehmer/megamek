@@ -140,26 +140,6 @@ COMMUNICATIONS:Unknown
 TARGETING:Unknown
 </systemManufacturers>
 
-<chassis>
-biped
-</chassis>
-
-<jumpingMP>
-0
-</jumpingMP>
-
-<armor>
-2
-</armor>
-
-<Trooper Count>
-6
-</Trooper Count>
-
-<weightclass>
-0
-</weightclass>
-
 <source>
 ToS Kandersteg - Late Republic
 </source>

@@ -19,9 +19,9 @@ Kobold Battle Armor
 <Model>
 X-C3(Sqd6)
 </Model>
-9071
-<mul id:>
 
+<mul id:>
+9071
 </mul id:>
 
 <year>
@@ -104,6 +104,7 @@ biped
 1
 </weightclass>
 
+<overview>
 The Kobold is a battle armor design that was collaborated on by the Free Rasalhague Republic, ComStar, and the second Star League. 
 </overview>
 
