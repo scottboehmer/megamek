@@ -3845,7 +3845,7 @@ Loki (Hellbringer) J:SCOUT
 Loki (Hellbringer) M:SNIPER
 Loki (Hellbringer) Prime:STRIKER
 Loki (Hellbringer) T:SNIPER
-Loki Mk II (Hel) (Prime):SNIPER
+Loki Mk II (Hel) Prime:SNIPER
 Loki Mk II (Hel) A:BRAWLER
 Loki Mk II (Hel) B:BRAWLER
 Lola I Destroyer (2345):NONE
@@ -3982,7 +3982,7 @@ Mad Cat Mk II 4:SNIPER
 Mad Cat Mk II 5:BRAWLER
 Mad Cat Mk II 6:SNIPER
 Mad Cat Mk II Enhanced:SNIPER
-Mad Cat Mk IV (Savage Wolf) (Prime):SKIRMISHER
+Mad Cat Mk IV (Savage Wolf) Prime:SKIRMISHER
 Mad Cat Mk IV (Savage Wolf) A:SKIRMISHER
 Mad Cat Mk IV (Savage Wolf) B:SKIRMISHER
 Mad Cat Mk IV (Savage Wolf) C:MISSILE_BOAT
@@ -6458,7 +6458,7 @@ Thor Artillery Vehicle (AC):BRAWLER
 Thor Artillery Vehicle (C3i):MISSILE_BOAT
 Thor Artillery Vehicle (Clan):MISSILE_BOAT
 Thor Artillery Vehicle (Standard):MISSILE_BOAT
-Thor II (Grand Summoner) (Prime):SKIRMISHER
+Thor II (Grand Summoner) Prime:SKIRMISHER
 Thor II (Grand Summoner) A:SNIPER
 Thor II (Grand Summoner) B:MISSILE_BOAT
 Thor II (Grand Summoner) C:SKIRMISHER
@@ -6607,14 +6607,14 @@ Tokugawa Heavy Tank TKG-150:BRAWLER
 Tokugawa Heavy Tank TKG-151:SNIPER
 Tokugawa Heavy Tank Yumi:MISSILE_BOAT
 Tolva (Standard):SKIRMISHER
-Tomahawk (Prime):JUGGERNAUT
+Tomahawk Prime:JUGGERNAUT
 Tomahawk A:JUGGERNAUT
 Tomahawk B:JUGGERNAUT
 Tomahawk 'C':FAST_DOGFIGHTER
 Tomahawk C:JUGGERNAUT
 Tomahawk CH:FAST_DOGFIGHTER
 Tomahawk CX-11:FIRE_SUPPORT
-Tomahawk II (Prime):SNIPER
+Tomahawk II Prime:SNIPER
 Tomahawk II A:JUGGERNAUT
 Tomahawk II B:SNIPER
 Tomahawk II C:MISSILE_BOAT
@@ -7098,7 +7098,7 @@ Vulture (Mad Dog) S:SKIRMISHER
 Vulture (Mad Dog) T:MISSILE_BOAT
 Vulture (Mad Dog) U:SKIRMISHER
 Vulture (Mad Dog) V:MISSILE_BOAT
-Vulture Mk III (Mad Dog Mk III) (Prime):MISSILE_BOAT
+Vulture Mk III (Mad Dog Mk III) Prime:MISSILE_BOAT
 Vulture Mk III (Mad Dog Mk III) A:SKIRMISHER
 Vulture Mk III (Mad Dog Mk III) B:MISSILE_BOAT
 Vulture Mk III (Mad Dog Mk III) BLO:MISSILE_BOAT
@@ -7179,7 +7179,7 @@ Warrior Attack Helicopter H-8:STRIKER
 Warrior Attack Helicopter H-9:SCOUT
 Warrior Attack Helicopter HX-9:SCOUT
 Warrior Stealth Helicopter S-9:SCOUT
-Warwolf (Prime):BRAWLER
+Warwolf Prime:BRAWLER
 Warwolf A:BRAWLER
 Warwolf B:SNIPER
 Warwolf C:BRAWLER
@@ -7219,11 +7219,11 @@ Weapon Carrier (Tracked) (AC/20):AMBUSHER
 Weapon Carrier (Tracked) (LB-10X):SNIPER
 Weapon Carrier (Tracked) (Ultra/5):SNIPER
 Weapons Carrier A (LL):NONE
-Wendigo (Prime):SKIRMISHER
+Wendigo Prime:SKIRMISHER
 Wendigo A:SNIPER
 Wendigo B:SKIRMISHER
 Wendigo C:SKIRMISHER
-Wendigo-VP (Prime):SKIRMISHER
+Wendigo-VP Prime:SKIRMISHER
 Wendigo-VP A:SKIRMISHER
 Werewolf WER-LF-004:STRIKER
 Werewolf WER-LF-005:STRIKER
@@ -7328,7 +7328,7 @@ Wraith TR2:SKIRMISHER
 Wraith TR2-P 'Pocahontas':STRIKER
 Wraith TR2-X 'Alexander':STRIKER
 Wraith TR3:SKIRMISHER
-Wulfen (Prime):SCOUT
+Wulfen Prime:SCOUT
 Wulfen A:STRIKER
 Wulfen B:SCOUT
 Wulfen C:STRIKER
