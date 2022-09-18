@@ -297,13 +297,6 @@
 			<availability>General:8</availability>
 		</model>
 	</chassis>
-	<chassis name='Aquilla Transport Jumpship' unitType='Warship'>
-		<availability>IS:2,Periphery.Deep:6,Periphery:6</availability>
-		<model name='(Standard)'>
-			<roles>cargo</roles>
-			<availability>General:8</availability>
-		</model>
-	</chassis>
 	<chassis name='Archer' unitType='Mek'>
 		<availability>CC:5,TH:7,LA:6,SL:6,IS:3,FWL:6,RWR:3,FS:5,Periphery:3,DC:5</availability>
 		<model name='ARC-1A'>
@@ -316,8 +309,22 @@
 		</model>
 	</chassis>
 	<chassis name='Ares Assault Craft' unitType='Small Craft'>
-		<availability>TH:7,SL:8,IS:5,Periphery:4</availability>
+		<availability>MOC:7,OA:7,SL:8,IS:7,RWR:7,MERC:7,Periphery:7,TC:7</availability>
 		<model name='Mk.III'>
+			<roles>infantry_carrier</roles>
+			<availability>General:8</availability>
+		</model>
+	</chassis>
+	<chassis name='Ares Close Assault Landing Craft' unitType='Small Craft'>
+		<availability>MOC:3,OA:3,SL:5,IS:4,RWR:3,MERC:3,TC:3</availability>
+		<model name='Mk.II'>
+			<roles>escort,ground_support</roles>
+			<availability>General:8</availability>
+		</model>
+	</chassis>
+	<chassis name='Ares Landing Craft' unitType='Small Craft'>
+		<availability>MOC:5,OA:5,SL:6,IS:6,RWR:5,MERC:5,TC:5</availability>
+		<model name='Mk.I'>
 			<availability>General:8</availability>
 		</model>
 	</chassis>
@@ -499,7 +506,7 @@
 		</model>
 	</chassis>
 	<chassis name='Bus' unitType='Small Craft'>
-		<availability>IS:4,Periphery:4</availability>
+		<availability>SL:6,IS:4,MERC:4,Periphery:4</availability>
 		<model name='S-7A'>
 			<roles>cargo,civilian</roles>
 			<availability>General:8</availability>
@@ -623,6 +630,15 @@
 		</model>
 		<model name='(Standard)'>
 			<roles>cargo</roles>
+			<availability>General:6</availability>
+		</model>
+	</chassis>
+	<chassis name='Colt Medium Fighter' unitType='Conventional Fighter'>
+		<availability>General:6</availability>
+		<model name='(LRM)'>
+			<availability>General:6</availability>
+		</model>
+		<model name='(SRM)'>
 			<availability>General:6</availability>
 		</model>
 	</chassis>
@@ -788,6 +804,13 @@
 			<availability>General:8</availability>
 		</model>
 	</chassis>
+	<chassis name='Dragonstar Passenger Transport' unitType='Small Craft'>
+		<availability>DC:3</availability>
+		<model name='(Standard)'>
+			<roles>civilian</roles>
+			<availability>General:8</availability>
+		</model>
+	</chassis>
 	<chassis name='Dreadnought Battleship' unitType='Warship'>
 		<availability>TH:1,SL:1</availability>
 		<model name='(2330)'>
@@ -815,6 +838,13 @@
 		<model name='(Standard)'>
 			<roles>support</roles>
 			<availability>General:8</availability>
+		</model>
+	</chassis>
+	<chassis name='DropShuttle' unitType='Small Craft'>
+		<availability>IS:6,MERC:6,Periphery:6</availability>
+		<model name='K-1'>
+			<roles>civilian</roles>
+			<availability>General:5</availability>
 		</model>
 	</chassis>
 	<chassis name='Du Shi Wang Battleship' unitType='Warship'>
@@ -867,6 +897,13 @@
 		<model name='(Standard)'>
 			<roles>support,engineer</roles>
 			<availability>General:8</availability>
+		</model>
+	</chassis>
+	<chassis name='Escape Pod' unitType='Small Craft'>
+		<availability>General:1</availability>
+		<model name='(Standard)'>
+			<roles>civilian</roles>
+			<availability>General:1-</availability>
 		</model>
 	</chassis>
 	<chassis name='Essex I Destroyer' unitType='Warship'>
@@ -1310,19 +1347,23 @@
 		</model>
 	</chassis>
 	<chassis name='Intrepid Assault Craft' unitType='Small Craft'>
-		<availability>FS:1</availability>
+		<availability>FS:3-</availability>
+		<model name='(2331)'>
+			<roles>assault</roles>
+			<availability>General:2-</availability>
+		</model>
 		<model name='(2478)'>
 			<roles>assault</roles>
 			<availability>General:8</availability>
 		</model>
 	</chassis>
 	<chassis name='Invader Jumpship' unitType='Jumpship'>
-		<availability>CC:6,LA:6,SL:7,FWL:6,IS:4,FS:6</availability>
+		<availability>CC:2,SL:4,IS:2,Periphery.Deep:1,DC:2,Periphery:2</availability>
 		<model name='(2631 PPC)'>
-			<availability>General:6</availability>
+			<availability>CC:1,IS:2,DC:1,Periphery:1</availability>
 		</model>
 		<model name='(2631)'>
-			<availability>General:6</availability>
+			<availability>SL:4,IS:2,Periphery.Deep:1,Periphery:2</availability>
 		</model>
 	</chassis>
 	<chassis name='Ironsides' unitType='Aero'>
@@ -1481,17 +1522,33 @@
 			<availability>General:8</availability>
 		</model>
 	</chassis>
+	<chassis name='Leviathan Jumpship' unitType='Jumpship'>
+		<availability>IS:2,Periphery:2</availability>
+		<model name='(Standard)'>
+			<availability>General:6</availability>
+		</model>
+	</chassis>
 	<chassis name='Liberty Jumpship' unitType='Jumpship'>
 		<availability>TH:4,SL:4,IS:4</availability>
 		<model name='(Standard)'>
 			<availability>General:8</availability>
 		</model>
 	</chassis>
+	<chassis name='Life Boat' unitType='Small Craft'>
+		<availability>General:1</availability>
+		<model name='(Standard)'>
+			<roles>civilian</roles>
+			<availability>General:1-</availability>
+		</model>
+	</chassis>
 	<chassis name='Light Strike Fighter' unitType='Conventional Fighter'>
-		<availability>General:6</availability>
+		<availability>TH:6-,LA:2-,IS:8,MERC:2-,Periphery:2</availability>
 		<model name='Angel'>
 			<roles>recon</roles>
-			<availability>FWL:4</availability>
+			<availability>TH:6,LA:2-,IS:8,MERC:6,Periphery:6</availability>
+		</model>
+		<model name='Owl'>
+			<availability>LA:2</availability>
 		</model>
 	</chassis>
 	<chassis name='Lightning' unitType='Aero'>
@@ -1530,6 +1587,13 @@
 		<model name='(2345)'>
 			<roles>destroyer</roles>
 			<availability>General:8</availability>
+		</model>
+	</chassis>
+	<chassis name='Long-Range Shuttlecraft' unitType='Small Craft'>
+		<availability>SL:8,IS:5,Periphery:5</availability>
+		<model name='KR-61'>
+			<roles>civilian</roles>
+			<availability>General:6</availability>
 		</model>
 	</chassis>
 	<chassis name='Longbow' unitType='Mek'>
@@ -1716,9 +1780,16 @@
 		</model>
 	</chassis>
 	<chassis name='Merchant Jumpship' unitType='Jumpship'>
-		<availability>MOC:6,CC:4,IS:4,Periphery.Deep:6,RWR:4,MERC:6,FS:4,Periphery:6,TC:6,OA:6,TH:4,LA:4,SL:4,FWL:4,DC:4</availability>
+		<availability>SL:6,IS:4,Periphery.Deep:1,MERC:3,Periphery:3</availability>
 		<model name='(2503)'>
 			<availability>General:8</availability>
+		</model>
+		<model name='(2602)'>
+			<availability>General:4</availability>
+		</model>
+		<model name='(2602)(Passenger)'>
+			<roles>civilian</roles>
+			<availability>General:2</availability>
 		</model>
 	</chassis>
 	<chassis name='Merkava Heavy Tank' unitType='Tank'>
@@ -1988,13 +2059,13 @@
 		</model>
 	</chassis>
 	<chassis name='Planetlifter Air Transport' unitType='Conventional Fighter'>
-		<availability>FWL:8</availability>
+		<availability>FWL:8,FS:2</availability>
 		<model name='&apos;SuperPelican&apos; aka &apos;Waddle&apos;'>
 			<roles>cargo</roles>
 			<availability>FS:2</availability>
 		</model>
 		<model name='(Standard)'>
-			<roles>cargo</roles>
+			<roles>cargo,support</roles>
 			<availability>General:6</availability>
 		</model>
 	</chassis>
@@ -2115,6 +2186,13 @@
 			<availability>General:6,SL.R:6</availability>
 		</model>
 	</chassis>
+	<chassis name='S 2772 Airplane' unitType='Conventional Fighter'>
+		<availability>FS:5-</availability>
+		<model name='(Standard)'>
+			<roles>civilian</roles>
+			<availability>General:6</availability>
+		</model>
+	</chassis>
 	<chassis name='SRM Carrier' unitType='Tank'>
 		<availability>General:6</availability>
 		<model name='(Primitive)'>
@@ -2195,6 +2273,13 @@
 			<availability>General:8</availability>
 		</model>
 	</chassis>
+	<chassis name='Shuttle' unitType='Small Craft'>
+		<availability>IS:10,Periphery:10</availability>
+		<model name='ST-46'>
+			<roles>civilian</roles>
+			<availability>IS:10,Periphery:10</availability>
+		</model>
+	</chassis>
 	<chassis name='Silverfin Coastal Cutter' unitType='Naval'>
 		<availability>LA:6</availability>
 		<model name='(Standard)'>
@@ -2247,9 +2332,12 @@
 		</model>
 	</chassis>
 	<chassis name='Star Lord JumpShip' unitType='Jumpship'>
-		<availability>SL:5,IS:3,RWR:2,MERC:2</availability>
+		<availability>SL:6,IS:2,MERC:1,Periphery:1</availability>
 		<model name='(2590)'>
 			<availability>General:8</availability>
+		</model>
+		<model name='(2590) (LF)'>
+			<availability>General:4+</availability>
 		</model>
 	</chassis>
 	<chassis name='Stinger' unitType='Mek'>
@@ -2272,10 +2360,6 @@
 	</chassis>
 	<chassis name='Stork Light Refueling Craft' unitType='Conventional Fighter'>
 		<availability>CC:4</availability>
-		<model name='(Standard)'>
-			<roles>support</roles>
-			<availability>General:6</availability>
-		</model>
 	</chassis>
 	<chassis name='Strike Falcon Attack VTOL' unitType='VTOL'>
 		<availability>CC:1</availability>
@@ -2369,6 +2453,17 @@
 		<model name='TR-A-6'>
 			<roles>fire_support</roles>
 			<availability>General:6</availability>
+		</model>
+	</chassis>
+	<chassis name='Torrent Heavy Bomber' unitType='Conventional Fighter'>
+		<availability>SL:5,IS:4,MERC:2,Periphery:2</availability>
+		<model name='(Original)'>
+			<roles>bomber</roles>
+			<availability>General:5</availability>
+		</model>
+		<model name='(Standard)'>
+			<roles>bomber</roles>
+			<availability>General:3</availability>
 		</model>
 	</chassis>
 	<chassis name='Tracker Surveillance' unitType='Warship'>
