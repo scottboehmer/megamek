@@ -88,8 +88,8 @@ Aerodyne
 
 <Nose Equipment>
 LRM 15:OMNI
-ISTargeting Computer:OMNI
 ISArtemisIV:OMNI
+ISTargeting Computer:OMNI
 </Nose Equipment>
 
 <Left Wing Equipment>
