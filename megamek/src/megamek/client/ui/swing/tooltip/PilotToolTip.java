@@ -33,7 +33,6 @@ import static megamek.client.ui.swing.tooltip.TipUtil.TABLE_END;
 import static megamek.client.ui.swing.tooltip.TipUtil.getOptionList;
 import static megamek.client.ui.swing.tooltip.TipUtil.scaledHTMLSpacer;
 import static megamek.client.ui.swing.util.UIUtil.guiScaledFontHTML;
-import static megamek.client.ui.swing.util.UIUtil.scaleForGUI;
 import static megamek.client.ui.swing.util.UIUtil.uiQuirksColor;
 
 public final class PilotToolTip {
@@ -69,8 +68,13 @@ public final class PilotToolTip {
         result.append(crewInfoCell(entity));
 
         result.append(TABLE_END);
+        result.append(scaledHTMLSpacer(3));
+        return result;
+    }
 
-        // The crew advantages and MD
+    /** The crew advantages and MD */
+    public static StringBuilder getCrewAdvs(Entity entity, boolean detailed) {
+        StringBuilder result = new StringBuilder();
         result.append(scaledHTMLSpacer(3));
         result.append(crewAdvs(entity, detailed));
         return result;
@@ -128,7 +132,7 @@ public final class PilotToolTip {
 
             try {
                 // Adjust the portrait size to the GUI scale and number of pilots
-                float imgSize = scaleForGUI(PORTRAIT_BASESIZE);
+                float imgSize = UIUtil.scaleForGUI(PORTRAIT_BASESIZE);
                 imgSize /= 0.2f * (crew.getSlotCount() - 1) + 1;
                 Image portrait = crew.getPortrait(i).getBaseImage().getScaledInstance(-1, (int) imgSize, Image.SCALE_SMOOTH);
                 // Write the scaled portrait to file

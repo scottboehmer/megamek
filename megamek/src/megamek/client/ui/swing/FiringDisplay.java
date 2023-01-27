@@ -17,16 +17,15 @@ package megamek.client.ui.swing;
 import megamek.client.event.BoardViewEvent;
 import megamek.client.ui.Messages;
 import megamek.client.ui.SharedUtility;
+import megamek.client.ui.swing.unitDisplay.WeaponPanel;
 import megamek.client.ui.swing.util.CommandAction;
 import megamek.client.ui.swing.util.KeyCommandBind;
 import megamek.client.ui.swing.util.MegaMekController;
-import megamek.client.ui.swing.util.TurnTimer;
 import megamek.client.ui.swing.widget.MegamekButton;
 import megamek.client.ui.swing.widget.SkinSpecification;
 import megamek.common.*;
 import megamek.common.actions.*;
 import megamek.common.enums.AimingMode;
-import megamek.common.enums.GamePhase;
 import megamek.common.event.GamePhaseChangeEvent;
 import megamek.common.event.GameTurnChangeEvent;
 import megamek.common.options.OptionsConstants;
@@ -34,7 +33,6 @@ import megamek.common.util.FiringSolution;
 import megamek.common.weapons.Weapon;
 import megamek.common.weapons.capitalweapons.CapitalMissileWeapon;
 import megamek.common.weapons.mortars.VehicularGrenadeLauncherWeapon;
-
 import org.apache.logging.log4j.LogManager;
 
 import javax.swing.*;
@@ -45,11 +43,6 @@ import java.util.*;
 
 public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener, ListSelectionListener {
     private static final long serialVersionUID = -5586388490027013723L;
-
-    /**
-     * timer that ends turn if time limit set in options is over
-     */
-    private TurnTimer tt;
 
     /**
      * This enumeration lists all of the possible ActionCommands that can be
@@ -78,6 +71,8 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
         FIRE_MORE("fireMore");
 
         String cmd;
+
+        private static final GUIPreferences GUIP = GUIPreferences.getInstance();
 
         /**
          * Priority that determines this buttons order
@@ -785,7 +780,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
             LogManager.getLogger().error("Tried to select non-existent entity " + en);
         }
 
-        if (GUIPreferences.getInstance().getBoolean("FiringSolutions")) {
+        if (GUIP.getBoolean("FiringSolutions")) {
             setFiringSolutions();
         } else {
             clientgui.getBoardView().clearFiringSolutionData();
@@ -800,7 +795,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
 
         Game game = clientgui.getClient().getGame();
         Player localPlayer = clientgui.getClient().getLocalPlayer();
-        if (!GUIPreferences.getInstance().getFiringSolutions()) {
+        if (!GUIP.getFiringSolutions()) {
             return;
         }
 
@@ -876,26 +871,23 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
                     .booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_CALLED_SHOTS));
             clientgui.getBoardView().select(null);
         }
-        // check if there should be a turn timer running
-        tt = TurnTimer.init(this, clientgui.getClient());
+
+        startTimer();
     }
 
     /**
      * Does end turn stuff.
      */
     protected void endMyTurn() {
-        //get rid of still running timer, if turn is concluded before time is up
-        if (tt != null) {
-            tt.stopTimer();
-            tt = null;
-        }
+        stopTimer();
+
         // end my turn, then.
         Game game = clientgui.getClient().getGame();
         Entity next = game.getNextEntity(game.getTurnIndex());
-        if ((game.getPhase() == GamePhase.FIRING)
-            && (next != null) && (ce() != null)
-            && (next.getOwnerId() != ce().getOwnerId())) {
-            clientgui.setUnitDisplayVisible(false);
+        if (game.getPhase().isFiring() && (next != null) && (ce() != null)
+                && (next.getOwnerId() != ce().getOwnerId())) {
+            clientgui.maybeShowUnitDisplay();
+
         }
         cen = Entity.NONE;
         target(null);
@@ -1129,13 +1121,13 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
      */
     @Override
     public void ready() {
-        if (attacks.isEmpty() && GUIPreferences.getInstance().getNagForNoAction()) {
+        if (attacks.isEmpty() && GUIP.getNagForNoAction()) {
             // confirm this action
             String title = Messages.getString("FiringDisplay.DontFireDialog.title");
             String body = Messages.getString("FiringDisplay.DontFireDialog.message");
             ConfirmDialog response = clientgui.doYesNoBotherDialog(title, body);
             if (!response.getShowAgain()) {
-                GUIPreferences.getInstance().setNagForNoAction(false);
+                GUIP.setNagForNoAction(false);
             }
 
             if (!response.getAnswer()) {
@@ -1144,8 +1136,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
         }
 
         // We need to nag for overheat on capital fighters
-        if ((ce() != null) && ce().isCapitalFighter()
-                && GUIPreferences.getInstance().getNagForOverheat()) {
+        if ((ce() != null) && ce().isCapitalFighter() && GUIP.getNagForOverheat()) {
             int totalheat = 0;
             for (EntityAction action : attacks) {
                 if (action instanceof WeaponAttackAction) {
@@ -1160,7 +1151,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
                 String body = Messages.getString("FiringDisplay.OverheatNag.message");
                 ConfirmDialog response = clientgui.doYesNoBotherDialog(title, body);
                 if (!response.getShowAgain()) {
-                    GUIPreferences.getInstance().setNagForOverheat(false);
+                    GUIP.setNagForOverheat(false);
                 }
 
                 if (!response.getAnswer()) {
@@ -1326,9 +1317,9 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
         switch (skillNames.get(input)) {
             case OptionsConstants.GUNNERY_BLOOD_STALKER:
                 // figure out when to clear Blood Stalker (when unit destroyed or flees or fly off no return)
-                ActivateBloodStalkerAction bloodStalkerAction = new ActivateBloodStalkerAction(ce().getId(), target.getTargetId());
+                ActivateBloodStalkerAction bloodStalkerAction = new ActivateBloodStalkerAction(ce().getId(), target.getId());
                 attacks.add(0, bloodStalkerAction);
-                ce().setBloodStalkerTarget(target.getTargetId());
+                ce().setBloodStalkerTarget(target.getId());
                 break;
         }
 
@@ -1361,7 +1352,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
 
         // create and queue a searchlight action
         SearchlightAttackAction saa = new SearchlightAttackAction(cen,
-                target.getTargetType(), target.getTargetId());
+                target.getTargetType(), target.getId());
         attacks.addElement(saa);
 
         // and add it into the game, temporarily
@@ -1519,7 +1510,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
         }
 
         // declare searchlight, if possible
-        if (GUIPreferences.getInstance().getAutoDeclareSearchlight() && ce().isUsingSearchlight()) {
+        if (GUIP.getAutoDeclareSearchlight() && ce().isUsingSearchlight()) {
             doSearchlight();
         }
 
@@ -1552,10 +1543,10 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
                     || (mounted.getType() instanceof CapitalMissileWeapon
                             && Compute.isGroundToGround(ce(), t)))) {
                 waa = new WeaponAttackAction(cen, t.getTargetType(),
-                        t.getTargetId(), weaponNum);
+                        t.getId(), weaponNum);
             } else {
                 waa = new ArtilleryAttackAction(cen, t.getTargetType(),
-                        t.getTargetId(), weaponNum, game);
+                        t.getId(), weaponNum, game);
             }
 
             // check for a bomb payload dialog
@@ -1619,8 +1610,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
         updateClearWeaponJam();
 
         // check; if there are no ready weapons, you're done.
-        if ((nextWeapon == -1)
-            && GUIPreferences.getInstance().getAutoEndFiring()) {
+        if ((nextWeapon == -1) && GUIP.getAutoEndFiring()) {
             ready();
             return;
         }
@@ -1711,7 +1701,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
         if (!clientgui.doYesNoDialog(title, body)) {
             return;
         }
-        attacks.addElement(new SpotAction(cen, target.getTargetId()));
+        attacks.addElement(new SpotAction(cen, target.getId()));
 
     }
 
@@ -1812,7 +1802,7 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
             if ((visibleTargets != null) && (target != null)) {
                 // Set last target ID, so next/prev target behaves correctly
                 for (int i = 0; i < visibleTargets.length; i++) {
-                    if (visibleTargets[i].getId() == target.getTargetId()) {
+                    if (visibleTargets[i].getId() == target.getId()) {
                         lastTargetID = i;
                         break;
                     }
@@ -1867,18 +1857,21 @@ public class FiringDisplay extends StatusBarPhaseDisplay implements ItemListener
                     toHit = WeaponAttackAction.toHit(game, cen, target,
                             weaponId, ash.getAimingAt(), ash.getAimingMode(),
                             false);
-                    clientgui.getUnitDisplay().wPan.wTargetR.setText(target.getDisplayName()
-                            + " (" + ash.getAimingLocation() + ")");
+
+                    String t =  String.format("<html><div WIDTH=%d>%s</div></html>", WeaponPanel.TARGET_DISPLAY_WIDTH, target.getDisplayName() + " (" + ash.getAimingLocation() + ")");
+                    clientgui.getUnitDisplay().wPan.wTargetR.setText(t);
                 } else {
                     toHit = WeaponAttackAction.toHit(game, cen, target, weaponId, Entity.LOC_NONE,
                             AimingMode.NONE, false);
-                    clientgui.getUnitDisplay().wPan.wTargetR.setText(target.getDisplayName());
+                    String t =  String.format("<html><div WIDTH=%d>%s</div></html>", WeaponPanel.TARGET_DISPLAY_WIDTH, target.getDisplayName());
+                    clientgui.getUnitDisplay().wPan.wTargetR.setText(t);
                 }
                 ash.setPartialCover(toHit.getCover());
             } else {
                 toHit = WeaponAttackAction.toHit(game, cen, target, weaponId,
                         Entity.LOC_NONE, AimingMode.NONE, false);
-                clientgui.getUnitDisplay().wPan.wTargetR.setText(target.getDisplayName());
+                String t =  String.format("<html><div WIDTH=%d>%s</div></html>", WeaponPanel.TARGET_DISPLAY_WIDTH, target.getDisplayName());
+                clientgui.getUnitDisplay().wPan.wTargetR.setText(t);
             }
             int effectiveDistance = Compute.effectiveDistance(game, ce(), target);
             clientgui.getUnitDisplay().wPan.wRangeR.setText("" + effectiveDistance);

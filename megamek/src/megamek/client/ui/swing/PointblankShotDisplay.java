@@ -16,6 +16,7 @@ package megamek.client.ui.swing;
 
 import megamek.client.event.BoardViewEvent;
 import megamek.client.ui.Messages;
+import megamek.client.ui.swing.unitDisplay.WeaponPanel;
 import megamek.client.ui.swing.util.CommandAction;
 import megamek.client.ui.swing.util.KeyCommandBind;
 import megamek.client.ui.swing.util.MegaMekController;
@@ -478,10 +479,9 @@ public class PointblankShotDisplay extends FiringDisplay implements ItemListener
         // end my turn, then.
         Game game = clientgui.getClient().getGame();
         Entity next = game.getNextEntity(game.getTurnIndex());
-        if ((game.getPhase() == GamePhase.FIRING)
-            && (next != null) && (ce() != null)
-            && (next.getOwnerId() != ce().getOwnerId())) {
-            clientgui.setUnitDisplayVisible(false);
+        if (game.getPhase().isFiring() && (next != null) && (ce() != null)
+                && (next.getOwnerId() != ce().getOwnerId())) {
+            clientgui.maybeShowUnitDisplay();
         }
         cen = Entity.NONE;
         target(null);
@@ -685,10 +685,10 @@ public class PointblankShotDisplay extends FiringDisplay implements ItemListener
                 || (mounted.getType() instanceof CapitalMissileWeapon
                         && Compute.isGroundToGround(ce(), target)))) {
             waa = new WeaponAttackAction(cen, target.getTargetType(),
-                    target.getTargetId(), weaponNum);
+                    target.getId(), weaponNum);
         } else {
             waa = new ArtilleryAttackAction(cen, target.getTargetType(),
-                    target.getTargetId(), weaponNum, game);
+                    target.getId(), weaponNum, game);
         }
 
         if ((mounted.getLinked() != null)
@@ -810,20 +810,24 @@ public class PointblankShotDisplay extends FiringDisplay implements ItemListener
                     toHit = WeaponAttackAction.toHit(game, cen, target,
                             weaponId, ash.getAimingAt(), ash.getAimingMode(),
                             false, false, null, null, false, true);
-                    clientgui.getUnitDisplay().wPan.wTargetR.setText(target.getDisplayName() + " ("
-                            + ash.getAimingLocation() + ")");
+                    String t =  String.format("<html><div WIDTH=%d>%s</div></html>", WeaponPanel.TARGET_DISPLAY_WIDTH, target.getDisplayName() + " (" + ash.getAimingLocation() + ")");
+                    clientgui.getUnitDisplay().wPan.wTargetR.setText(t);
                 } else {
                     toHit = WeaponAttackAction.toHit(game, cen, target, weaponId, Entity.LOC_NONE,
                             AimingMode.NONE, false, false,
                             null, null, false, true);
-                    clientgui.getUnitDisplay().wPan.wTargetR.setText(target.getDisplayName());
+
+                    String t =  String.format("<html><div WIDTH=%d>%s</div></html>", WeaponPanel.TARGET_DISPLAY_WIDTH, target.getDisplayName());
+                    clientgui.getUnitDisplay().wPan.wTargetR.setText(t);
                 }
                 ash.setPartialCover(toHit.getCover());
             } else {
                 toHit = WeaponAttackAction.toHit(game, cen, target, weaponId, Entity.LOC_NONE,
                         AimingMode.NONE, false, false, null,
                         null, false, true);
-                clientgui.getUnitDisplay().wPan.wTargetR.setText(target.getDisplayName());
+
+                String t =  String.format("<html><div WIDTH=%d>%s</div></html>", WeaponPanel.TARGET_DISPLAY_WIDTH, target.getDisplayName());
+                clientgui.getUnitDisplay().wPan.wTargetR.setText(t);
             }
             int effectiveDistance = Compute.effectiveDistance(game, ce(), target);
             clientgui.getUnitDisplay().wPan.wRangeR.setText("" + effectiveDistance);
