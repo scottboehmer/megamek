@@ -103,6 +103,8 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     public static final long ETYPE_TRIPOD_MECH = 1L << 26;
     public static final long ETYPE_QUADVEE = 1L << 27;
 
+    public static final long ETYPE_AEROSPACEFIGHTER = 1L << 28;
+
     public static final int NONE = -1;
     public static final int BLOOD_STALKER_TARGET_CLEARED = -2;
 
@@ -650,7 +652,9 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     private boolean canon;
 
     private int assaultDropInProgress = 0;
-    private boolean climbMode = GUIPreferences.getInstance().getBoolean(GUIPreferences.ADVANCED_MOVE_DEFAULT_CLIMB_MODE);
+
+    private static final GUIPreferences GUIP = GUIPreferences.getInstance();
+    private boolean climbMode = GUIP.getMoveDefaultClimbMode();
 
     protected int lastTarget = Entity.NONE;
     protected String lastTargetDisplayName = "";
@@ -825,7 +829,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         impThisTurn = 0;
         impLastTurn = 0;
 
-        weaponSortOrder = GUIPreferences.getInstance().getDefaultWeaponSortOrder();
+        weaponSortOrder = GUIP.getDefaultWeaponSortOrder();
 
         // set a random UUID for external ID, this will help us sort enemy salvage and prisoners in MHQ
         // and should have no effect on MM (but need to make sure it doesn't screw up MekWars)
@@ -2561,6 +2565,25 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             }
         }
         return facing;
+    }
+
+    public String getFacingName(int facing) {
+        switch (facing) {
+            case 0:
+                return Messages.getString("Entity.facing.north");
+            case 1:
+                return Messages.getString("Entity.facing.northeast");
+            case 2:
+                return Messages.getString("Entity.facing.southeast");
+            case 3:
+                return Messages.getString("Entity.facing.south");
+            case 4:
+                return Messages.getString("Entity.facing.southwest");
+            case 5:
+                return Messages.getString("Entity.facing.northwest");
+            default:
+                return "";
+        }
     }
 
     /**
@@ -4384,15 +4407,13 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     }
 
     public boolean hasMisc(BigInteger flag) {
-        for (Mounted m : miscList) {
-            if ((m.getType() instanceof MiscType)) {
-                MiscType type = (MiscType) m.getType();
-                if (type.hasFlag(flag)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return miscList.stream().anyMatch(misc -> misc.getType().hasFlag(flag));
+    }
+
+    public List<Mounted> getMiscEquipment(BigInteger flag) {
+     return  miscList.stream()
+             .filter(item -> item.getType().hasFlag(flag))
+             .collect(Collectors.toList());
     }
 
     /**
@@ -6397,13 +6418,13 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             setTsempEffect(MMConstants.TSEMP_EFFECT_NONE);
         }
 
-        // TSEMPs can fire every other round, so if we didn't fire last
-        //  round and the TSEMP isn't one-shot, reset it's fired state
+        // Standard TSEMPs can fire every other round, so if we didn't fire last
+        //  round and the TSEMP isn't one-shot or repeating, reset it's fired state
         if (hasFiredTsemp()) {
             for (Mounted m : getWeaponList()) {
                 if (m.getType().hasFlag(WeaponType.F_TSEMP)
                         && !m.getType().hasFlag(WeaponType.F_ONESHOT)) {
-                    if (m.isTSEMPDowntime()) {
+                    if (m.getType().hasFlag(WeaponType.F_REPEATING) || m.isTSEMPDowntime()) {
                         m.setFired(false);
                         m.setTSEMPDowntime(false);
                     } else if (m.isFired()) {
@@ -6431,7 +6452,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
 
         setSelfDestructedThisTurn(false);
 
-        setClimbMode(GUIPreferences.getInstance().getBoolean(GUIPreferences.ADVANCED_MOVE_DEFAULT_CLIMB_MODE));
+        setClimbMode(GUIP.getMoveDefaultClimbMode());
         
         setTurnInterrupted(false);
     }
@@ -8156,17 +8177,37 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         throw new IllegalArgumentException(getShortName() + " can not load " + unit.getShortName());
     }
 
+    /**
+     * Load the given unit.
+     *
+     * @param unit the Entity to be loaded.
+     * @param checkElev When true, only allows the load if both units are at the same elevation
+     * @throws IllegalArgumentException If the unit can't be loaded
+     */
     public void load(Entity unit, boolean checkElev) {
-        this.load(unit, checkElev, -1);
+        load(unit, checkElev, -1);
     }
 
+    /**
+     * Load the given unit.
+     *
+     * @param unit the Entity to be loaded.
+     * @param bayNumber The bay to load into
+     * @throws IllegalArgumentException If the unit can't be loaded
+     */
     public void load(Entity unit, int bayNumber) {
-        this.load(unit, true, bayNumber);
+        load(unit, true, bayNumber);
     }
 
+    /**
+     * Load the given unit, checking if the elevation of both units is the same.
+     *
+     * @param unit the Entity to be loaded.
+     * @throws IllegalArgumentException If the unit can't be loaded
+     */
     @Override
     public void load(Entity unit) {
-        this.load(unit, true, -1);
+        load(unit, true, -1);
     }
 
     /**
@@ -12954,62 +12995,6 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         return Compute.ARC_REAR;
     }
 
-    /**
-     * returns a description to the current sensing range of the active sensor
-     */
-    public String getSensorDesc() {
-        if (null == getActiveSensor()) {
-            return "none";
-        }
-        int bracket = Compute.getSensorBracket(getSensorCheck());
-        if (isSpaceborne()) {
-            bracket = Compute.getSensorBracket(7);
-        }
-        int range = getActiveSensor().getRangeByBracket();
-        int groundRange = 0;
-        if (getActiveSensor().isBAP()) {
-            groundRange = 2;
-        } else {
-            groundRange = 1;
-        }
-
-        //ASF sensors change range when in space, so we do that here
-        if (isSpaceborne()) {
-            if (getActiveSensor().getType() == Sensor.TYPE_AERO_SENSOR) {
-                range = Sensor.ASF_RADAR_MAX_RANGE;
-            }
-
-            //If Aero/Spacecraft sensors are destroyed while in space, the range is 0.
-            if (isAeroSensorDestroyed()) {
-                range = 0;
-            }
-        }
-
-        //Dropships using radar in an atmosphere need a range that's a bit more sensible
-        if (hasETypeFlag(Entity.ETYPE_DROPSHIP) && !isSpaceborne()) {
-            if (getActiveSensor().getType() == Sensor.TYPE_SPACECRAFT_RADAR) {
-                range = Sensor.LC_RADAR_GROUND_RANGE;
-            }
-        }
-
-        int maxSensorRange = bracket * range;
-        int minSensorRange = Math.max((bracket - 1) * range, 0);
-        int maxGroundSensorRange = bracket * groundRange;
-        int minGroundSensorRange = Math.max((maxGroundSensorRange - 1), 0);
-        if (game.getOptions().booleanOption(OptionsConstants.ADVANCED_INCLUSIVE_SENSOR_RANGE)) {
-            minSensorRange = 0;
-            minGroundSensorRange = 0;
-        }
-
-        if (isAirborne() && game.getBoard().onGround()) {
-            return getActiveSensor().getDisplayName() + " (" + minSensorRange + "-"
-                    + maxSensorRange + ")" + " {" + Messages.getString("Entity.sensor_range_vs_ground_target")
-                    + " (" + minGroundSensorRange + "-" + maxGroundSensorRange + ")}";
-        }
-        return getActiveSensor().getDisplayName() + " (" + minSensorRange + "-"
-               + maxSensorRange + ")";
-    }
-
     @Override
     public boolean isAirborne() {
         return (getAltitude() > 0)
@@ -13061,7 +13046,13 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
 
     @Override
     public int getAltitude() {
-        return altitude;
+        if (isSpaceborne()) {
+            // This happens so often that reporting it blows up the log; ideally it shouldn't happen at all in space
+            // LogManager.getLogger().warn("Altitude retrieved for a spaceborne unit!");
+            return 0;
+        } else {
+            return altitude;
+        }
     }
 
     public void setAltitude(int a) {
@@ -15585,5 +15576,10 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     /** @return True for unit types that have an automatic external searchlight (Meks and Tanks). */
     public boolean getsAutoExternalSearchlight() {
         return false;
+    }
+
+    @Override
+    public int getStrength() {
+        return calculateBattleValue();
     }
 }

@@ -46,7 +46,32 @@ import static megamek.client.ui.swing.util.UIUtil.*;
 class LobbyMekCellFormatter {
 
     private static final GUIPreferences GUIP = GUIPreferences.getInstance();
-    
+
+    private LobbyMekCellFormatter() {
+    }
+
+    static String unitTableEntry(InGameObject unit, ChatLounge lobby, boolean forceView, boolean compactView) {
+        if (unit instanceof Entity) {
+            return compactView ? formatUnitCompact((Entity) unit, lobby, forceView) : formatUnitFull((Entity) unit, lobby, forceView);
+        } else if (unit instanceof AlphaStrikeElement) {
+            return MekTableASUnitEntry.fullEntry((AlphaStrikeElement) unit, lobby, forceView, compactView);
+            // TODO : Provide a suitable lobby table entry
+        } else {
+            return "This type of object has currently no table entry.";
+        }
+    }
+
+    static String pilotTableEntry(InGameObject unit, boolean compactView, boolean hide, boolean rpgSkills) {
+        if (unit instanceof Entity) {
+            return compactView ? formatPilotCompact((Entity) unit, hide, rpgSkills) : formatPilotFull((Entity) unit, hide);
+        } else if (unit instanceof AlphaStrikeElement) {
+            // TODO : Provide a suitable lobby table entry
+            return "AlphaStrikeElement " + ((AlphaStrikeElement) unit).getName();
+        } else {
+            return "This type of object has currently no table entry.";
+        }
+    }
+
     /** 
      * Creates and returns the display content of the Unit column for the given entity and
      * for the non-compact display mode.
@@ -138,19 +163,27 @@ class LobbyMekCellFormatter {
         result.append("</FONT>");
 
         // Alpha Strike Unit Role
-        if (ASConverter.canConvert(entity)) {
-            FlexibleCalculationReport report = new FlexibleCalculationReport();
-            AlphaStrikeElement element = ASConverter.convert(entity, false, report);
-            result.append(DOT_SPACER);
-            result.append(element.getRole());
-        }
+        String unitRole = UnitRoleHandler.getRoleFor(entity).toString();
+        result.append(DOT_SPACER);
+        result.append(unitRole);
         
         // Invalid Design
         if (!forceView) {
             if (!entity.isDesignValid()) {
                 result.append(DOT_SPACER);
                 result.append(guiScaledFontHTML(GUIP.getWarningColor()));
-                result.append("\u26D4 </FONT>").append(Messages.getString("ChatLounge.invalidDesign"));
+                result.append("\u26D4 ").append(Messages.getString("ChatLounge.invalidDesign"));
+                result.append("</FONT>");
+            }
+        }
+
+        // Shutdown
+        if (!forceView) {
+            if (entity.isShutDown()) {
+                result.append(DOT_SPACER);
+                result.append(guiScaledFontHTML(GUIP.getWarningColor()));
+                result.append("\u23FC ").append(Messages.getString("ChatLounge.shutdown"));
+                result.append("</FONT>");
             }
         }
         

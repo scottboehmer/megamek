@@ -145,8 +145,8 @@ public class Game extends AbstractGame implements Serializable {
     private List<SmokeCloud> smokeCloudList = new CopyOnWriteArrayList<>();
 
     private transient Vector<GameListener> gameListeners = new Vector<>();
-    
-    /** 
+
+    /**
      * Stores princess behaviors for game factions. It does not indicate that a faction is currently
      * played by a bot, only that the most recent bot connected as that faction used these settings.
      * Used to add the settings to savegames and allow restoring bots to their previous settings.
@@ -409,7 +409,7 @@ public class Game extends AbstractGame implements Serializable {
             boolean db = getOptions().booleanOption(OptionsConstants.ADVANCED_DOUBLE_BLIND);
             player.setSingleBlind(sbb && db);
         }
-      
+
         players.put(id, player);
         setupTeams();
         updatePlayer(player);
@@ -539,7 +539,7 @@ public class Game extends AbstractGame implements Serializable {
                     if (entity.getPassedThrough().contains(
                             otherEntity.getPosition())) {
                         ents.add(otherEntity);
-                    }                
+                    }
                 } else {
                     ents.add(otherEntity);
                 }
@@ -1030,7 +1030,7 @@ public class Game extends AbstractGame implements Serializable {
                 wrecks.addElement(entity);
             }
         }
-        
+
         return wrecks.elements();
     }
 
@@ -1066,20 +1066,20 @@ public class Game extends AbstractGame implements Serializable {
 
         return smithereens.elements();
     }
-    
+
     /**
      * Returns an enumeration of "carcass" entities, i.e., vehicles with dead
      * crews that are still on the map.
      */
     public Enumeration<Entity> getCarcassEntities() {
         Vector<Entity> carcasses = new Vector<>();
-        
+
         for (Entity entity : inGameTWEntities()) {
             if (entity.isCarcass()) {
                 carcasses.addElement(entity);
             }
         }
-        
+
         return carcasses.elements();
     }
 
@@ -1480,14 +1480,14 @@ public class Game extends AbstractGame implements Serializable {
         if (posEntities != null) {
             for (Integer eId : posEntities) {
                 Entity e = getEntity(eId);
-                
+
                 // if the entity with the given ID doesn't exist, we will update the lookup table
                 // and move on
                 if (e == null) {
                     posEntities.remove(eId);
                     continue;
                 }
-                
+
                 if (e.isTargetable() || ignore) {
                     vector.add(e);
 
@@ -1501,7 +1501,7 @@ public class Game extends AbstractGame implements Serializable {
         }
         return Collections.unmodifiableList(vector);
     }
-    
+
     /**
      * Convenience function that gets a list of all off-board enemy entities.
      * @param player
@@ -1514,7 +1514,7 @@ public class Game extends AbstractGame implements Serializable {
                 vector.add(e);
             }
         }
-        
+
         return Collections.unmodifiableList(vector);
     }
 
@@ -1538,7 +1538,7 @@ public class Game extends AbstractGame implements Serializable {
 
         return vector;
     }
-    
+
     /**
      * Determine if the given set of coordinates has a gun emplacement on the roof of a building.
      * @param c The coordinates to check
@@ -1548,15 +1548,15 @@ public class Game extends AbstractGame implements Serializable {
         if (building == null) {
             return false;
         }
-        
+
         Hex hex = getBoard().getHex(c);
-        
+
         for (Entity entity : getEntitiesVector(c, true)) {
             if (entity.hasETypeFlag(Entity.ETYPE_GUN_EMPLACEMENT) && entity.getElevation() == hex.ceiling()) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -1817,6 +1817,42 @@ public class Game extends AbstractGame implements Serializable {
     }
 
     /**
+     * @param turn the current game turn, which may be null
+     * @return the number of the first hidden entity that is valid for the specified turn
+     */
+    public int getFirstHiddenEntityNum(final @Nullable GameTurn turn) {
+        // Reviewers: Not sure if this is where to add filtering (this is hoe deployment does it)
+        // or if the right way is to create a subclass of GameTurn.EntityClassTurn that overrides isValidEntity
+        // the latter seems more correct, but I see no other examples  of that
+
+        // Repeat the logic from getFirstEntityNum.
+        if (turn == null) {
+            return -1;
+        }
+        for (Entity entity : inGameTWEntities()) {
+            if ((!entity.isDone()) && turn.isValidEntity(entity, this) && entity.isHidden()) {
+                return entity.getId();
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * @return the number of the next hidden entity that is valid for the specified turn
+     */
+    public int getNextHiddenEntityNum(GameTurn turn, int start) {
+        if (start >= 0) {
+            for (int i = start; i < inGameTWEntities().size(); i++) {
+                final Entity entity = inGameTWEntities().get(i);
+                if ((!entity.isDone()) && turn.isValidEntity(entity, this) && entity.isHidden()) {
+                    return entity.getId();
+                }
+            }
+        }
+        return getFirstDeployableEntityNum(turn);
+    }
+
+    /**
      * Get the entities for the player.
      *
      * @param player - the <code>Player</code> whose entities are required.
@@ -1851,6 +1887,25 @@ public class Game extends AbstractGame implements Serializable {
             }
             if (player.equals(entity.getOwner())) {
                 output.add(entity.getId());
+            }
+        }
+        return output;
+    }
+
+    /**
+     * Get the entities for the player.
+     *
+     * @param player - the <code>Player</code> whose entities are required.
+     * @return a <code>Vector</code> of <code>Entity that have retreaded</code>s.
+     */
+    public ArrayList<Entity> getPlayerRetreatedEntities(Player player) {
+        ArrayList<Entity> output = new ArrayList<>();
+        for (Entity entity : vOutOfGame) {
+            if (player.equals(entity.getOwner()) &&
+                    ((entity.getRemovalCondition() == IEntityRemovalConditions.REMOVE_IN_RETREAT)
+                    || (entity.getRemovalCondition() == IEntityRemovalConditions.REMOVE_CAPTURED)
+                    || (entity.getRemovalCondition() == IEntityRemovalConditions.REMOVE_PUSHED))) {
+                output.add(entity);
             }
         }
         return output;
@@ -2107,7 +2162,7 @@ public class Game extends AbstractGame implements Serializable {
      */
     public int removeSpecificEntityTurnsFor(Entity entity) {
         List<GameTurn> turnsToRemove = new ArrayList<>();
-        
+
         for (GameTurn turn : turnVector) {
             if (turn instanceof SpecificEntityTurn) {
                 int turnOwner = ((SpecificEntityTurn) turn).getEntityNum();
@@ -2215,7 +2270,7 @@ public class Game extends AbstractGame implements Serializable {
         initiativeRerollRequests.removeAllElements();
 
     }
-    
+
     public void handleInitiativeCompensation() {
         if (getOptions().booleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION)) {
             TurnOrdered.resetInitiativeCompensation(teams, getOptions().booleanOption(OptionsConstants.INIT_INITIATIVE_STREAK_COMPENSATION));
@@ -2977,7 +3032,7 @@ public class Game extends AbstractGame implements Serializable {
 
     /**
      * Get a set of Coords illuminated by searchlights.
-     * 
+     *
      * Note: coords could be illuminated by other sources as well, it's likely
      * that IlluminationLevel::isPositionIlluminated is desired unless the searchlighted hex
      * set is being sent to the client or server.
@@ -3021,10 +3076,7 @@ public class Game extends AbstractGame implements Serializable {
         return rv;
     }
 
-    /**
-     * Age the flare list and remove any which have burnt out Artillery flares
-     * drift with wind. (called at end of turn)
-     */
+    /** Ages all flares, drifts them with the wind and removes any which have burnt out or drifted off the map. */
     public Vector<Report> ageFlares() {
         Vector<Report> reports = new Vector<>();
         Report r;
@@ -3034,51 +3086,42 @@ public class Game extends AbstractGame implements Serializable {
             r.add(flare.position.getBoardNum());
             r.newlines = 0;
             reports.addElement(r);
-            if ((flare.flags & Flare.F_IGNITED) != 0) {
+            boolean notDriftedOffMap = true;
+            if (flare.isIgnited()) {
                 flare.turnsToBurn--;
-                if ((flare.flags & Flare.F_DRIFTING) != 0) {
-                    int dir = planetaryConditions.getWindDirection();
+                if (flare.isDrifting()) {
                     int str = planetaryConditions.getWindStrength();
-
-                    // strength 1 and 2: drift 1 hex
-                    // strength 3: drift 2 hexes
-                    // strength 4: drift 3 hexes
-                    // for each above strength 4 (storm), drift one more
                     if (str > 0) {
-                        flare.position = flare.position.translated(dir);
-                        if (str > 2) {
-                            flare.position = flare.position.translated(dir);
+                        int dir = planetaryConditions.getWindDirection();
+                        flare.position = flare.position.translated(dir, (str > 1) ? (str - 1) : str);
+                        if (getBoard().contains(flare.position)) {
+                            r = new Report(5236);
+                            r.add(flare.position.getBoardNum());
+                            r.newlines = 0;
+                            reports.addElement(r);
+                        } else {
+                            reports.addElement(new Report(5240));
+                            flares.removeElementAt(i);
+                            notDriftedOffMap = false;
                         }
-                        if (str > 3) {
-                            flare.position = flare.position.translated(dir);
-                        }
-                        if (str > 4) {
-                            flare.position = flare.position.translated(dir);
-                        }
-                        if (str > 5) {
-                            flare.position = flare.position.translated(dir);
-                        }
-                        r = new Report(5236);
-                        r.add(flare.position.getBoardNum());
-                        r.newlines = 0;
-                        reports.addElement(r);
                     }
                 }
             } else {
                 r = new Report(5237);
                 r.newlines = 0;
                 reports.addElement(r);
-                flare.flags |= Flare.F_IGNITED;
+                flare.ignite();
             }
-            if (flare.turnsToBurn <= 0) {
-                r = new Report(5238);
-                reports.addElement(r);
-                flares.removeElementAt(i);
-            } else {
-                r = new Report(5239);
-                r.add(flare.turnsToBurn);
-                reports.addElement(r);
-                flares.setElementAt(flare, i);
+            if (notDriftedOffMap) {
+                if (flare.turnsToBurn <= 0) {
+                    reports.addElement(new Report(5238));
+                    flares.removeElementAt(i);
+                } else {
+                    r = new Report(5239);
+                    r.add(flare.turnsToBurn);
+                    reports.addElement(r);
+                    flares.setElementAt(flare, i);
+                }
             }
         }
         processGameEvent(new GameBoardChangeEvent(this));
@@ -3212,11 +3255,19 @@ public class Game extends AbstractGame implements Serializable {
     public List<SmokeCloud> getSmokeCloudList() {
         return smokeCloudList;
     }
-    
+
     public void removeSmokeClouds(List<SmokeCloud> cloudsToRemove) {
         for (SmokeCloud cloud : cloudsToRemove) {
             smokeCloudList.remove(cloud);
         }
+    }
+
+    public void removeEmptySmokeClouds() {
+        smokeCloudList.removeIf(SmokeCloud::hasNoHexes);
+    }
+
+    public void removeCompletelyDissipatedSmokeClouds() {
+        smokeCloudList.removeIf(SmokeCloud::isCompletelyDissipated);
     }
 
     /**
@@ -3281,7 +3332,7 @@ public class Game extends AbstractGame implements Serializable {
         }
         return count;
     }
-    
+
     /**
      * A check to ensure that the position cache is properly updated. This
      * is only used for debugging purposes, and will cause a number of things
@@ -3361,11 +3412,11 @@ public class Game extends AbstractGame implements Serializable {
         forces = fs;
         forces.setGame(this);
     }
-    
+
     public Map<String, BehaviorSettings> getBotSettings() {
         return botSettings;
     }
-    
+
     public void setBotSettings(Map<String, BehaviorSettings> botSettings) {
         this.botSettings = botSettings;
     }
@@ -3388,8 +3439,6 @@ public class Game extends AbstractGame implements Serializable {
 
     public void setMapSettings(MapSettings mapSettings) {
         this.mapSettings = mapSettings;
-        // clean up linux/macOS/Windows paths
-        this.mapSettings.adjustPathSeparator();
     }
 
     /** @return The TW Units (Entity) currently in the game. */

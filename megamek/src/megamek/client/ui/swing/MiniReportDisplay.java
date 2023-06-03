@@ -29,6 +29,7 @@ import megamek.common.event.GamePhaseChangeEvent;
 import megamek.common.preference.PreferenceManager;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.text.Document;
@@ -89,6 +90,7 @@ public class MiniReportDisplay extends JPanel implements ActionListener, Hyperli
 
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.X_AXIS));
+        p.setBorder(new EmptyBorder(2,2,15,2));
         p.add(comboPlayer);
         p.add(butPlayerSearchUp);
         p.add(butPlayerSearchDown);
@@ -329,6 +331,9 @@ public class MiniReportDisplay extends JPanel implements ActionListener, Hyperli
                 if (ent != null) {
                     currentClientgui.getUnitDisplay().displayEntity(ent);
                     GUIP.setUnitDisplayEnabled(true);
+                    if (ent.isDeployed() && !ent.isOffBoard() && ent.getPosition() != null) {
+                        currentClientgui.getBoardView().centerOnHex(ent.getPosition());
+                    }
                 }
             } else if (evtDesc.startsWith(Report.TOOLTIP_LINK)) {
                 String desc = evtDesc.substring(Report.TOOLTIP_LINK.length());

@@ -17,11 +17,11 @@ Planetlifter Support Aircraft
 </Name>
 
 <Model>
-(Standard)
+
 </Model>
 
 <mul id:>
-8175
+2545
 </mul id:>
 
 <year>
@@ -95,6 +95,7 @@ ISTankCockpitCommandConsole
 </Right Wing Equipment>
 
 <Aft Equipment>
+IS Vehicular Stealth
 IS Vehicular Stealth
 IS Vehicular Stealth
 IS Vehicular Stealth

@@ -24,7 +24,6 @@ import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
-
 import megamek.common.Coords;
 
 /**
@@ -50,6 +49,7 @@ public class SerializationHelper {
                 megamek.common.Coords.class,
                 megamek.common.CompositeTechLevel.DateRange.class,
                 megamek.common.CriticalSlot.class,
+                megamek.common.EquipmentMode.class,
                 megamek.common.Game.class,
                 megamek.common.Hex.class,
                 megamek.common.Minefield.class,
@@ -65,6 +65,9 @@ public class SerializationHelper {
                 megamek.common.Report.class,
                 megamek.common.force.Force.class,
                 megamek.server.SmokeCloud.class,
+                megamek.common.EntityFluff.class,
+                megamek.common.NarcPod.class,
+                megamek.common.INarcPod.class
         });
         xStream.allowTypeHierarchy(megamek.common.BTObject.class);
         xStream.allowTypeHierarchy(megamek.common.Building.class);

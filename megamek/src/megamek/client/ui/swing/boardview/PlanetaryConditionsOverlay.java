@@ -18,6 +18,7 @@ import megamek.client.ui.Messages;
 import megamek.client.ui.swing.ClientGUI;
 import megamek.client.ui.swing.GUIPreferences;
 import megamek.client.ui.swing.util.KeyCommandBind;
+import megamek.client.ui.swing.util.UIUtil;
 import megamek.common.Game;
 import megamek.common.KeyBindParser;
 import megamek.common.PlanetaryConditions;
@@ -31,7 +32,6 @@ import megamek.common.preference.PreferenceChangeEvent;
 import megamek.common.util.ImageUtil;
 import org.apache.logging.log4j.LogManager;
 
-import java.awt.event.KeyEvent;
 import java.awt.font.TextAttribute;
 import java.text.AttributedString;
 import java.text.MessageFormat;
@@ -100,7 +100,7 @@ public class PlanetaryConditionsOverlay implements IDisplayable, IPreferenceChan
      * for the current game situation. 
      */
     public PlanetaryConditionsOverlay(Game game, ClientGUI cg) {
-        visible = GUIP.getBoolean(GUIPreferences.SHOW_PLANETARYCONDITIONS_OVERLAY);
+        visible = GUIP.getShowPlanetaryConditionsOverlay();
         currentGame = game;
         currentPhase = game.getPhase();
         game.addGameListener(gameListener);
@@ -135,11 +135,11 @@ public class PlanetaryConditionsOverlay implements IDisplayable, IPreferenceChan
 
             displayImage = ImageUtil.createAcceleratedImage(r.width, r.height);
             Graphics intGraph = displayImage.getGraphics();
-            GUIPreferences.AntiAliasifSet(intGraph);
+            UIUtil.setHighQualityRendering(intGraph);
 
             // draw a semi-transparent background rectangle
             Color colorBG = GUIP.getPlanetaryConditionsColorBackground();
-            intGraph.setColor(new Color(colorBG.getRed(), colorBG.getGreen(), colorBG.getBlue(), 200));
+            intGraph.setColor(new Color(colorBG.getRed(), colorBG.getGreen(), colorBG.getBlue(), GUIP.getPlanetaryConditionsBackgroundTransparency()));
             intGraph.fillRoundRect(0, 0, r.width, r.height, PADDING_X, PADDING_X);
             
             // The coordinates to write the texts to
@@ -196,8 +196,9 @@ public class PlanetaryConditionsOverlay implements IDisplayable, IPreferenceChan
         String toggleKey = KeyCommandBind.getDesc(KeyCommandBind.PLANETARY_CONDITIONS);
 
         String tmpStr = "";
-        Boolean showHeading = GUIP.getAdvancedPlanetaryConditionsShowHeader();
-        tmpStr = (showHeading ? String.format("#%02X%02X%02X", colorTitle.getRed(), colorTitle.getGreen(), colorTitle.getBlue()) + MessageFormat.format(MSG_HEADING, toggleKey) : "");
+        Boolean showHeading = GUIP.getPlanetaryConditionsShowHeader();
+        String titleColor = String.format("#%02X%02X%02X", colorTitle.getRed(), colorTitle.getGreen(), colorTitle.getBlue());
+        tmpStr = (showHeading ? titleColor + MessageFormat.format(MSG_HEADING, toggleKey) : "");
 
         if (tmpStr.length()  > 0) {
             result.add(tmpStr);
@@ -215,11 +216,11 @@ public class PlanetaryConditionsOverlay implements IDisplayable, IPreferenceChan
                 tempColor = String.format("#%02X%02X%02X", colorCold.getRed(), colorCold.getGreen(), colorCold.getBlue());
             }
 
-            boolean showDefaultConditions = GUIP.getAdvancedPlanetaryConditionsShowDefaults();
+            boolean showDefaultConditions = GUIP.getPlanetaryConditionsShowDefaults();
 
-            Boolean showLabel = GUIP.getAdvancedPlanetaryConditionsShowLabels();
-            Boolean showValue = GUIP.getAdvancedPlanetaryConditionsShowValues();
-            Boolean showIndicator = GUIP.getAdvancedPlanetaryConditionsShowIndicators();
+            Boolean showLabel = GUIP.getPlanetaryConditionsShowLabels();
+            Boolean showValue = GUIP.getPlanetaryConditionsShowValues();
+            Boolean showIndicator = GUIP.getPlanetaryConditionsShowIndicators();
 
 
             if (((showDefaultConditions) || ((!showDefaultConditions) && (currentGame.getPlanetaryConditions().isExtremeTemperature())))) {
@@ -334,7 +335,7 @@ public class PlanetaryConditionsOverlay implements IDisplayable, IPreferenceChan
      * */
     public void setVisible(boolean vis) {
         visible = vis;
-        GUIP.setValue(GUIPreferences.SHOW_PLANETARYCONDITIONS_OVERLAY, vis);
+
         if (vis) {
             fadingIn = true;
             fadingOut = false;

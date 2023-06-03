@@ -16,6 +16,7 @@ package megamek.client.ui.swing.boardview;
 import megamek.MMConstants;
 import megamek.client.ui.Messages;
 import megamek.client.ui.swing.GUIPreferences;
+import megamek.client.ui.swing.util.UIUtil;
 import megamek.common.*;
 import megamek.common.MovePath.MoveStepType;
 
@@ -76,7 +77,7 @@ class StepSprite extends Sprite {
         Graphics graph = tempImage.getGraphics();
         Graphics2D g2D = (Graphics2D) graph;
 
-        GUIPreferences.AntiAliasifSet(graph);
+        UIUtil.setHighQualityRendering(graph);
 
         // fill with key color
         graph.setColor(new Color(0, 0, 0, 0));
@@ -376,9 +377,9 @@ class StepSprite extends Sprite {
     }
 
     private Font getMovementFont() {
-        String fontName = GUIPreferences.getInstance().getString(GUIPreferences.ADVANCED_MOVE_FONT_TYPE);
-        int fontStyle = GUIPreferences.getInstance().getInt(GUIPreferences.ADVANCED_MOVE_FONT_STYLE);
-        int fontSize = GUIPreferences.getInstance().getInt(GUIPreferences.ADVANCED_MOVE_FONT_SIZE);
+        String fontName = GUIP.getMoveFontType();
+        int fontStyle = GUIP.getMoveFontStyle();
+        int fontSize = GUIP.getMoveFontSize();
         return new Font(fontName, fontStyle, fontSize);
     }
 

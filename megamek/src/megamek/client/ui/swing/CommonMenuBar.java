@@ -19,6 +19,8 @@
  */
 package megamek.client.ui.swing;
 
+import megamek.MMConstants;
+import megamek.MegaMek;
 import megamek.client.Client;
 import megamek.client.ui.Messages;
 import megamek.client.ui.swing.util.KeyCommandBind;
@@ -114,6 +116,7 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
     private JMenuItem viewResetWindowPositions = new JMenuItem(getString("CommonMenuBar.viewResetWindowPos"));
     private JCheckBoxMenuItem toggleIsometric = new JCheckBoxMenuItem(getString("CommonMenuBar.viewToggleIsometric"));
     private JCheckBoxMenuItem toggleHexCoords = new JCheckBoxMenuItem(getString("CommonMenuBar.viewToggleHexCoords"));
+    private JCheckBoxMenuItem toggleSensorRange = new JCheckBoxMenuItem(getString("CommonMenuBar.viewToggleSensorRange"));
     private JCheckBoxMenuItem toggleFieldOfFire = new JCheckBoxMenuItem(getString("CommonMenuBar.viewToggleFieldOfFire"));
     private JCheckBoxMenuItem toggleFovHighlight = new JCheckBoxMenuItem(getString("CommonMenuBar.viewToggleFovHighlight"));
     private JCheckBoxMenuItem toggleFovDarken = new JCheckBoxMenuItem(getString("CommonMenuBar.viewToggleFovDarken"));
@@ -130,6 +133,7 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
     private JMenuItem helpContents = new JMenuItem(getString("CommonMenuBar.helpContents"));
     private JMenuItem helpSkinning = new JMenuItem(getString("CommonMenuBar.helpSkinning"));
     private JMenuItem helpAbout = new JMenuItem(getString("CommonMenuBar.helpAbout"));
+    private JMenuItem helpResetNags = new JMenuItem(getString("CommonMenuBar.helpResetNags"));
     
     // The Firing Action menu
     private JMenuItem fireSaveWeaponOrder = new JMenuItem(getString("CommonMenuBar.fireSaveWeaponOrder"));
@@ -257,9 +261,9 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
         menu.addSeparator();
 
         initMenuItem(viewKeybindsOverlay, menu, VIEW_KEYBINDS_OVERLAY);
-        viewKeybindsOverlay.setSelected(GUIP.getBoolean(GUIPreferences.SHOW_KEYBINDS_OVERLAY));
+        viewKeybindsOverlay.setSelected(GUIP.getShowKeybindsOverlay());
         initMenuItem(viewPlanetaryConditionsOverlay, menu, VIEW_PLANETARYCONDITIONS_OVERLAY);
-        viewPlanetaryConditionsOverlay.setSelected(GUIP.getBoolean(GUIPreferences.SHOW_PLANETARYCONDITIONS_OVERLAY));
+        viewPlanetaryConditionsOverlay.setSelected(GUIP.getShowPlanetaryConditionsOverlay());
         initMenuItem(viewUnitOverview, menu, VIEW_UNIT_OVERVIEW);
         menu.addSeparator();
         
@@ -287,7 +291,10 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
         viewMovementEnvelope.setSelected(GUIP.getMoveEnvelope());
         initMenuItem(viewMovModEnvelope, menu, VIEW_MOVE_MOD_ENV);
         menu.addSeparator();
-        
+
+        initMenuItem(toggleSensorRange, menu, VIEW_TOGGLE_SENSOR_RANGE);
+        toggleSensorRange.setSelected(GUIP.getShowSensorRange());
+        toggleSensorRange.setToolTipText(Messages.getString("CommonMenuBar.viewToggleSensorRangeToolTip"));
         initMenuItem(toggleFieldOfFire, menu, VIEW_TOGGLE_FIELD_OF_FIRE);
         toggleFieldOfFire.setSelected(GUIP.getShowFieldOfFire());
         toggleFieldOfFire.setToolTipText(Messages.getString("CommonMenuBar.viewToggleFieldOfFireToolTip"));
@@ -301,6 +308,7 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
         menu = new JMenu(Messages.getString("CommonMenuBar.HelpMenu"));
         menu.setMnemonic(VK_H);
         add(menu);
+        initMenuItem(helpResetNags, menu, HELP_RESETNAGS);
         initMenuItem(helpContents, menu, HELP_CONTENTS);
         initMenuItem(helpSkinning, menu, HELP_SKINNING);
         menu.addSeparator();
@@ -314,6 +322,7 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
     
     /** Sets/updates the accelerators from the KeyCommandBinds preferences. */
     private void setKeyBinds() {
+        toggleSensorRange.setAccelerator(KeyCommandBind.keyStroke(KeyCommandBind.SENSOR_RANGE));
         toggleFieldOfFire.setAccelerator(KeyCommandBind.keyStroke(KeyCommandBind.FIELD_FIRE));
         toggleIsometric.setAccelerator(KeyCommandBind.keyStroke(KeyCommandBind.TOGGLE_ISO));
         viewMovementEnvelope.setAccelerator(KeyCommandBind.keyStroke(KeyCommandBind.MOVE_ENVELOPE));
@@ -360,8 +369,11 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
 
         } else if (event.getActionCommand().equals(ClientGUI.VIEW_LABELS)) {
             GUIP.setUnitLabelStyle(GUIP.getUnitLabelStyle().next());
+
+        } else if(event.getActionCommand().equals(ClientGUI.HELP_RESETNAGS)) {
+            MegaMek.getMMOptions().setNagDialogIgnore(MMConstants.NAG_BOT_README, false);
         }
-        
+
         // Pass the action on to each of our listeners.
         actionListeners.forEach(l -> l.actionPerformed(event));
     }
@@ -452,6 +464,7 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
         
         viewLOSSetting.setEnabled(isInGameBoardView);
         viewUnitOverview.setEnabled(isInGameBoardView);
+        toggleSensorRange.setEnabled(isInGameBoardView);
         toggleFieldOfFire.setEnabled(isInGameBoardView);
         toggleFovHighlight.setEnabled(isInGameBoardView);
         toggleFovDarken.setEnabled(isInGameBoardView);
@@ -488,6 +501,8 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
             toggleIsometric.setSelected((Boolean) e.getNewValue());
         } else if (e.getName().equals(GUIPreferences.SHOW_FIELD_OF_FIRE)) {
             toggleFieldOfFire.setSelected((Boolean) e.getNewValue());
+        } else if (e.getName().equals(GUIPreferences.SHOW_SENSOR_RANGE)) {
+            toggleSensorRange.setSelected((Boolean) e.getNewValue());
         } else if (e.getName().equals(GUIPreferences.SHOW_KEYBINDS_OVERLAY)) {
             viewKeybindsOverlay.setSelected((Boolean) e.getNewValue());
         } else if (e.getName().equals(GUIPreferences.SHOW_PLANETARYCONDITIONS_OVERLAY)) {
@@ -499,7 +514,7 @@ public class CommonMenuBar extends JMenuBar implements ActionListener, IPreferen
         } else if (e.getName().equals(GUIPreferences.MINI_MAP_ENABLED)) {
             viewMinimap.setSelected(GUIP.getMinimapEnabled());
         } else if (e.getName().equals(GUIPreferences.SHOW_COORDS)) {
-            toggleHexCoords.setSelected(GUIP.getBoolean(GUIPreferences.SHOW_COORDS));
+            toggleHexCoords.setSelected(GUIP.getCoordsEnabled());
         } else if (e.getName().equals(KeyBindParser.KEYBINDS_CHANGED)) {
             setKeyBinds();
         } else if (e.getName().equals(GUIPreferences.UNIT_DISPLAY_ENABLED)) {

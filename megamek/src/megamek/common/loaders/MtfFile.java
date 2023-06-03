@@ -436,12 +436,6 @@ public class MtfFile implements IMechLoader {
             for (int x = 0; x < rearLocationOrder.length; x++) {
                 mech.initializeRearArmor(Integer.parseInt(armorValues[x + locationOrder.length].substring(10)), rearLocationOrder[x]);
             }
-            
-            // Set capital fighter stats for LAMs
-            if (mech instanceof LandAirMech) {
-                ((LandAirMech) mech).autoSetCapArmor();
-                ((LandAirMech) mech).autoSetFatalThresh();
-            }
 
             // oog, crits.
             compactCriticals(mech);
@@ -453,6 +447,14 @@ public class MtfFile implements IMechLoader {
 
             for (String equipment : noCritEquipment) {
                 parseNoCritEquipment(mech, equipment);
+            }
+
+            if (mech instanceof LandAirMech) {
+                // Set capital fighter stats for LAMs
+                ((LandAirMech) mech).autoSetCapArmor();
+                ((LandAirMech) mech).autoSetFatalThresh();
+                int fuelTankCount = (int) mech.getEquipment().stream().filter(e -> e.is(EquipmentTypeLookup.LAM_FUEL_TANK)).count();
+                ((LandAirMech) mech).setFuel(80 * (1 + fuelTankCount));
             }
 
             // add any heat sinks not allocated
@@ -805,8 +807,13 @@ public class MtfFile implements IMechLoader {
                                 size = BLKFile.getLegacyVariableSize(critName);
                             }
                             mount.setSize(size);
-                            // THe size may require additional critical slots
-                            for (int c = 1; c < mount.getCriticals(); c++) {
+                            // The size may require additional critical slots
+                            // Account for loading Superheavy oversized Variable Size components
+                            int critCount = mount.getCriticals();
+                            if (mech.isSuperHeavy()){
+                                critCount = (int)Math.ceil(critCount / 2.0);
+                            }
+                            for (int c = 1; c < critCount; c++) {
                                 CriticalSlot cs = new CriticalSlot(mount);
                                 mech.addCritical(loc, cs, i + c);
                             }
@@ -1024,7 +1031,7 @@ public class MtfFile implements IMechLoader {
             gyroType = line;
             return true;
         }
-        
+
         if (lineLower.startsWith(MOTIVE)) {
             motiveType = line;
             return true;
@@ -1053,7 +1060,7 @@ public class MtfFile implements IMechLoader {
         if (lineLower.startsWith(MYOMER)) {
             return true;
         }
-        
+
         if (lineLower.startsWith(LAM)) {
             lamType = line;
             return true;
@@ -1111,7 +1118,7 @@ public class MtfFile implements IMechLoader {
             noCritEquipment.add(line.substring(NO_CRIT.length()));
             return true;
         }
-        
+
         if (lineLower.startsWith(OVERVIEW)) {
             overview = line.substring(OVERVIEW.length());
             return true;
@@ -1121,12 +1128,12 @@ public class MtfFile implements IMechLoader {
             capabilities = line.substring(CAPABILITIES.length());
             return true;
         }
-                
+
         if (lineLower.startsWith(DEPLOYMENT)) {
             deployment = line.substring(DEPLOYMENT.length());
             return true;
         }
-        
+
         if (lineLower.startsWith(HISTORY)) {
             history = line.substring(HISTORY.length());
             return true;

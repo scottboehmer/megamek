@@ -70,8 +70,8 @@ public class MapSettings implements Serializable {
     private int mapHeight = 1;
     private int medium = MEDIUM_GROUND;
 
-    private ArrayList<String> boardsSelected = new ArrayList<>();
-    private ArrayList<String> boardsAvailable = new ArrayList<>();
+    private List<String> boardsSelected = new ArrayList<>();
+    private List<String> boardsAvailable = new ArrayList<>();
     private ArrayList<BuildingTemplate> boardBuildings = new ArrayList<>();
 
     /**
@@ -169,6 +169,19 @@ public class MapSettings implements Serializable {
     /** maximum Size of a rough spot */
     @XmlElement(name = "SANDMAXHEXES")
     private int maxSandSize = 2;
+
+    /** how much sand spots at least */
+    @XmlElement(name = "SNOWMINSPOTS")
+    private int minSnowSpots = 0;
+    /** how much sand spots at most */
+    @XmlElement(name = "SNOWMAXSPOTS")
+    private int maxSnowSpots = 0;
+    /** minimum size of a rough spot */
+    @XmlElement(name = "SNOWMINHEXES")
+    private int minSnowSize = 0;
+    /** maximum Size of a rough spot */
+    @XmlElement(name = "SNOWMAXHEXES")
+    private int maxSnowSize = 0;
 
     /** how much planted field spots at least */
     @XmlElement(name = "PLANTEDFIELDMINSPOTS")
@@ -393,11 +406,9 @@ public class MapSettings implements Serializable {
     private MapSettings(int boardWidth, int boardHeight, int mapWidth, int mapHeight) {
         setBoardSize(boardWidth, boardHeight);
         setMapSize(mapWidth, mapHeight);
-        adjustPathSeparator();
     }
 
     /** Creates new MapSettings that is a duplicate of another */
-    @SuppressWarnings("unchecked")
     private MapSettings(MapSettings other) {
         boardWidth = other.getBoardWidth();
         boardHeight = other.getBoardHeight();
@@ -406,8 +417,8 @@ public class MapSettings implements Serializable {
 
         medium = other.getMedium();
 
-        boardsSelected = (ArrayList<String>) other.getBoardsSelectedVector().clone();
-        boardsAvailable = (ArrayList<String>) other.getBoardsAvailableVector().clone();
+        boardsSelected = new ArrayList<>(other.getBoardsSelectedVector());
+        boardsAvailable = new ArrayList<>(other.getBoardsAvailableVector());
 
         invertNegativeTerrain = other.getInvertNegativeTerrain();
         mountainHeightMin = other.getMountainHeightMin();
@@ -443,6 +454,10 @@ public class MapSettings implements Serializable {
         maxSandSpots = other.getMaxSandSpots();
         minSandSize = other.getMinSandSize();
         maxSandSize = other.getMaxSandSize();
+        minSnowSpots = other.getMinSnowSpots();
+        maxSnowSpots = other.getMaxSnowSpots();
+        minSnowSize = other.getMinSnowSize();
+        maxSnowSize = other.getMaxSnowSize();
         minPlantedFieldSpots = other.getMinPlantedFieldSpots();
         maxPlantedFieldSpots = other.getMaxPlantedFieldSpots();
         minPlantedFieldSize = other.getMinPlantedFieldSize();
@@ -490,47 +505,6 @@ public class MapSettings implements Serializable {
         cityDensity = other.getCityDensity();
         boardBuildings = other.getBoardBuildings();
         townSize = other.getTownSize();
-        adjustPathSeparator();
-    }
-
-    /**
-     * Odious hack to fix cross-platform issues. The Server generates the list
-     * of available boards and then sends them to the client. Instead of storing
-     * the boards as a File object, they are stored as lists of Strings. This
-     * means that, a Windows server will generate Windows paths that could then
-     * be sent to non-windows machines.
-     * 
-     * While the available and selected boards should really be stored as lists
-     * of Files, they have infrastructure built up around them and it's far
-     * easier to use this kludgy hack to always store in Linux style \ separator
-     */
-    public void adjustPathSeparator() {
-        // Windows will happily accept a forward slash in the path, the only
-        // real issue is back-slashes (windows separators) in Linux and macOS
-        boolean containsWindowsPathSeparator = false;
-        for (String path : boardsAvailable) {
-            if (path.contains("\\")) {
-                containsWindowsPathSeparator = true;
-            }
-            if (containsWindowsPathSeparator) {
-                break;
-            }
-        }
-
-        if (containsWindowsPathSeparator) {
-            for (int i = 0; i < boardsAvailable.size(); i++) {
-                if (boardsAvailable.get(i) == null) {
-                    continue;
-                }
-                boardsAvailable.set(i, boardsAvailable.get(i).replace("\\", "/"));
-            }
-            for (int i = 0; i < boardsSelected.size(); i++) {
-                if (boardsSelected.get(i) == null) {
-                    continue;
-                }
-                boardsSelected.set(i, boardsSelected.get(i).replace("\\", "/"));
-            }
-        }
     }
 
     public int getBoardWidth() {
@@ -613,16 +587,13 @@ public class MapSettings implements Serializable {
         mapWidth = newWidth;
     }
 
-    public Iterator<String> getBoardsSelected() {
-        return boardsSelected.iterator();
-    }
-
-    public ArrayList<String> getBoardsSelectedVector() {
+    public List<String> getBoardsSelectedVector() {
         return boardsSelected;
     }
 
-    public void setBoardsSelectedVector(ArrayList<String> boardsSelected) {
-        this.boardsSelected = boardsSelected;
+    public void setBoardsSelectedVector(List<String> newBoards) {
+        boardsSelected.clear();
+        boardsSelected.addAll(newBoards);
     }
 
     /**
@@ -719,7 +690,7 @@ public class MapSettings implements Serializable {
                     List<String> boards = LobbyUtility.extractSurpriseMaps(boardName);
                     ArrayList<String> remainingBoards = new ArrayList<>();
                     for (String board: boards) {
-                        if (boardsAvailable.indexOf(board) != -1) {
+                        if (boardsAvailable.contains(board)) {
                             remainingBoards.add(board);
                         }
                     }
@@ -732,7 +703,7 @@ public class MapSettings implements Serializable {
                         boardsSelected.set(i, MapSettings.BOARD_SURPRISE + remBoards);
                     }
                 } else {
-                    if (boardsAvailable.indexOf(boardName) == -1) {
+                    if (!boardsAvailable.contains(boardName)) {
                         boardsSelected.set(i, null);
                     }
                 }
@@ -740,17 +711,13 @@ public class MapSettings implements Serializable {
         }
     }
 
-    public Iterator<String> getBoardsAvailable() {
-        return boardsAvailable.iterator();
-    }
-
-    public ArrayList<String> getBoardsAvailableVector() {
+    public List<String> getBoardsAvailableVector() {
         return boardsAvailable;
     }
 
-    public void setBoardsAvailableVector(ArrayList<String> boardsAvailable) {
-        this.boardsAvailable = boardsAvailable;
-        adjustPathSeparator();
+    public void setBoardsAvailableVector(List<String> newBoards) {
+        boardsAvailable.clear();
+        boardsAvailable.addAll(newBoards);
     }
 
     /**
@@ -850,6 +817,18 @@ public class MapSettings implements Serializable {
         }
         if (maxSandSize < minSandSize) {
             maxSandSize = minSandSize;
+        }
+        if (minSnowSpots < 0) {
+            minSnowSpots = 0;
+        }
+        if (maxSnowSpots < minSnowSpots) {
+            maxSnowSpots = minSnowSpots;
+        }
+        if (minSnowSize < 0) {
+            minSnowSize = 0;
+        }
+        if (maxSnowSize < minSnowSize) {
+            maxSnowSize = minSnowSize;
         }
         if (minPlantedFieldSpots < 0) {
             minPlantedFieldSpots = 0;
@@ -992,6 +971,8 @@ public class MapSettings implements Serializable {
                 && (minRoughSize == other.getMinRoughSize()) && (maxRoughSize == other.getMaxRoughSize())
                 && (minSandSpots == other.getMinSandSpots()) && (maxSandSpots == other.getMaxSandSpots())
                 && (minSandSize == other.getMinSandSize()) && (maxSandSize == other.getMaxSandSize())
+                && (minSnowSpots == other.getMinSnowSpots()) && (maxSnowSpots == other.getMaxSnowSpots())
+                && (minSnowSize == other.getMinSnowSize()) && (maxSnowSize == other.getMaxSnowSize())
                 && (minPlantedFieldSpots == other.getMinPlantedFieldSpots())
                 && (maxPlantedFieldSpots == other.getMaxPlantedFieldSpots())
                 && (minPlantedFieldSize == other.getMinPlantedFieldSize())
@@ -1021,7 +1002,8 @@ public class MapSettings implements Serializable {
                 && (algorithmToUse == other.getAlgorithmToUse()) && (mountainHeightMin == other.getMountainHeightMin())
                 && (mountainHeightMax == other.getMountainHeightMax()) && (mountainPeaks == other.getMountainPeaks())
                 && (mountainStyle == other.getMountainStyle()) && (mountainWidthMin == other.getMountainWidthMin())
-                && (mountainWidthMax == other.getMountainWidthMax()) && (boardBuildings.equals(other.getBoardBuildings()));
+                && (mountainWidthMax == other.getMountainWidthMax()) && (boardBuildings.equals(other.getBoardBuildings())
+                && (medium == other.medium));
     }
 
     public int getInvertNegativeTerrain() {
@@ -1144,12 +1126,40 @@ public class MapSettings implements Serializable {
         this.minSandSize = minSandSize;
     }
 
-    public int getMaxSandSize() {
-        return maxSandSize;
-    }
+    public int getMaxSandSize() { return maxSandSize; }
 
     public void setMaxSandSize(int maxSandSize) {
         this.maxSandSize = maxSandSize;
+    }
+
+    public int getMinSnowSpots() {
+        return minSnowSpots;
+    }
+
+    public void setMinSnowSpots(int minSnowSpots) {
+        this.minSnowSpots = minSnowSpots;
+    }
+
+    public int getMaxSnowSpots() {
+        return maxSnowSpots;
+    }
+
+    public void setMaxSnowSpots(int maxSnowSpots) {
+        this.maxSnowSpots = maxSnowSpots;
+    }
+
+    public int getMinSnowSize() {
+        return minSnowSize;
+    }
+
+    public void setMinSnowSize(int minSnowSize) {
+        this.minSnowSize = minSnowSize;
+    }
+
+    public int getMaxSnowSize() { return maxSnowSize; }
+
+    public void setMaxSnowSize(int maxSnowSize) {
+        this.maxSnowSize = maxSnowSize;
     }
 
     public int getMinPlantedFieldSpots() {
@@ -1432,6 +1442,16 @@ public class MapSettings implements Serializable {
         maxSandSpots = maxSpots;
         minSandSize = minSize;
         maxSandSize = maxSize;
+    }
+
+    /**
+     * set the snow parameters for the Map Generator
+     */
+    public void setSnowParams(int minSpots, int maxSpots, int minSize, int maxSize) {
+        minSnowSpots = minSpots;
+        maxSnowSpots = maxSpots;
+        minSnowSize = minSize;
+        maxSnowSize = maxSize;
     }
 
     /**

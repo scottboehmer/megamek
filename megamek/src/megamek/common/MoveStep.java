@@ -397,6 +397,8 @@ public class MoveStep implements Serializable {
                 return "Hover";
             case BRACE:
                 return "Brace";
+            case CHAFF:
+                return "Chaff";
             default:
                 return "???";
         }
@@ -1084,6 +1086,7 @@ public class MoveStep implements Serializable {
             case BRACE:
                 setMp(entity.getBraceMPCost());
                 break;
+            case CHAFF:
             default:
                 setMp(0);
         }
@@ -1521,6 +1524,7 @@ public class MoveStep implements Serializable {
         } else if (hasEverUnloaded && (type != MoveStepType.UNLOAD)
                 && (type != MoveStepType.LAUNCH) && (type != MoveStepType.DROP)
                 && (type != MoveStepType.UNDOCK) && (type != MoveStepType.DISCONNECT)
+                && (type != MoveStepType.CHAFF)
                 && (getAltitude() == 0)) {
             // Can't be after unloading BA/inf
             legal = false;
@@ -1896,9 +1900,10 @@ public class MoveStep implements Serializable {
             }
 
             // check the fuel requirements
-            if (game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_FUEL_CONSUMPTION)) {
+            if (game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_FUEL_CONSUMPTION)
+                    && entity.hasEngine() && !entity.getEngine().isSolar()) {
                 int fuelUsed = mpUsed + Math.max(mpUsed - cachedEntityState.getWalkMP(), 0);
-                if (fuelUsed > a.getFuel()) {
+                if (fuelUsed > a.getCurrentFuel()) {
                     return;
                 }
             }
@@ -2173,6 +2178,9 @@ public class MoveStep implements Serializable {
             movementType = EntityMovementType.MOVE_NONE;
         }
         if (type == MoveStepType.CONVERT_MODE) {
+            movementType = EntityMovementType.MOVE_NONE;
+        }
+        if (type == MoveStepType.CHAFF) {
             movementType = EntityMovementType.MOVE_NONE;
         }
 
@@ -2782,7 +2790,7 @@ public class MoveStep implements Serializable {
 
         // check if this movement is illegal for reasons other than points
         if (!isMovementPossible(game, lastPos, prev.getElevation(), cachedEntityState)
-                || isUnloaded) {
+                || (isUnloaded && type != MoveStepType.CHAFF)) {
             movementType = EntityMovementType.MOVE_ILLEGAL;
         }
 

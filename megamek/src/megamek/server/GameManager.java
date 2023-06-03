@@ -13,11 +13,11 @@
  */
 package megamek.server;
 
-import com.thoughtworks.xstream.XStream;
 import megamek.MMConstants;
 import megamek.MegaMek;
 import megamek.client.bot.princess.BehaviorSettings;
 import megamek.client.ui.swing.GUIPreferences;
+import megamek.client.ui.swing.tooltip.UnitToolTip;
 import megamek.common.*;
 import megamek.common.Building.DemolitionCharge;
 import megamek.common.actions.*;
@@ -158,7 +158,6 @@ public class GameManager implements IGameManager {
 
         // register terrain processors
         terrainProcessors.add(new FireProcessor(this));
-        terrainProcessors.add(new SmokeProcessor(this));
         terrainProcessors.add(new GeyserProcessor(this));
         terrainProcessors.add(new ElevatorProcessor(this));
         terrainProcessors.add(new ScreenProcessor(this));
@@ -646,7 +645,7 @@ public class GameManager implements IGameManager {
                 // Send Entities *after* the Lounge Phase Change
                 send(connId, new Packet(PacketCommand.PHASE_CHANGE, getGame().getPhase()));
                 if (doBlind()) {
-                    send(connId, createFilteredFullEntitiesPacket(player));
+                    send(connId, createFilteredFullEntitiesPacket(player, null));
                 } else {
                     send(connId, createFullEntitiesPacket());
                 }
@@ -657,7 +656,7 @@ public class GameManager implements IGameManager {
 
                 // Send entities *before* other phase changes.
                 if (doBlind()) {
-                    send(connId, createFilteredFullEntitiesPacket(player));
+                    send(connId, createFilteredFullEntitiesPacket(player, null));
                 } else {
                     send(connId, createFullEntitiesPacket());
                 }
@@ -699,7 +698,7 @@ public class GameManager implements IGameManager {
      */
     public void sendEntities(int connId) {
         if (doBlind()) {
-            send(connId, createFilteredEntitiesPacket(game.getPlayer(connId), null));
+            send(connId, createFilteredFullEntitiesPacket(game.getPlayer(connId), null));
         } else {
             send(connId, createEntitiesPacket());
         }
@@ -873,7 +872,7 @@ public class GameManager implements IGameManager {
                 if (game.getPhase().isBefore(GamePhase.DEPLOYMENT)) {
                     MapSettings newSettings = (MapSettings) packet.getObject(0);
                     if (!game.getMapSettings().equalMapGenParameters(newSettings)) {
-                        sendServerChat("Player " + player.getName() + " changed map settings");
+                        sendServerChat(player + " changed map settings");
                     }
                     MapSettings mapSettings = newSettings;
                     mapSettings.setBoardsAvailableVector(ServerBoardHelper.scanForBoards(mapSettings));
@@ -889,7 +888,7 @@ public class GameManager implements IGameManager {
                 if (game.getPhase().isBefore(GamePhase.DEPLOYMENT)) {
                     MapSettings newSettings = (MapSettings) packet.getObject(0);
                     if (!game.getMapSettings().equalMapGenParameters(newSettings)) {
-                        sendServerChat("Player " + player.getName() + " changed map dimensions");
+                        sendServerChat(player + " changed map dimensions");
                     }
                     MapSettings mapSettings = newSettings;
                     mapSettings.setBoardsAvailableVector(ServerBoardHelper.scanForBoards(mapSettings));
@@ -904,7 +903,7 @@ public class GameManager implements IGameManager {
             case SENDING_PLANETARY_CONDITIONS:
                 if (game.getPhase().isBefore(GamePhase.DEPLOYMENT)) {
                     PlanetaryConditions conditions = (PlanetaryConditions) packet.getObject(0);
-                    sendServerChat("Player " + player.getName() + " changed planetary conditions");
+                    sendServerChat(player + " changed planetary conditions");
                     game.setPlanetaryConditions(conditions);
                     resetPlayersDone();
                     transmitAllPlayerDones();
@@ -1015,8 +1014,8 @@ public class GameManager implements IGameManager {
     private void resetEntityPhase(GamePhase phase) {
         // first, mark doomed entities as destroyed and flag them
         Vector<Entity> toRemove = new Vector<>(0, 10);
-        for (Iterator<Entity> e = game.getEntities(); e.hasNext(); ) {
-            final Entity entity = e.next();
+
+        for (Entity entity : game.getEntitiesVector()) {
             entity.newPhase(phase);
             if (entity.isDoomed()) {
                 entity.setDestroyed(true);
@@ -1058,11 +1057,8 @@ public class GameManager implements IGameManager {
         }
 
         // do some housekeeping on all the remaining
-        for (Iterator<Entity> e = game.getEntities(); e.hasNext(); ) {
-            final Entity entity = e.next();
-
+        for (Entity entity : game.getEntitiesVector()) {
             entity.applyDamage();
-
             entity.reloadEmptyWeapons();
 
             // reset damage this phase
@@ -1076,7 +1072,6 @@ public class GameManager implements IGameManager {
             entity.setStartupThisPhase(false);
 
             // reset done to false
-
             if (phase.isDeployment()) {
                 entity.setDone(!entity.shouldDeploy(game.getRoundCount()));
             } else {
@@ -1093,6 +1088,14 @@ public class GameManager implements IGameManager {
                 ((MechWarrior) entity).setLanded(true);
             }
         }
+
+        // flag deployed and doomed, but not destroyed out of game enities
+        for (Entity entity : game.getOutOfGameEntitiesVector()) {
+            if (entity.isDeployed() && entity.isDoomed() && !entity.isDestroyed()) {
+                entity.setDestroyed(true);
+            }
+        }
+
         game.clearIlluminatedPositions();
         send(new Packet(PacketCommand.CLEAR_ILLUM_HEXES));
     }
@@ -1190,30 +1193,12 @@ public class GameManager implements IGameManager {
         }
         addReport(r);
 
-        // Show player BVs
-        Enumeration<Player> players = game.getPlayers();
-        while (players.hasMoreElements()) {
-            Player player = players.nextElement();
-            // Observers without initial entities get ignored
-            if (player.isObserver() && (player.getInitialEntityCount() == 0)) {
-                continue;
-            }
-            r = new Report(7016, Report.PUBLIC);
-            r.add(player.getColorForPlayer());
-            r.add(player.getBV());
-            r.add(player.getInitialBV());
-            r.add(Double.toString(Math.round((double) player.getBV() / player.getInitialBV() * 10000.0) / 100.0));
-            r.add(player.getFledBV());
-            r.add(player.getEntityCount());
-            r.add(player.getInitialEntityCount());
-            r.add(Double.toString(Math.round(((double) player.getEntityCount() / player.getInitialEntityCount()) * 10000.0) / 100.0));
-            addReport(r);
-        }
+        bvReports(false);
 
         // List the survivors
         Iterator<Entity> survivors = game.getEntities();
         if (survivors.hasNext()) {
-            addReport(new Report(7020, Report.PUBLIC));
+            addReport(new Report(7023, Report.PUBLIC));
             while (survivors.hasNext()) {
                 Entity entity = survivors.next();
 
@@ -1602,6 +1587,224 @@ public class GameManager implements IGameManager {
         }
     }
 
+    private static class BVCountHelper {
+        int bv;
+        int bvInitial;
+        int bvFled;
+        int unitsCount;
+        int unitsInitialCount;
+        int unitsLightDamageCount;
+        int unitsModerateDamageCount;
+        int unitsHeavyDamageCount;
+        int unitsCrippledCount;
+        int unitsDestroyedCount;
+        int unitsCrewEjectedCount;
+        int unitsCrewTrappedCount;
+        int unitsCrewKilledCount;
+        int unitsFledCount;
+        int ejectedCrewActiveCount;
+        int ejectedCrewPickedUpByTeamCount;
+        int ejectedCrewPickedUpByEnemyTeamCount;
+        int ejectedCrewKilledCount;
+        int ejectedCrewFledCount;
+
+        public BVCountHelper() {
+            this.bv = 0;
+            this.bvInitial = 0;
+            this.bvFled = 0;
+            this.unitsCount = 0;
+            this.unitsInitialCount = 0;
+            this.unitsLightDamageCount = 0;
+            this.unitsModerateDamageCount = 0;
+            this.unitsHeavyDamageCount = 0;
+            this.unitsCrippledCount = 0;
+            this.unitsDestroyedCount = 0;
+            this.unitsCrewEjectedCount = 0;
+            this.unitsCrewTrappedCount = 0;
+            this.unitsCrewKilledCount = 0;
+            this.unitsFledCount = 0;
+            this.ejectedCrewActiveCount = 0;
+            this.ejectedCrewPickedUpByTeamCount = 0;
+            this.ejectedCrewPickedUpByEnemyTeamCount = 0;
+            this.ejectedCrewKilledCount = 0;
+            this.ejectedCrewFledCount = 0;
+        }
+    }
+
+    private void bvReports(boolean checkBlind) {
+        List<Report> playerReport = new ArrayList<>();
+        List<Report> teamReport = new ArrayList<>();
+        HashMap<Integer, BVCountHelper> teamsInfo = new HashMap<>();
+
+        for (Team team : game.getTeams()) {
+            teamsInfo.put(team.getId(), new BVCountHelper());
+        }
+
+        // blank line
+        addReport(new Report(1210, Report.PUBLIC));
+
+        // Show player BVs
+        for (Player player : game.getPlayersList()) {
+            // Observers without initial entities get ignored
+            if (player.isObserver() && (player.getInitialEntityCount() == 0)) {
+                continue;
+            }
+
+            BVCountHelper bvcPlayer = new BVCountHelper();
+            bvcPlayer.bv = player.getBV();
+            bvcPlayer.bvInitial = player.getInitialBV();
+            bvcPlayer.bvFled = player.getFledBV();
+            bvcPlayer.unitsCount = player.getUnitCount();
+            bvcPlayer.unitsInitialCount = player.getInitialEntityCount();
+            bvcPlayer.unitsLightDamageCount = player.getUnitDamageCount(Entity.DMG_LIGHT);
+            bvcPlayer.unitsModerateDamageCount = player.getUnitDamageCount(Entity.DMG_MODERATE);
+            bvcPlayer.unitsHeavyDamageCount = player.getUnitDamageCount(Entity.DMG_HEAVY);
+            bvcPlayer.unitsCrippledCount = player.getUnitDamageCount(Entity.DMG_CRIPPLED);
+            bvcPlayer.unitsDestroyedCount =  player.getUnitDestroyedCount();
+            bvcPlayer.unitsCrewEjectedCount = player.getUnitCrewEjectedCount();
+            bvcPlayer.unitsCrewTrappedCount = player.getUnitCrewTrappedCount();
+            bvcPlayer.unitsCrewKilledCount = player.getUnitCrewKilledCount();
+            bvcPlayer.unitsFledCount = player.getFledUnitsCount();
+            bvcPlayer.ejectedCrewActiveCount = player.getEjectedCrewCount();
+            bvcPlayer.ejectedCrewPickedUpByTeamCount =  player.getEjectedCrewPickedUpByTeamCount();
+            bvcPlayer.ejectedCrewPickedUpByEnemyTeamCount = player.getEjectedCrewPickedUpByEnemyTeamCount();
+            bvcPlayer.ejectedCrewKilledCount = player.getEjectedCrewKilledCount();
+            bvcPlayer.ejectedCrewFledCount = player.getFledEjectedCrew();
+
+            playerReport.addAll(bvReport(player.getColorForPlayer(), player.getId(), bvcPlayer, checkBlind));
+
+            BVCountHelper bvcTeam = teamsInfo.get(player.getTeam());
+            bvcTeam.bv += bvcPlayer.bv;
+            bvcTeam.bvInitial += bvcPlayer.bvInitial;
+            bvcTeam.bvFled += bvcPlayer.bvFled;
+            bvcTeam.unitsCount += bvcPlayer.unitsCount;
+            bvcTeam.unitsInitialCount += bvcPlayer.unitsInitialCount;
+            bvcTeam.unitsLightDamageCount += bvcPlayer.unitsLightDamageCount;
+            bvcTeam.unitsModerateDamageCount += bvcPlayer.unitsModerateDamageCount;
+            bvcTeam.unitsHeavyDamageCount += bvcPlayer.unitsHeavyDamageCount;
+            bvcTeam.unitsCrippledCount += bvcPlayer.unitsCrippledCount;
+            bvcTeam.unitsDestroyedCount += bvcPlayer.unitsDestroyedCount;
+            bvcTeam.unitsCrewEjectedCount += bvcPlayer.unitsCrewEjectedCount;
+            bvcTeam.unitsCrewTrappedCount += bvcPlayer.unitsCrewTrappedCount;
+            bvcTeam.unitsCrewKilledCount += bvcPlayer.unitsCrewKilledCount;
+            bvcTeam.unitsFledCount += bvcPlayer.unitsFledCount;
+            bvcTeam.ejectedCrewActiveCount += bvcPlayer.ejectedCrewActiveCount;
+            bvcTeam.ejectedCrewPickedUpByTeamCount += bvcPlayer.ejectedCrewPickedUpByTeamCount;
+            bvcTeam.ejectedCrewPickedUpByEnemyTeamCount += bvcPlayer.ejectedCrewPickedUpByEnemyTeamCount;
+            bvcTeam.ejectedCrewKilledCount += bvcPlayer.ejectedCrewKilledCount;
+            bvcTeam.ejectedCrewFledCount += bvcPlayer.ejectedCrewFledCount;
+        }
+
+        // Show teams BVs
+        if (!(checkBlind && doBlind() && suppressBlindBV())) {
+            for (Map.Entry<Integer, BVCountHelper> e : teamsInfo.entrySet()) {
+                BVCountHelper bvc = e.getValue();
+                teamReport.addAll(bvReport(Player.TEAM_NAMES[e.getKey()], Player.PLAYER_NONE, bvc, false));
+            }
+        }
+
+        vPhaseReport.addAll(teamReport);
+        vPhaseReport.addAll(playerReport);
+    }
+
+    private List<Report> bvReport(String name, int playerID, BVCountHelper bvc, boolean checkBlind) {
+        List<Report> result = new ArrayList<>();
+
+        Report r = new Report(7016, Report.PUBLIC);
+        r.add(name);
+        result.add(r);
+
+        r = new Report(7017, Report.PUBLIC);
+        if (checkBlind && doBlind() && suppressBlindBV()) {
+            r.type = Report.PLAYER;
+            r.player = playerID;
+        }
+        r.add(bvc.bv);
+        r.add(bvc.bvInitial);
+        r.add(Double.toString(Math.round(((double) bvc.bv / bvc.bvInitial) * 10000.0) / 100.0));
+        r.add(bvc.bvFled);
+        r.indent(2);
+        result.add(r);
+
+        r = new Report(7018, Report.PUBLIC);
+        if (checkBlind && doBlind() && suppressBlindBV()) {
+            r.type = Report.PLAYER;
+            r.player = playerID;
+        }
+        r.add(bvc.unitsCount);
+        r.add(bvc.unitsInitialCount);
+        r.add(Double.toString(Math.round(((double) bvc.unitsCount / bvc.unitsInitialCount) * 10000.0) / 100.0));
+        r.indent(2);
+        result.add(r);
+
+        if (bvc.unitsLightDamageCount + bvc.unitsModerateDamageCount + bvc.unitsHeavyDamageCount +
+                bvc.unitsCrippledCount + bvc.unitsDestroyedCount + bvc.unitsFledCount + bvc.unitsCrewEjectedCount +
+                bvc.unitsCrewKilledCount > 0) {
+            r = new Report(7019, Report.PUBLIC);
+            if (checkBlind && doBlind() && suppressBlindBV()) {
+                r.type = Report.PLAYER;
+                r.player = playerID;
+            }
+            r.add(bvc.unitsLightDamageCount > 0 ? r.warning(bvc.unitsLightDamageCount + "") : bvc.unitsLightDamageCount + "");
+            r.add(bvc.unitsModerateDamageCount > 0 ? r.warning(bvc.unitsModerateDamageCount + "") : bvc.unitsModerateDamageCount + "");
+            r.add(bvc.unitsHeavyDamageCount > 0 ? r.warning(bvc.unitsHeavyDamageCount + "") : bvc.unitsHeavyDamageCount + "");
+            r.add(bvc.unitsCrippledCount > 0 ? r.warning(bvc.unitsCrippledCount + "") : bvc.unitsCrippledCount + "");
+            r.add(bvc.unitsDestroyedCount > 0 ? r.warning(bvc.unitsDestroyedCount + "") : bvc.unitsDestroyedCount + "");
+            r.add(bvc.unitsFledCount > 0 ? r.warning(bvc.unitsFledCount + "") : bvc.unitsFledCount + "");
+            r.add(bvc.unitsCrewEjectedCount > 0 ? r.warning(bvc.unitsCrewEjectedCount + "") : bvc.unitsCrewEjectedCount + "");
+            r.add(bvc.unitsCrewTrappedCount > 0 ? r.warning(bvc.unitsCrewTrappedCount + "") : bvc.unitsCrewTrappedCount + "");
+            r.add(bvc.unitsCrewKilledCount > 0 ? r.warning(bvc.unitsCrewKilledCount + "") : bvc.unitsCrewKilledCount + "");
+            r.indent(2);
+            result.add(r);
+        }
+
+        if (bvc.unitsCrewEjectedCount > 0) {
+            r = new Report(7020, Report.PUBLIC);
+            if (checkBlind && doBlind() && suppressBlindBV()) {
+                r.type = Report.PLAYER;
+                r.player = playerID;
+            }
+            r.add(bvc.ejectedCrewActiveCount > 0 ? r.warning(bvc.ejectedCrewActiveCount + "") : bvc.ejectedCrewActiveCount + "");
+            r.add(bvc.ejectedCrewPickedUpByTeamCount > 0 ? r.warning(bvc.ejectedCrewPickedUpByTeamCount + "") : bvc.ejectedCrewPickedUpByTeamCount + "");
+            r.add(bvc.ejectedCrewPickedUpByEnemyTeamCount > 0 ? r.warning(bvc.ejectedCrewPickedUpByEnemyTeamCount + "") : bvc.ejectedCrewPickedUpByEnemyTeamCount + "");
+            r.add(bvc.ejectedCrewKilledCount > 0 ? r.warning(bvc.ejectedCrewKilledCount + "") : bvc.ejectedCrewKilledCount + "");
+            r.add(bvc.ejectedCrewFledCount > 0 ? r.warning(bvc.ejectedCrewFledCount + "") : bvc.ejectedCrewFledCount + "");
+            r.indent(2);
+            result.add(r);
+        }
+
+        // blank line
+        result.add(new Report(1210, Report.PUBLIC));
+
+        return result;
+    }
+
+    private void entityStatusReport() {
+        List<Report> reports = new ArrayList<>();
+        List<Entity> entities = game.getEntitiesVector().stream().filter(e -> e.isDeployed()).collect(Collectors.toList());
+        Comparator<Entity> comp = Comparator.comparing((Entity e) -> e.getOwner().getTeam());
+        comp = comp.thenComparing((Entity e) -> e.getOwner().getName());
+        comp = comp.thenComparing((Entity e) -> e.getDisplayName());
+        entities.sort(comp);
+
+        Report r = new Report(7600);
+        reports.add(r);
+
+        for (Entity e : entities) {
+            r = new Report(1231);
+            r.subject = e.getId();
+            r.addDesc(e);
+            r.add(UnitToolTip.getEntityTipReport(e).toString());
+            reports.add(r);
+
+            r = new Report(1230, Report.PUBLIC);
+            r.add("<BR>");
+            reports.add(r);
+        }
+
+        vPhaseReport.addAll(reports);
+    }
+
     /**
      * Prepares for, presumably, the next phase. This typically involves
      * resetting the states of entities in the game and making sure the client
@@ -1658,6 +1861,8 @@ public class GameManager implements IGameManager {
                 if (game.getBoard().inSpace()) {
                     checkForSpaceDeath();
                 }
+
+                bvReports(true);
 
                 LogManager.getLogger().info("Round " + game.getRoundCount() + " memory usage: " + MegaMek.getMemoryUsed());
                 break;
@@ -1748,7 +1953,6 @@ public class GameManager implements IGameManager {
                 resetActivePlayersDone();
                 setIneligible(phase);
                 determineTurnOrder(phase);
-                // send(createEntitiesPacket());
                 entityAllUpdate();
                 clearReports();
                 doTryUnstuck();
@@ -1785,6 +1989,8 @@ public class GameManager implements IGameManager {
                 resolveVeeINarcPodRemoval();
                 resolveFortify();
 
+                entityStatusReport();
+
                 // Moved this to the very end because it makes it difficult to see
                 // more important updates when you have 300+ messages of smoke filling
                 // whatever hex. Please don't move it above the other things again.
@@ -1801,29 +2007,6 @@ public class GameManager implements IGameManager {
                 break;
             case INITIATIVE_REPORT: {
                 autoSave();
-                // Show player BVs
-                Enumeration<Player> players2 = game.getPlayers();
-                while (players2.hasMoreElements()) {
-                    Player player = players2.nextElement();
-                    // Observers without initial entities get ignored
-                    if (player.isObserver() && (player.getInitialEntityCount() == 0)) {
-                        continue;
-                    }
-                    Report r = new Report(7016, Report.PUBLIC);
-                    if (doBlind() && suppressBlindBV()) {
-                        r.type = Report.PLAYER;
-                        r.player = player.getId();
-                    }
-                    r.add(player.getColorForPlayer());
-                    r.add(player.getBV());
-                    r.add(player.getInitialBV());
-                    r.add(Double.toString(Math.round(((double) player.getBV() / player.getInitialBV()) * 10000.0) / 100.0));
-                    r.add(player.getFledBV());
-                    r.add(player.getEntityCount());
-                    r.add(player.getInitialEntityCount());
-                    r.add(Double.toString(Math.round(((double) player.getEntityCount() / player.getInitialEntityCount()) * 10000.0) / 100.0));
-                    addReport(r);
-                }
             }
             case TARGETING_REPORT:
             case MOVEMENT_REPORT:
@@ -1841,6 +2024,7 @@ public class GameManager implements IGameManager {
             case VICTORY:
                 resetPlayersDone();
                 clearReports();
+                send(createAllReportsPacket());
                 prepareVictoryReport();
                 game.addReports(vPhaseReport);
                 // Before we send the full entities packet we need to loop
@@ -2762,6 +2946,16 @@ public class GameManager implements IGameManager {
         } else {
             entities = game.getEntitiesVector();
         }
+
+        String noInitiative = entities.stream()
+                .filter(e -> e.getInitiative().size() == 0)
+                .map(Object::toString)
+                .collect(Collectors.joining(";"));
+
+        if (!noInitiative.isEmpty()) {
+            LogManager.getLogger().error("No Initiative rolled for: " + noInitiative);
+        }
+
         // Now, generate the global order of all teams' turns.
         TurnVectors team_order = TurnOrdered.generateTurnOrder(entities, game);
 
@@ -3034,6 +3228,8 @@ public class GameManager implements IGameManager {
                     // turns during the movement phase
                     if (getGame().getPhase().isMovement() || getGame().getPhase().isDeployment()) {
                         turn = new GameTurn.EntityClassTurn(player.getId(), ~aeroMask);
+                    } else if (getGame().getPhase().isPremovement() || getGame().getPhase().isPrefiring()){
+                        turn = new GameTurn.PrephaseTurn(player.getId());
                     } else {
                         turn = new GameTurn(player.getId());
                     }
@@ -3200,6 +3396,8 @@ public class GameManager implements IGameManager {
                 }
             }
         }
+
+        addNewLines();
 
         if (!abbreviatedReport) {
             // remaining deployments
@@ -7310,6 +7508,24 @@ public class GameManager implements IGameManager {
                 }
             }
 
+            if (step.getType() == MovePath.MoveStepType.CHAFF) {
+                List<Mounted> chaffDispensers = entity.getMiscEquipment(MiscType.F_CHAFF_POD)
+                        .stream().filter(dispenser -> dispenser.isReady())
+                        .collect(Collectors.toList());
+                if (chaffDispensers.size() > 0) {
+                    chaffDispensers.get(0).setFired(true);
+                    createSmoke(curPos, SmokeCloud.SMOKE_CHAFF_LIGHT, 1);
+                    Hex hex = game.getBoard().getHex(curPos);
+                    hex.addTerrain(new Terrain(Terrains.SMOKE, SmokeCloud.SMOKE_CHAFF_LIGHT));
+                    sendChangedHex(curPos);
+                    r = new Report(2512)
+                            .addDesc(entity)
+                            .subject(entity.getId());
+
+                    addReport(r);
+                }
+            }
+
             // check for last move ending in magma TODO: build report for end of move
             if (!i.hasMoreElements() && curHex.terrainLevel(Terrains.MAGMA) == 2
                     && firstHex.terrainLevel(Terrains.MAGMA) == 2) {
@@ -8862,8 +9078,7 @@ public class GameManager implements IGameManager {
 
         // if using double blind, update the player on new units he might see
         if (doBlind()) {
-            send(entity.getOwner().getId(),
-                    createFilteredEntitiesPacket(entity.getOwner(), losCache));
+            send(entity.getOwner().getId(), createFilteredFullEntitiesPacket(entity.getOwner(), losCache));
         }
 
         // if we generated a charge attack, report it now
@@ -12742,13 +12957,15 @@ public class GameManager implements IGameManager {
             return;
         }
 
+        entity.setDone(true);
+
         // Update visibility indications if using double blind.
         if (doBlind()) {
             updateVisibilityIndicator(null);
         }
 
-        endCurrentTurn(entity);
         entityUpdate(entity.getId());
+        endCurrentTurn(entity);
     }
 
     /**
@@ -28523,7 +28740,7 @@ public class GameManager implements IGameManager {
             Vector<Player> playersVector = game.getPlayersVector();
             for (int x = 0; x < playersVector.size(); x++) {
                 Player p = playersVector.elementAt(x);
-                send(p.getId(), createFilteredEntitiesPacket(p, null));
+                send(p.getId(), createFilteredFullEntitiesPacket(p, null));
             }
             return;
         }
@@ -28586,11 +28803,15 @@ public class GameManager implements IGameManager {
                 addVisibleEntity(vCanSee, e);
                 continue;
             } else if (e.isHidden()) {
-                // If it's NOT friendly and is hidden, they can't see it,
-                // period.
+                // If it's NOT friendly and is hidden, they can't see it, period.
                 // LOS doesn't matter.
                 continue;
+            } else if (e.isOffBoardObserved(pViewer.getTeam())) {
+                // if it's hostile and has been observed for counter-battery fire, we can "see" it
+                addVisibleEntity(vCanSee, e);
+                continue;
             }
+
             for (Entity spotter : vMyEntities) {
 
                 // If they're off-board, skip it; they can't see anything.
@@ -28746,6 +28967,11 @@ public class GameManager implements IGameManager {
                 }
             }
         }
+
+        if (shouldObscure) {
+            copy.obsureImg();
+        }
+
         return copy;
     }
 
@@ -29711,7 +29937,7 @@ public class GameManager implements IGameManager {
                 continue;
             }
 
-            String message = "Player " + player.getName() + " changed option \"" +
+            String message = "Player " + player + " changed option \"" +
                     originalOption.getDisplayableName() + "\" to " + option.getValue().toString() + '.';
             sendServerChat(message);
             originalOption.setValue(option.getValue());
@@ -29860,6 +30086,13 @@ public class GameManager implements IGameManager {
     }
 
     /**
+     * Creates a packet containing all the round reports unfiltered
+     */
+    private Packet createAllReportsPacket() {
+        return new Packet(PacketCommand.SENDING_REPORTS_ALL, getGame().getAllReports());
+    }
+
+    /**
      * Creates a packet containing all current entities
      */
     private Packet createEntitiesPacket() {
@@ -29887,9 +30120,10 @@ public class GameManager implements IGameManager {
      * Creates a packet containing all entities, including wrecks, visible to
      * the player in a blind game
      */
-    private Packet createFilteredFullEntitiesPacket(Player p) {
+    private Packet createFilteredFullEntitiesPacket(Player p,
+                                                    Map<EntityTargetPair, LosEffects> losCache) {
         return new Packet(PacketCommand.SENDING_ENTITIES,
-                filterEntities(p, getGame().getEntitiesVector(), null),
+                filterEntities(p, getGame().getEntitiesVector(), losCache),
                 getGame().getOutOfGameEntitiesVector(), getGame().getForces());
     }
 
@@ -29937,7 +30171,8 @@ public class GameManager implements IGameManager {
     private Packet createRemoveEntityPacket(int entityId, int condition) {
         List<Integer> ids = new ArrayList<>(1);
         ids.add(entityId);
-        return createRemoveEntityPacket(ids, getGame().getForces().removeEntityFromForces(entityId), condition);
+        Forces forces = getGame().getForces().clone();
+        return createRemoveEntityPacket(ids, forces.removeEntityFromForces(entityId), condition);
     }
 
     /**
@@ -34078,7 +34313,7 @@ public class GameManager implements IGameManager {
      * @param duration How long the smoke will last.
      */
     public void createSmoke(Coords coords, int level, int duration) {
-        SmokeCloud cloud = new SmokeCloud(coords, level, duration);
+        SmokeCloud cloud = new SmokeCloud(coords, level, duration, game.getRoundCount());
         game.addSmokeCloud(cloud);
         sendSmokeCloudAdded(cloud);
     }
@@ -34091,20 +34326,9 @@ public class GameManager implements IGameManager {
      * @param duration duration How long the smoke will last.
      */
     public void createSmoke(ArrayList<Coords> coords, int level, int duration) {
-        SmokeCloud cloud = new SmokeCloud(coords, level, duration);
+        SmokeCloud cloud = new SmokeCloud(coords, level, duration, game.getRoundCount());
         game.addSmokeCloud(cloud);
         sendSmokeCloudAdded(cloud);
-    }
-
-    /**
-     * Update the map with a new set of coords.
-     *
-     * @param newCoords the location to move the smoke to
-     */
-    public void updateSmoke(SmokeCloud cloud, ArrayList<Coords> newCoords) {
-        removeSmokeTerrain(cloud);
-        cloud.getCoordsList().clear();
-        cloud.getCoordsList().addAll(newCoords);
     }
 
     /**
@@ -34114,9 +34338,9 @@ public class GameManager implements IGameManager {
      */
     public void removeSmokeTerrain(SmokeCloud cloud) {
         for (Coords coords : cloud.getCoordsList()) {
-            Hex nextHex = game.getBoard().getHex(coords);
-            if ((nextHex != null) && nextHex.containsTerrain(Terrains.SMOKE)) {
-                nextHex.removeTerrain(Terrains.SMOKE);
+            Hex hex = game.getBoard().getHex(coords);
+            if ((hex != null) && hex.containsTerrain(Terrains.SMOKE)) {
+                hex.removeTerrain(Terrains.SMOKE);
                 sendChangedHex(coords);
             }
         }

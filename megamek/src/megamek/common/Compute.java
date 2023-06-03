@@ -503,13 +503,14 @@ public class Compute {
         int enHighEl = enLowEl + entity.getHeight();
         for (Entity inHex : game.getEntitiesVector(coords)) {
             int inHexAlt = inHex.getAltitude();
+            boolean crewOnGround = (inHex instanceof EjectedCrew) && (inHexAlt == 0);
             int inHexEnLowEl = inHex.getElevation();
             int inHexEnHighEl = inHexEnLowEl + inHex.getHeight();
             if ((!onlyMechs || (inHex instanceof Mech))
                 && !(ignoreInfantry && (inHex instanceof Infantry))
                 && inHex.isEnemyOf(entity) && !inHex.isMakingDfa()
                 && (enLowEl <= inHexEnHighEl) && (enHighEl >= inHexEnLowEl)
-                && ((entity instanceof EjectedCrew) && (inHexAlt == 0))) {
+                && (!(inHex instanceof EjectedCrew) || (crewOnGround))) {
                 return true;
             }
         }
@@ -1737,7 +1738,7 @@ public class Compute {
         }
 
         // air-to-air attacks add one for altitude differences
-        if (Compute.isAirToAir(attacker, target)) {
+        if (Compute.isAirToAir(attacker, target) && !attacker.isSpaceborne()) {
             int aAlt = attacker.getAltitude();
             int tAlt = target.getAltitude();
             if (target.isAirborneVTOLorWIGE()) {
@@ -4944,6 +4945,72 @@ public class Compute {
 
         return range;
 
+    }
+
+    public static final class SensorRangeHelper {
+        public int minSensorRange;
+        public int maxSensorRange;
+        public int minGroundSensorRange;
+        public int maxGroundSensorRange;
+
+        public SensorRangeHelper(int minSensorRange, int maxSensorRange, int minGroundSensorRange, int maxGroundSensorRange) {
+            this.minSensorRange = minSensorRange;
+            this.maxSensorRange = maxSensorRange;
+            this.minGroundSensorRange = minGroundSensorRange;
+            this.maxGroundSensorRange = maxGroundSensorRange;
+        }
+    }
+
+    /**
+     * returns the current sensing ranges of the active sensor
+     */
+    @Nullable
+    public static SensorRangeHelper getSensorRanges(Game game, Entity e) {
+        if (null == e.getActiveSensor()) {
+            return null;
+        }
+        int bracket = Compute.getSensorBracket(e.getSensorCheck());
+        if (e.isSpaceborne()) {
+            bracket = Compute.getSensorBracket(7);
+        }
+        int range = e.getActiveSensor().getRangeByBracket();
+        int groundRange = 0;
+        if (e.getActiveSensor().isBAP()) {
+            groundRange = 2;
+        } else {
+            groundRange = 1;
+        }
+
+        //ASF sensors change range when in space, so we do that here
+        if (e.isSpaceborne()) {
+            if (e.getActiveSensor().getType() == Sensor.TYPE_AERO_SENSOR) {
+                range = Sensor.ASF_RADAR_MAX_RANGE;
+            }
+
+            //If Aero/Spacecraft sensors are destroyed while in space, the range is 0.
+            if (e.isAeroSensorDestroyed()) {
+                range = 0;
+            }
+        }
+
+        //Dropships using radar in an atmosphere need a range that's a bit more sensible
+        if (e.hasETypeFlag(Entity.ETYPE_DROPSHIP) && !e.isSpaceborne()) {
+            if (e.getActiveSensor().getType() == Sensor.TYPE_SPACECRAFT_RADAR) {
+                range = Sensor.LC_RADAR_GROUND_RANGE;
+            }
+        }
+
+        int maxSensorRange = bracket * range;
+        int minSensorRange = Math.max((bracket - 1) * range, 0);
+        int maxGroundSensorRange = bracket * groundRange;
+        int minGroundSensorRange = Math.max((maxGroundSensorRange - 1), 0);
+
+        if (game.getOptions().booleanOption(OptionsConstants.ADVANCED_INCLUSIVE_SENSOR_RANGE)) {
+            minSensorRange = 0;
+            minGroundSensorRange = 0;
+        }
+
+        return new SensorRangeHelper(minSensorRange, maxSensorRange, minGroundSensorRange, maxGroundSensorRange);
     }
 
     public static int targetSideTable(Coords inPosition, Targetable target) {
