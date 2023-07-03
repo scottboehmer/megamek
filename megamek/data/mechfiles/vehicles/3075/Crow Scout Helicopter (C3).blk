@@ -29,7 +29,7 @@ Crow Scout Helicopter
 </year>
 
 <source>
-TRO 3075 - Jihad
+TRO: 3075
 </source>
 
 <type>
@@ -122,3 +122,4 @@ ARMOR:Starslab/3
 COMMUNICATIONS:Scuti Dualcom with Apple-Churchill Guardian ECM Suite
 TARGETING:Skyhunter IV with Forward-1 TAG and Wunderland Beagle Active Probe
 </systemManufacturers>
+

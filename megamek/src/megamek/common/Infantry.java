@@ -21,7 +21,6 @@ package megamek.common;
 
 import megamek.MMConstants;
 import megamek.client.ui.swing.calculationReport.CalculationReport;
-import megamek.common.battlevalue.InfantryBVCalculator;
 import megamek.common.cost.InfantryCostCalculator;
 import megamek.common.enums.AimingMode;
 import megamek.common.enums.GamePhase;
@@ -167,7 +166,7 @@ public class Infantry extends Entity {
 
     @Override
     public CrewType defaultCrewType() {
-        return CrewType.CREW;
+        return CrewType.INFANTRY_CREW;
     }
 
     public static TechAdvancement getMotiveTechAdvancement(EntityMovementMode movementMode) {
@@ -345,7 +344,7 @@ public class Infantry extends Entity {
     }
 
     @Override
-    public int getWalkMP(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor) {
+    public int getWalkMP(MPCalculationSetting mpCalculationSetting) {
         int mp = getOriginalWalkMP();
         // Encumbering armor (TacOps, pg. 318)
         if (encumbering) {
@@ -371,17 +370,15 @@ public class Infantry extends Entity {
                 && ((getMovementMode().isLegInfantry()) || (getMovementMode().isJumpInfantry()))) {
             mp += 1;
         }
+
         if (hasActiveFieldArtillery()) {
             mp = Math.min(mp, 1);
         }
-        if (null != game) {
-            int weatherMod = game.getPlanetaryConditions().getMovementMods(this);
-            if (weatherMod != 0) {
-                mp = Math.max(mp + weatherMod, 0);
-            }
-        }
 
-        if (null != game) {
+        if (!mpCalculationSetting.ignoreWeather && (null != game)) {
+            int weatherMod = game.getPlanetaryConditions().getMovementMods(this);
+            mp = Math.max(mp + weatherMod, 0);
+
             if ((game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_GUSTING_RAIN)
                     && getCrew().getOptions().stringOption(OptionsConstants.MISC_ENV_SPECIALIST).equals(Crew.ENVSPC_RAIN)) {
                 if ((mp !=0) || getMovementMode().isMotorizedInfantry()) {
@@ -397,28 +394,30 @@ public class Infantry extends Entity {
                 }
             }
 
-            if (getCrew().getOptions().stringOption(OptionsConstants.MISC_ENV_SPECIALIST).equals(Crew.ENVSPC_WIND)) {
-                if (game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WI_MOD_GALE) {
+            if (getCrew().getOptions().stringOption(OptionsConstants.MISC_ENV_SPECIALIST).equals(Crew.ENVSPC_WIND)
+                    && (game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_NONE)) {
+                if (game.getPlanetaryConditions().getWindStrength() == PlanetaryConditions.WI_MOD_GALE) {
                     mp += 1;
                 }
 
-                if ((game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WI_STRONG_GALE)
+                if ((game.getPlanetaryConditions().getWindStrength() == PlanetaryConditions.WI_STRONG_GALE)
                         && ((mp != 0) || getMovementMode().isMotorizedInfantry())) {
                     mp += 1;
                 }
             }
         }
 
-        if (gravity) {
+        if (!mpCalculationSetting.ignoreGravity) {
             mp = applyGravityEffectsOnMP(mp);
         }
+
         return mp;
     }
 
     @Override
-    public int getRunMP(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor) {
-        int walkMP = getWalkMP(gravity, ignoreheat, ignoremodulararmor);
-        if ((game != null)
+    public int getRunMP(MPCalculationSetting mpCalculationSetting) {
+        int walkMP = getWalkMP(mpCalculationSetting);
+        if (!mpCalculationSetting.ignoreOptionalRules && (game != null)
                 && game.getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_TACOPS_FAST_INFANTRY_MOVE)) {
             return (walkMP > 0) ? walkMP + 1 : walkMP + 2;
         } else {
@@ -427,12 +426,7 @@ public class Infantry extends Entity {
     }
 
     @Override
-    public int getRunMPwithoutMASC(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor) {
-        return getRunMP(gravity, ignoreheat, ignoremodulararmor);
-    }
-
-    @Override
-    public int getJumpMP(boolean gravity) {
+    public int getJumpMP(MPCalculationSetting mpCalculationSetting) {
         int mp = hasUMU() ? 0 : getOriginalJumpMP();
         if ((getSecondaryWeaponsPerSquad() > 1)
                 && !hasAbility(OptionsConstants.MD_TSM_IMPLANT)
@@ -443,11 +437,12 @@ public class Infantry extends Entity {
         } else if (movementMode.isVTOL() && getSecondaryWeaponsPerSquad() > 0) {
             mp = Math.max(mp - 1, 0);
         }
-        if (gravity) {
+
+        if (!mpCalculationSetting.ignoreGravity) {
             mp = applyGravityEffectsOnMP(mp);
         }
 
-        if (null != game) {
+        if (!mpCalculationSetting.ignoreWeather && (null != game)) {
             int windCond = game.getPlanetaryConditions().getWindStrength();
             if (windCond >= PlanetaryConditions.WI_STRONG_GALE) {
                 return 0;
@@ -751,11 +746,6 @@ public class Infantry extends Entity {
 
     public boolean hasHittableCriticals(int loc) {
         return false;
-    }
-
-    @Override
-    protected int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill, CalculationReport calculationReport) {
-        return InfantryBVCalculator.calculateBV(this, ignoreSkill, calculationReport);
     }
 
     @Override

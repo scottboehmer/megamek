@@ -187,6 +187,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
     public static final String FOCUS = "Focus";
     public static final String FIRING_SOLUTIONS = "FiringSolutions";
     public static final String MOVE_ENVELOPE = "MoveEnvelope";
+    public static final String TURN_DETAILS_OVERLAY = "TurnDetailsOverlay";
     public static final String FOV_HIGHLIGHT = "FovHighlight";
     public static final String FOV_HIGHLIGHT_ALPHA = "FovHighlightAlpha";
     //Rings' sizes (measured in distance to center) separated by whitespace.
@@ -469,7 +470,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
         setDefault(BOARD_FIELD_OF_FIRE_LONG_COLOR, new Color(60, 150, 60));
         setDefault(BOARD_FIELD_OF_FIRE_EXTREME_COLOR, new Color(40, 100, 40));
         setDefault(BOARD_SENSOR_RANGE_COLOR, new Color(105, 105, 245));
-        setDefault(BOARD_VISUAL_RANGE_COLOR, new Color(100, 100, 150));
+        setDefault(BOARD_VISUAL_RANGE_COLOR, new Color(255, 204, 255));
         setDefault(BOARD_UNIT_SELECTED_COLOR, DEFAULT_MAGENTA);
         setDefault(BOARD_UNIT_VALID_COLOR, DEFAULT_CYAN);
         setDefault(BOARD_UNIT_TEXT_COLOR, Color.white);
@@ -967,6 +968,9 @@ public class GUIPreferences extends PreferenceStoreProxy {
         return store.getBoolean(MOVE_ENVELOPE);
     }
 
+    public boolean getTurnDetailsOverlay() {
+        return store.getBoolean(TURN_DETAILS_OVERLAY);
+    }
     public boolean getFovHighlight() {
         return store.getBoolean(FOV_HIGHLIGHT);
     }
@@ -1730,6 +1734,10 @@ public class GUIPreferences extends PreferenceStoreProxy {
 
     public void setMoveEnvelope(boolean state) {
         store.setValue(MOVE_ENVELOPE, state);
+    }
+
+    public void setTurnDetailsOverlay(boolean state) {
+        store.setValue(TURN_DETAILS_OVERLAY, state);
     }
 
     public void setFovHighlight(boolean state) {

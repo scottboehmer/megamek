@@ -14,7 +14,6 @@
 package megamek.common;
 
 import megamek.client.ui.swing.calculationReport.CalculationReport;
-import megamek.common.battlevalue.AeroBVCalculator;
 import megamek.common.cost.AeroCostCalculator;
 import megamek.common.enums.AimingMode;
 import megamek.common.options.OptionsConstants;
@@ -119,13 +118,13 @@ public class Aero extends Entity implements IAero, IBomber {
     // ignored crew hit for harjel
     private int ignoredCrewHits = 0;
     private int cockpitType = COCKPIT_STANDARD;
-    
+
     //Autoejection
     private boolean autoEject = true;
     private boolean condEjectAmmo = true;
     private boolean condEjectFuel = true;
     private boolean condEjectSIDest = true;
-    
+
     private boolean ejecting = false;
 
     // track straight movement from last turn
@@ -208,10 +207,10 @@ public class Aero extends Entity implements IAero, IBomber {
     private int whoFirst = 0;
 
     private int eccmRoll = 0;
-    
+
     //List of escape craft used by this ship
     private Set<String> escapeCraftList = new HashSet<>();
-    
+
     //Maps unique id of each assigned marine to marine point value
     private Map<UUID,Integer> marines;
 
@@ -319,62 +318,50 @@ public class Aero extends Entity implements IAero, IBomber {
         return getSensorHits() >= 3;
     }
 
-    /**
-     * Returns this entity's safe thrust, factored for heat, extreme
-     * temperatures, gravity, partial repairs and bomb load.
-     */
     @Override
-    public int getWalkMP(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor) {
-        return getWalkMP(gravity, ignoreheat, ignoremodulararmor, false);
-    }
-    
-    /**
-     * Returns this entity's safe thrust, factored for heat, extreme
-     * temperatures, gravity, partial repairs, bomb load and whether it's grounded or not.
-     */
-    public int getWalkMP(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor, boolean ignoreGroundedStatus) {
-        int j = getOriginalWalkMP();
-        // adjust for engine hits
+    public int getWalkMP(MPCalculationSetting mpCalculationSetting) {
+        int mp = getOriginalWalkMP();
         if (engineHits >= getMaxEngineHits()) {
             return 0;
         }
+
         int engineLoss = 2;
         if ((this instanceof SmallCraft) || (this instanceof Jumpship)) {
             engineLoss = 1;
         }
-        j = Math.max(0, j - (engineHits * engineLoss));
-        j = Math.max(0, j - getCargoMpReduction(this));
-        if ((null != game) && gravity) {
+        mp = Math.max(0, mp - (engineHits * engineLoss));
+
+        if (!mpCalculationSetting.ignoreCargo) {
+            mp = Math.max(0, mp - getCargoMpReduction(this));
+        }
+
+        if ((null != game) && !mpCalculationSetting.ignoreWeather) {
             int weatherMod = game.getPlanetaryConditions().getMovementMods(this);
-            if (weatherMod != 0) {
-                j = Math.max(j + weatherMod, 0);
-            }
+            mp = Math.max(mp + weatherMod, 0);
             if (getCrew().getOptions().stringOption(OptionsConstants.MISC_ENV_SPECIALIST).equals(Crew.ENVSPC_WIND)
-                    && (game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WI_TORNADO_F13)) {
-                j += 1;
+                    && (game.getPlanetaryConditions().getWindStrength() == PlanetaryConditions.WI_TORNADO_F13)
+                    && (game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_NONE)) {
+                mp += 1;
             }
         }
-        // get bomb load
-        j = reduceMPByBombLoad(j);
 
-        if (hasModularArmor()) {
-            j--;
+        if (!mpCalculationSetting.ignoreCargo) {
+            mp = reduceMPByBombLoad(mp);
         }
-        // partially repaired engine
+
+        if (!mpCalculationSetting.ignoreModularArmor && hasModularArmor()) {
+            mp--;
+        }
+
         if (getPartialRepairs().booleanOption("aero_engine_crit")) {
-            j--;
+            mp--;
         }
 
-        // if they are not airborne, then they get MP halved (aerodyne) or no MP
-        // and also if we're not ignoring the "grounded" status
-        if (!ignoreGroundedStatus && !isAirborne()) {
-            j = j / 2;
-            if (isSpheroid()) {
-                j = 0;
-            }
+        if (!mpCalculationSetting.ignoreGrounded && !isAirborne()) {
+            mp = isSpheroid() ? 0 : mp / 2;
         }
 
-        return j;
+        return mp;
     }
 
     /**
@@ -384,21 +371,7 @@ public class Aero extends Entity implements IAero, IBomber {
      */
     @Override
     public int getCurrentThrust() {
-        int j = getOriginalWalkMP();
-        j = Math.max(0, j - getCargoMpReduction(this));
-        if (null != game) {
-            int weatherMod = game.getPlanetaryConditions().getMovementMods(this);
-            if (weatherMod != 0) {
-                j = Math.max(j + weatherMod, 0);
-            }
-        }
-        // get bomb load
-        j = reduceMPByBombLoad(j);
-
-        if (hasModularArmor()) {
-            j--;
-        }
-        return j;
+        return getWalkMP(MPCalculationSetting.NO_GROUNDED);
     }
 
     /**
@@ -687,11 +660,11 @@ public class Aero extends Entity implements IAero, IBomber {
         }
         fcsHits = hits;
     }
-    
+
     public boolean fuelTankHit() {
         return fuelTankHit;
     }
-    
+
     public void setFuelTankHit(boolean value) {
         fuelTankHit = value;
     }
@@ -1342,11 +1315,6 @@ public class Aero extends Entity implements IAero, IBomber {
         return LOC_NONE;
     }
 
-    @Override
-    public int doBattleValueCalculation(boolean ignoreC3, boolean ignoreSkill, CalculationReport calculationReport) {
-        return AeroBVCalculator.calculateBV(this, ignoreC3, ignoreSkill, calculationReport);
-    }
-
     public double getBVTypeModifier() {
         return 1.2;
     }
@@ -1505,21 +1473,13 @@ public class Aero extends Entity implements IAero, IBomber {
         return NUM_OF_SLOTS;
     }
 
-    /**
-     * Fighters don't have MASC
-     */
     @Override
-    public int getRunMPwithoutMASC(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor) {
-        return getRunMP(gravity, ignoreheat, ignoremodulararmor);
-    }
-
-    @Override
-    public int getRunMP(boolean gravity, boolean ignoreheat, boolean ignoremodulararmor) {
-        // if aeros are on the ground, they can only move at cruising speed
-        if (!isAirborne()) {
-            return getWalkMP(gravity, ignoreheat, ignoremodulararmor);
+    public int getRunMP(MPCalculationSetting mpCalculationSetting) {
+        if (isAirborne()) {
+            return super.getRunMP(mpCalculationSetting);
+        } else {
+            return getWalkMP(mpCalculationSetting);
         }
-        return super.getRunMP(gravity, ignoreheat, ignoremodulararmor);
     }
 
     @Override
@@ -2797,7 +2757,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public int getNCrew() {
         return 1;
     }
-    
+
     @Override
     public void setNCrew(int crew) {
     }
@@ -2826,11 +2786,11 @@ public class Aero extends Entity implements IAero, IBomber {
     public int getNPassenger() {
         return 0;
     }
-    
+
     @Override
     public void setNPassenger(int pass) {
     }
-    
+
     /**
      * Returns the list of Entity IDs used by this ship as escape craft
      * @return
@@ -2838,7 +2798,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public Set<String> getEscapeCraft() {
         return escapeCraftList;
     }
-    
+
     /**
      * Adds an Escape Craft. Used by MHQ to track where escaped crew and passengers end up.
      * @param id The Entity ID of the ship to add.
@@ -2846,7 +2806,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public void addEscapeCraft(String id) {
         escapeCraftList.add(id);
     }
-    
+
     /**
      * Removes an Escape Craft. Used by MHQ to track where escaped crew and passengers end up.
      * @param id The Entity ID of the ship to remove.
@@ -2869,7 +2829,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public int getNMarines() {
         return 0;
     }
-    
+
     /**
      * Updates the number of marines aboard
      * @param marines The number of marines to add/subtract
@@ -2877,7 +2837,7 @@ public class Aero extends Entity implements IAero, IBomber {
     @Override
     public void setNMarines(int marines) {
     }
-    
+
     /**
      * Returns our list of unique individuals being transported as marines
      * @return
@@ -2885,9 +2845,9 @@ public class Aero extends Entity implements IAero, IBomber {
     public Map<UUID,Integer> getMarines() {
         return marines;
     }
-    
+
     /**
-     * Adds a marine. Used by MHQ to track where a given person ends up. 
+     * Adds a marine. Used by MHQ to track where a given person ends up.
      * Also used by MM to move marines around between ships
      * @param personId The unique ID of the person to add.
      * @param pointValue The marine point value of the person being added
@@ -2895,7 +2855,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public void addMarine(UUID personId, int pointValue) {
         marines.put(personId, pointValue);
     }
-    
+
     /**
      * Removes a marine. Used by MHQ to track where a given person ends up.
      * Also used by MM to move marines around between ships
@@ -2904,7 +2864,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public void removeMarine(UUID personId) {
         marines.remove(personId);
     }
-    
+
     /**
      * Returns the number of marines assigned to a unit
      * Used for abandoning a unit
@@ -2913,7 +2873,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public int getMarineCount() {
         return 0;
     }
-    
+
     /**
      * Convenience method that compiles the total number of people aboard a ship - Crew, Marines, Passengers...
      * @return An integer representing everyone aboard
@@ -2928,7 +2888,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public int getEscapePods() {
         return 0;
     }
-    
+
     /**
      * Convenience method to return the number of escape pods remaining
      * @return
@@ -2943,28 +2903,28 @@ public class Aero extends Entity implements IAero, IBomber {
     public int getLifeBoats() {
         return 0;
     }
-    
+
     /**
      * Returns the total number of escape pods launched so far
      */
     public int getLaunchedEscapePods() {
         return 0;
     }
-    
+
     /**
      * Updates the total number of escape pods launched so far
      * @param n The number to change
      */
     public void setLaunchedEscapePods(int n) {
     }
-    
+
     /**
      * Returns the total number of life boats launched so far
      */
     public int getLaunchedLifeBoats() {
         return 0;
     }
-    
+
     /**
      * Convenience method to return the number of life boats remaining
      * @return
@@ -2972,24 +2932,24 @@ public class Aero extends Entity implements IAero, IBomber {
     public int getLifeBoatsLeft() {
         return getLifeBoats() - getLaunchedLifeBoats();
     }
-    
+
     /**
      * Updates the total number of life boats launched so far
      * @param n The number to change
      */
     public void setLaunchedLifeBoats(int n) {
     }
-    
+
     /**
      * Calculates whether this ship has any available escape systems remaining
      * return
      */
     public boolean hasEscapeSystemsLeft() {
-        return ((getLaunchedLifeBoats() < getLifeBoats()) 
+        return ((getLaunchedLifeBoats() < getLifeBoats())
                 || (getLaunchedEscapePods() < getEscapePods())
                 || !getLaunchableSmallCraft().isEmpty());
     }
-    
+
     /**
      * Calculates the total number of people that can be carried in this unit's escape systems
      * 6 people per lifeboat/escape pod + troop capacity of any small craft
@@ -3003,7 +2963,7 @@ public class Aero extends Entity implements IAero, IBomber {
         people += getEscapePods() * 6;
         // Lifeboats hold 6 comfortably
         people += getLifeBoats() * 6;
-        
+
         // Any small craft aboard and able to launch?
         for (Entity sc : getLaunchableSmallCraft()) {
             // There could be an ASF in the bay...
@@ -3196,7 +3156,7 @@ public class Aero extends Entity implements IAero, IBomber {
             }
         }
     }
-    
+
     // autoejection methods
     /**
      * @return unit has an ejection seat
@@ -3219,7 +3179,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public void setAutoEject(boolean autoEject) {
         this.autoEject = autoEject;
     }
-    
+
     /**
      * Is autoejection enabled for ammo explosions?
      * @return
@@ -3267,7 +3227,7 @@ public class Aero extends Entity implements IAero, IBomber {
     public void setCondEjectSIDest(boolean condEjectSIDest) {
         this.condEjectSIDest = condEjectSIDest;
     }
-    
+
     /**
      * Intended for large craft. Indicates that the ship is being abandoned.
      * @return
@@ -3282,26 +3242,5 @@ public class Aero extends Entity implements IAero, IBomber {
      */
     public void setEjecting(boolean ejecting) {
         this.ejecting = ejecting;
-    }
-    
-    /**
-     * Aerospace units are considered permanently immobilized
-     *
-     * @return true if unit is permanently immobile
-     */
-    public boolean isPermanentlyImmobilized(boolean checkCrew) {
-        if (checkCrew && ((getCrew() == null) || getCrew().isDead())) {
-            return true;
-        } else if (((getOriginalWalkMP() > 0) || (getOriginalRunMP() > 0) || (getOriginalJumpMP() > 0))
-                /*
-                 * Need to make sure here that we're ignoring heat because
-                 * that's not actually "permanent":
-                 */
-                && ((getWalkMP(true, true, false, true) == 0)
-                    && (getRunMP(true, true, false) == 0) && (getJumpMP() == 0))) {
-            return true;
-        } else {
-            return false;
-        }
     }
 }

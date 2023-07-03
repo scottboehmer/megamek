@@ -22,6 +22,8 @@ package megamek.client.ui.swing;
 import megamek.client.event.BoardViewEvent;
 import megamek.client.ui.Messages;
 import megamek.client.ui.SharedUtility;
+import megamek.client.ui.swing.boardview.AbstractBoardViewOverlay;
+import megamek.client.ui.swing.boardview.TurnDetailsOverlay;
 import megamek.client.ui.swing.util.CommandAction;
 import megamek.client.ui.swing.util.KeyCommandBind;
 import megamek.client.ui.swing.util.MegaMekController;
@@ -55,6 +57,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static megamek.client.ui.swing.util.UIUtil.colorString;
 import static megamek.common.MiscType.F_CHAFF_POD;
 import static megamek.common.options.OptionsConstants.ADVGRNDMOV_TACOPS_ZIPLINES;
 
@@ -339,6 +342,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
     public static final int GEAR_LONGEST_RUN = 10;
     public static final int GEAR_LONGEST_WALK = 11;
     public static final int GEAR_STRAFE = 12;
+    public static final String turnDetailsFormat = "%s%-3s %-14s %1s %2dMP%s";
 
     /**
      * Creates and lays out a new movement phase display for the specified
@@ -426,7 +430,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         shiftheld = true;
                         currentMove(target);
                         shiftheld = false;
-                        clientgui.getBoardView().drawMovementData(ce(), cmd);
+                        updateMove();
                     }
                 });
 
@@ -456,7 +460,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         shiftheld = true;
                         currentMove(target);
                         shiftheld = false;
-                        clientgui.getBoardView().drawMovementData(ce(), cmd);
+                        updateMove();
                     }
                 });
 
@@ -575,7 +579,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                                     clear();
                                 }
                                 if (!cmd.isJumping()) {
-                                    cmd.addStep(MoveStepType.START_JUMP);
+                                    addStepToMovePath(MoveStepType.START_JUMP);
                                 }
                                 gear = MovementDisplay.GEAR_JUMP;
                                 Color jumpColor = GUIP.getMoveJumpColor();
@@ -626,7 +630,6 @@ public class MovementDisplay extends ActionPhaseDisplay {
                             }
                         }
                         adjustConvertSteps(nextMode);
-                        clientgui.getBoardView().drawMovementData(ce(), cmd);
                     }
                 });
     }
@@ -957,6 +960,76 @@ public class MovementDisplay extends ActionPhaseDisplay {
         updateDonePanel();
     }
 
+    private void addStepToMovePath(MoveStepType moveStep) {
+        cmd.addStep(moveStep);
+        updateMove();
+    }
+
+    private void addStepsToMovePath(MoveStepType ... moveSteps ) {
+        for (MoveStepType moveStep : moveSteps) {
+            cmd.addStep(moveStep);
+        }
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, Entity entity) {
+        cmd.addStep(moveStep, entity);
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, TreeMap<Integer,Vector<Integer>> targets) {
+        cmd.addStep(moveStep, targets);
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, boolean noCost) {
+        cmd.addStep(moveStep, noCost);
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, boolean noCost,  boolean isManeuver) {
+        cmd.addStep(moveStep, noCost, isManeuver);
+        updateMove();
+    }
+
+    private void addStepsToMovePath(boolean noCost, boolean isManeuver, MoveStepType ... moveSteps) {
+        for (MoveStepType moveStep : moveSteps) {
+            cmd.addStep(moveStep, noCost, isManeuver);
+        }
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, Entity entity, Coords coords) {
+        cmd.addStep(moveStep, entity, coords);
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, Minefield minefield) {
+        cmd.addStep(moveStep, minefield);
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, int additionalIntData) {
+        cmd.addStep(moveStep, additionalIntData);
+        updateMove();
+    }
+
+    private void addStepToMovePath(MoveStepType moveStep, int recover ,int mineToLay) {
+        cmd.addStep(moveStep, recover, mineToLay);
+        updateMove();
+    }
+
+    private void updateMove() {
+        updateMove(true);
+    }
+
+    private void updateMove(boolean redrawMovement) {
+        if (redrawMovement) {
+            clientgui.getBoardView().drawMovementData(ce(), cmd);
+        }
+        updateDonePanel();
+    }
+
     private void updateAeroButtons() {
         if (ce() != null && ce().isAero()) {
             getBtn(MoveCommand.MOVE_THRUST).setEnabled(true);
@@ -975,24 +1048,94 @@ public class MovementDisplay extends ActionPhaseDisplay {
         }
     }
 
-    /** toggles the status of the Done and No Nag buttons based on if the current move order is valid */
+    /**
+     * toggles the status of the Done and No Nag buttons based on if the current move order is valid
+     */
     @Override
     protected void updateDonePanel() {
         if (cmd == null || cmd.length() == 0) {
-            updateDonePanelButtons( Messages.getString("MovementDisplay.Move"), Messages.getString("MovementDisplay.Skip"), false);
+            updateDonePanelButtons(Messages.getString("MovementDisplay.Move"), Messages.getString("MovementDisplay.Skip"), false, null);
+            return;
         } else {
-            boolean psrCheck = (!SharedUtility.doPSRCheck(cmd.clone()).isBlank())
-                    || (!SharedUtility.doThrustCheck(cmd.clone(), clientgui.getClient()).isBlank());
-            boolean damageCheck = cmd.shouldMechanicalJumpCauseFallDamage()
-                    || cmd.hasActiveMASC()
-                    || (!(ce() instanceof VTOL) && cmd.hasActiveSupercharger())
-                    || cmd.willCrushBuildings();
-
-            String moveMsg =  Messages.getString("MovementDisplay.Move")
-                    + (psrCheck ? "*" : "")
-                    + (damageCheck ? " !" : "");
-            updateDonePanelButtons(moveMsg, Messages.getString("MovementDisplay.Skip"), true);
+            MovePath possible = cmd.clone();
+            possible.clipToPossible();
+            if (possible.length() == 0) {
+                updateDonePanelButtons(Messages.getString("MovementDisplay.Move"), Messages.getString("MovementDisplay.Skip"), false, null);
+            } else if (!possible.isMoveLegal()) {
+                updateDonePanelButtons(Messages.getString("MovementDisplay.IllegalMove"), Messages.getString("MovementDisplay.Skip"), false, null);
+            } else {
+                int mp = possible.countMp(possible.isJumping());
+                boolean psrCheck = (!SharedUtility.doPSRCheck(cmd.clone()).isBlank()) || (!SharedUtility.doThrustCheck(cmd.clone(), clientgui.getClient()).isBlank());
+                boolean damageCheck = cmd.shouldMechanicalJumpCauseFallDamage() || cmd.hasActiveMASC() || (!(ce() instanceof VTOL) && cmd.hasActiveSupercharger()) || cmd.willCrushBuildings();
+                String moveMsg = Messages.getString("MovementDisplay.Move") + " (" + mp + "MP)" + (psrCheck ? "*" : "") + (damageCheck ? "!" : "");
+                updateDonePanelButtons(moveMsg, Messages.getString("MovementDisplay.Skip"), true, computeTurnDetails());
+            }
         }
+    }
+
+    private List<String> computeTurnDetails(){
+        String validTextColor = AbstractBoardViewOverlay.colorToHex(AbstractBoardViewOverlay.getTextColor());
+        String invalidTextColor = AbstractBoardViewOverlay.colorToHex(AbstractBoardViewOverlay.getTextColor(), 0.7f);
+
+        MoveStepType accumType = null;
+        int accumTypeCount = 0;
+        int accumMP = 0;
+        int accumDanger = 0;
+        boolean accumLegal = true;
+        String unicodeIcon = "";
+        ArrayList<String> turnDetails = new ArrayList<>();
+        for( final Enumeration<MoveStep> step = cmd.getSteps(); step.hasMoreElements();) {
+            MoveStep currentStep = step.nextElement();
+            MoveStepType currentType = currentStep.getType();
+            int currentDanger = currentStep.isDanger() ? 1 : 0;
+            boolean currentLegal = currentStep.isLegal(cmd);
+
+            if (accumTypeCount != 0 && accumType == currentType && accumLegal == currentLegal) {
+                accumTypeCount++;
+                accumMP += currentStep.getMp();
+                accumDanger += currentDanger;
+                continue;
+            }
+
+            // switching to a new move type, so write a line
+            if (accumTypeCount != 0) {
+                turnDetails.add(String.format(turnDetailsFormat, accumLegal ? validTextColor : invalidTextColor, accumTypeCount == 1 ? "" : "x" + accumTypeCount, accumType, unicodeIcon, accumMP, "*".repeat(accumDanger)));
+            }
+
+            // switching to a new move type, reset
+            accumType = currentType;
+            accumTypeCount = 1;
+            accumMP = currentStep.getMp();
+            accumDanger = currentDanger;
+            accumLegal = currentLegal;
+            switch (accumType) {
+                case TURN_LEFT:
+                    unicodeIcon = "\u21B0";
+                    break;
+                case TURN_RIGHT:
+                    unicodeIcon = "\u21B1";
+                    break;
+                case FORWARDS:
+                    unicodeIcon = "\u2191";
+                    break;
+                case BACKWARDS:
+                    unicodeIcon = "\u2193";
+                    break;
+                case START_JUMP:
+                    unicodeIcon = "\u21EF";
+                    break;
+                default:
+                    unicodeIcon = "";
+                    break;
+            }
+        }
+
+        // add line for last moves
+        turnDetails.add(String.format(turnDetailsFormat,
+                accumLegal ? validTextColor : invalidTextColor,
+                accumTypeCount == 1 ? "" : "x" + accumTypeCount,
+                accumType, unicodeIcon, accumMP, "*".repeat(accumDanger)));
+        return turnDetails;
     }
 
     /**
@@ -1161,7 +1304,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             Color walkColor = GUIP.getMoveDefaultColor();
             clientgui.getBoardView().setHighlightColor(walkColor);
         } else if (!cmd.isJumping()) {
-            cmd.addStep(MoveStepType.START_JUMP);
+            addStepToMovePath(MoveStepType.START_JUMP);
         }
 
         // update some GUI elements
@@ -1234,9 +1377,9 @@ public class MovementDisplay extends ActionPhaseDisplay {
         } else if (cmd.length() == 0) {
             clear();
             if ((gear == MovementDisplay.GEAR_JUMP) && !cmd.isJumping()) {
-                cmd.addStep(MoveStepType.START_JUMP);
+                addStepToMovePath(MoveStepType.START_JUMP);
             } else if (entity.isConvertingNow()) {
-                cmd.addStep(MoveStepType.CONVERT_MODE);
+                addStepToMovePath(MoveStepType.CONVERT_MODE);
             }
         } else {
             // clear board cursors
@@ -1246,6 +1389,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             clientgui.getBoardView().setWeaponFieldOfFire(entity, cmd);
             clientgui.getBoardView().setSensorRange(entity, cmd.getFinalCoords());
 
+            //FIXME what is this
             // Set the button's label to "Done"
             // if the entire move is impossible.
             MovePath possible = cmd.clone();
@@ -1554,7 +1698,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
         }
 
         if (isUsingChaff) {
-            cmd.addStep(MoveStepType.CHAFF);
+            addStepToMovePath(MoveStepType.CHAFF);
             isUsingChaff = false;
         }
 
@@ -1661,7 +1805,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             if (cmd.getFinalCoords().equals(dest)
                 && (cmd.getLastStep().getType() != MoveStepType.CHARGE)) {
                 cmd.removeLastStep();
-                cmd.addStep(MoveStepType.CHARGE);
+                addStepToMovePath(MoveStepType.CHARGE);
             }
         } else if (gear == GEAR_DFA) {
             cmd.findPathTo(dest, MoveStepType.DFA);
@@ -1669,23 +1813,25 @@ public class MovementDisplay extends ActionPhaseDisplay {
             if (cmd.getFinalCoords().equals(dest)
                 && (cmd.getLastStep().getType() != MoveStepType.DFA)) {
                 cmd.removeLastStep();
-                cmd.addStep(MoveStepType.DFA);
+                addStepToMovePath(MoveStepType.DFA);
             }
         } else if (gear == GEAR_SWIM) {
             cmd.findPathTo(dest, MoveStepType.SWIM);
         } else if (gear == GEAR_RAM) {
             cmd.findPathTo(dest, MoveStepType.FORWARDS);
         } else if (gear == GEAR_IMMEL) {
-            cmd.addStep(MoveStepType.UP, true, true);
-            cmd.addStep(MoveStepType.UP, true, true);
-            cmd.addStep(MoveStepType.DEC, true, true);
-            cmd.addStep(MoveStepType.DEC, true, true);
+            addStepsToMovePath(true, true,
+                    MoveStepType.UP,
+                    MoveStepType.UP,
+                    MoveStepType.DEC,
+                    MoveStepType.DEC);
             cmd.rotatePathfinder(cmd.getFinalCoords().direction(dest), true);
             gear = GEAR_LAND;
         } else if (gear == GEAR_SPLIT_S) {
-            cmd.addStep(MoveStepType.DOWN, true, true);
-            cmd.addStep(MoveStepType.DOWN, true, true);
-            cmd.addStep(MoveStepType.ACC, true, true);
+            addStepsToMovePath(true, true,
+                    MoveStepType.DOWN,
+                    MoveStepType.DOWN,
+                    MoveStepType.ACC);
             cmd.rotatePathfinder(cmd.getFinalCoords().direction(dest), true);
             gear = GEAR_LAND;
         }
@@ -1766,15 +1912,16 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 // either turn or move
                 if (ce != null) {
                     currentMove(b.getCoords());
-                    clientgui.getBoardView().drawMovementData(ce, cmd);
+                    updateMove();
                 }
             }
         } else if (b.getType() == BoardViewEvent.BOARD_HEX_CLICKED) {
             Coords moveto = b.getCoords();
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            updateMove();
             if (shiftheld || (gear == MovementDisplay.GEAR_TURN)) {
                 updateDonePanel();
 
+                //FIXME what is this
                 // Set the button's label to "Done"
                 // if the entire move is impossible.
                 MovePath possible = cmd.clone();
@@ -1804,7 +1951,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     cmd.clipToPossible();
                 }
 
-                cmd.addStep(MoveStepType.RAM);
+                addStepToMovePath(MoveStepType.RAM);
 
                 ToHitData toHit = new RamAttackAction(cen,
                         target.getTargetType(), target.getId(),
@@ -1956,7 +2103,6 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 return;
             }
             updateDonePanel();
-            butDone.setEnabled(clientgui.getClient().isMyTurn());
             updateProneButtons();
             updateChaffButton();
             updateRACButton();
@@ -4082,13 +4228,13 @@ public class MovementDisplay extends ActionPhaseDisplay {
         cmd.addManeuver(type);
         switch (type) {
             case ManeuverType.MAN_HAMMERHEAD:
-                cmd.addStep(MoveStepType.YAW, true, true);
+                addStepToMovePath(MoveStepType.YAW, true, true);
                 return true;
             case ManeuverType.MAN_HALF_ROLL:
-                cmd.addStep(MoveStepType.ROLL, true, true);
+                addStepToMovePath(MoveStepType.ROLL, true, true);
                 return true;
             case ManeuverType.MAN_BARREL_ROLL:
-                cmd.addStep(MoveStepType.DEC, true, true);
+                addStepToMovePath(MoveStepType.DEC, true, true);
                 return true;
             case ManeuverType.MAN_IMMELMAN:
                 gear = MovementDisplay.GEAR_IMMEL;
@@ -4107,23 +4253,23 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     vel = last.getVelocityLeft();
                 }
                 while (vel > 0) {
-                    cmd.addStep(MoveStepType.DEC, true, true);
+                    addStepToMovePath(MoveStepType.DEC, true, true);
                     vel--;
                 }
-                cmd.addStep(MoveStepType.UP);
+                addStepToMovePath(MoveStepType.UP);
                 return true;
             case ManeuverType.MAN_SIDE_SLIP_LEFT:
                 // If we are on a ground map, slide slip works slightly differently
                 // See Total Warfare pg 85
                 if (clientgui.getClient().getGame().getBoard().getType() == Board.T_GROUND) {
                     for (int i = 0; i < 8; i++) {
-                        cmd.addStep(MoveStepType.LATERAL_LEFT, true, true);
+                        addStepToMovePath(MoveStepType.LATERAL_LEFT, true, true);
                     }
                     for (int i = 0; i < 8; i++) {
-                        cmd.addStep(MoveStepType.FORWARDS, true, true);
+                        addStepToMovePath(MoveStepType.FORWARDS, true, true);
                     }
                 } else {
-                    cmd.addStep(MoveStepType.LATERAL_LEFT, true, true);
+                    addStepToMovePath(MoveStepType.LATERAL_LEFT, true, true);
                 }
                 return true;
             case ManeuverType.MAN_SIDE_SLIP_RIGHT:
@@ -4131,17 +4277,17 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 // See Total Warfare pg 85
                 if (clientgui.getClient().getGame().getBoard().getType() == Board.T_GROUND) {
                     for (int i = 0; i < 8; i++) {
-                        cmd.addStep(MoveStepType.LATERAL_RIGHT, true, true);
+                        addStepToMovePath(MoveStepType.LATERAL_RIGHT, true, true);
                     }
                     for (int i = 0; i < 8; i++) {
-                        cmd.addStep(MoveStepType.FORWARDS, true, true);
+                        addStepToMovePath(MoveStepType.FORWARDS, true, true);
                     }
                 } else {
-                    cmd.addStep(MoveStepType.LATERAL_RIGHT, true, true);
+                    addStepToMovePath(MoveStepType.LATERAL_RIGHT, true, true);
                 }
                 return true;
             case ManeuverType.MAN_LOOP:
-                cmd.addStep(MoveStepType.LOOP, true, true);
+                addStepToMovePath(MoveStepType.LOOP, true, true);
                 return true;
             default:
                 return false;
@@ -4381,7 +4527,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 // gear = Compute.GEAR_LAND;
                 setUnjamEnabled(false);
             } else  if (clientgui.doYesNoDialog(title, msg)) {
-                cmd.addStep(MoveStepType.UNJAM_RAC);
+                addStepToMovePath(MoveStepType.UNJAM_RAC);
                 isUnJammingRAC = true;
                 ready();
                 // If ready() fires, it will call endMyTurn, which sets cen to
@@ -4394,7 +4540,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 }
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_SEARCHLIGHT.getCmd())) {
-            cmd.addStep(MoveStepType.SEARCHLIGHT);
+            addStepToMovePath(MoveStepType.SEARCHLIGHT);
         } else if (actionCmd.equals(MoveCommand.MOVE_WALK.getCmd())) {
             if ((gear == MovementDisplay.GEAR_JUMP) || (gear == MovementDisplay.GEAR_SWIM)) {
                 gear = MovementDisplay.GEAR_LAND;
@@ -4412,7 +4558,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 clear();
             }
             if (!cmd.isJumping()) {
-                cmd.addStep(MoveStepType.START_JUMP);
+                addStepToMovePath(MoveStepType.START_JUMP);
             }
             gear = MovementDisplay.GEAR_JUMP;
             Color jumpColor = GUIP.getMoveJumpColor();
@@ -4422,7 +4568,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             if (gear != MovementDisplay.GEAR_SWIM) {
                 clear();
             }
-            // dcmd.addStep(MoveStepType.SWIM);
+            // daddStepToMovePath(MoveStepType.SWIM);
             gear = MovementDisplay.GEAR_SWIM;
             ce.setMovementMode((ce instanceof BipedMech) ? EntityMovementMode.BIPED_SWIM
                     : EntityMovementMode.QUAD_SWIM);
@@ -4438,7 +4584,6 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 }
             }
             adjustConvertSteps(nextMode);
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
         } else if (actionCmd.equals(MoveCommand.MOVE_MODE_LEG.getCmd())) {
             if ((ce.getEntityType() & Entity.ETYPE_QUAD_MECH) == Entity.ETYPE_QUAD_MECH) {
                 adjustConvertSteps(EntityMovementMode.QUAD);
@@ -4447,7 +4592,6 @@ public class MovementDisplay extends ActionPhaseDisplay {
             } else if ((ce.getEntityType() & Entity.ETYPE_BIPED_MECH) == Entity.ETYPE_BIPED_MECH) {
                 adjustConvertSteps(EntityMovementMode.BIPED);
             }
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
         } else if (actionCmd.equals(MoveCommand.MOVE_MODE_VEE.getCmd())) {
             if (ce instanceof QuadVee && ((QuadVee) ce).getMotiveType() == QuadVee.MOTIVE_WHEEL) {
                 adjustConvertSteps(EntityMovementMode.WHEELED);
@@ -4458,12 +4602,10 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     && ((LandAirMech) ce).getLAMType() == LandAirMech.LAM_STANDARD) {
                 adjustConvertSteps(EntityMovementMode.WIGE);
             }
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
         } else if (actionCmd.equals(MoveCommand.MOVE_MODE_AIR.getCmd())) {
             if (ce instanceof LandAirMech) {
                 adjustConvertSteps(EntityMovementMode.AERODYNE);
             }
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
         } else if (actionCmd.equals(MoveCommand.MOVE_TURN.getCmd())) {
             gear = MovementDisplay.GEAR_TURN;
         } else if (actionCmd.equals(MoveCommand.MOVE_BACK_UP.getCmd())) {
@@ -4539,7 +4681,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             String title = Messages.getString("MovementDisplay.ClearMinefieldDialog.title");
             String msg = Messages.getString("MovementDisplay.ClearMinefieldDialog.message", clear, boom);
             if ((null != mf) && clientgui.doYesNoDialog(title, msg)) {
-                cmd.addStep(MoveStepType.CLEAR_MINEFIELD, mf);
+                addStepToMovePath(MoveStepType.CLEAR_MINEFIELD, mf);
                 ready();
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_CHARGE.getCmd())) {
@@ -4555,7 +4697,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             gear = MovementDisplay.GEAR_DFA;
             computeMovementEnvelope(ce);
             if (!cmd.isJumping()) {
-                cmd.addStep(MoveStepType.START_JUMP);
+                addStepToMovePath(MoveStepType.START_JUMP);
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_RAM.getCmd())) {
             if (gear != MovementDisplay.GEAR_LAND) {
@@ -4582,40 +4724,33 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 if (response.getAnswer()) {
                     ce.setCarefulStand(true);
                     if (cmd.getFinalProne() || cmd.getFinalHullDown()) {
-                        cmd.addStep(MoveStepType.CAREFUL_STAND);
+                        addStepToMovePath(MoveStepType.CAREFUL_STAND);
                     }
                 } else {
                     if (cmd.getFinalProne() || cmd.getFinalHullDown()) {
-                        cmd.addStep(MoveStepType.GET_UP);
+                        addStepToMovePath(MoveStepType.GET_UP);
                     }
                 }
             } else {
                 updateDonePanel();
                 if (cmd.getFinalProne() || cmd.getFinalHullDown()) {
-                    cmd.addStep(MoveStepType.GET_UP);
+                    addStepToMovePath(MoveStepType.GET_UP);
                 }
             }
-
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
         } else if (actionCmd.equals(MoveCommand.MOVE_GO_PRONE.getCmd())) {
             gear = MovementDisplay.GEAR_LAND;
             if (!cmd.getFinalProne()) {
-                cmd.addStep(MoveStepType.GO_PRONE);
+                addStepToMovePath(MoveStepType.GO_PRONE);
             }
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
-            updateDonePanel();
         } else if (actionCmd.equals(MoveCommand.MOVE_HULL_DOWN.getCmd())) {
             gear = MovementDisplay.GEAR_LAND;
             if (!cmd.getFinalHullDown()) {
-                cmd.addStep(MoveStepType.HULL_DOWN);
+                addStepToMovePath(MoveStepType.HULL_DOWN);
             }
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
-            updateDonePanel();
         } else if (actionCmd.equals(MoveCommand.MOVE_BRACE.getCmd())) {
             var options = ce().getValidBraceLocations();
             if (options.size() == 1) {
-                cmd.addStep(MoveStepType.BRACE, options.get(0));
-                updateDonePanel();
+                addStepToMovePath(MoveStepType.BRACE, options.get(0));
             } else if (options.size() > 1) {
                 String[] locationNames = new String[options.size()];
 
@@ -4632,7 +4767,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 // Verify that we have a valid option...
                 if (option != null) {
                     int id = options.get(Arrays.asList(locationNames).indexOf(option));
-                    cmd.addStep(MoveStepType.BRACE, id);
+                    addStepToMovePath(MoveStepType.BRACE, id);
                     updateDonePanel();
                 }
             }
@@ -4642,7 +4777,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         Messages.getString("MovementDisplay.EscapeDialog.message"))) {
 
             clear();
-            cmd.addStep(MoveStepType.FLEE);
+            addStepToMovePath(MoveStepType.FLEE);
             ready();
         } else if (actionCmd.equals(MoveCommand.MOVE_FLY_OFF.getCmd())
                 && clientgui.doYesNoDialog(
@@ -4652,9 +4787,9 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     && clientgui.doYesNoDialog(
                             Messages.getString("MovementDisplay.ReturnFly.title"),
                             Messages.getString("MovementDisplay.ReturnFly.message"))) {
-                cmd.addStep(MoveStepType.RETURN);
+                addStepToMovePath(MoveStepType.RETURN);
             } else {
-                cmd.addStep(MoveStepType.OFF);
+                addStepToMovePath(MoveStepType.OFF);
             }
             ready();
         } else if (actionCmd.equals(MoveCommand.MOVE_EJECT.getCmd())) {
@@ -4663,7 +4798,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         Messages.getString("MovementDisplay.AbandonDialog.title"),
                         Messages.getString("MovementDisplay.AbandonDialog.message"))) {
                     clear();
-                    cmd.addStep(MoveStepType.EJECT);
+                    addStepToMovePath(MoveStepType.EJECT);
                     ready();
                 }
             } else if (ce.isLargeCraft()) {
@@ -4674,9 +4809,9 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     // If we're abandoning while grounded, find a legal position to put an EjectedCrew unit
                     if (!ce.isSpaceborne() && ce.getAltitude() == 0) {
                         Coords pos = getEjectPosition(ce);
-                        cmd.addStep(MoveStepType.EJECT, ce, pos);
+                        addStepToMovePath(MoveStepType.EJECT, ce, pos);
                     } else {
-                        cmd.addStep(MoveStepType.EJECT);
+                        addStepToMovePath(MoveStepType.EJECT);
                     }
                     ready();
                 }
@@ -4685,7 +4820,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                             Messages.getString("MovementDisplay.AbandonDialog1.title"),
                             Messages.getString("MovementDisplay.AbandonDialog1.message"))) {
                 clear();
-                cmd.addStep(MoveStepType.EJECT);
+                addStepToMovePath(MoveStepType.EJECT);
                 ready();
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_LOAD.getCmd())) {
@@ -4693,8 +4828,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             // to our local list of loaded units, and then stop.
             Entity other = getLoadedUnit();
             if (other != null) {
-                cmd.addStep(MoveStepType.LOAD);
-                clientgui.getBoardView().drawMovementData(ce(), cmd);
+                addStepToMovePath(MoveStepType.LOAD);
                 gear = MovementDisplay.GEAR_LAND;
             } // else - didn't find a unit to load
         } else if (actionCmd.equals(MoveCommand.MOVE_TOW.getCmd())) {
@@ -4702,20 +4836,18 @@ public class MovementDisplay extends ActionPhaseDisplay {
             // to our local list of loaded units, and then stop.
             Entity other = getTowedUnit();
             if (other != null) {
-                cmd.addStep(MoveStepType.TOW);
-                clientgui.getBoardView().drawMovementData(ce(), cmd);
+                addStepToMovePath(MoveStepType.TOW);
             } // else - didn't find a unit to tow
         } else if (actionCmd.equals(MoveCommand.MOVE_DISCONNECT.getCmd())) {
             // Ask the user if we're carrying multiple units.
             Entity other = getDisconnectedUnit();
             if (other != null) {
-                cmd.addStep(MoveStepType.DISCONNECT, other);
-                clientgui.getBoardView().drawMovementData(ce(), cmd);
+                addStepToMovePath(MoveStepType.DISCONNECT, other);
             } // else - didn't find a unit to tow
         } else if (actionCmd.equals(MoveCommand.MOVE_MOUNT.getCmd())) {
             Entity other = getMountedUnit();
             if (other != null) {
-                cmd.addStep(MoveStepType.MOUNT, other);
+                addStepToMovePath(MoveStepType.MOUNT, other);
                 ready();
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_UNLOAD.getCmd())) {
@@ -4730,20 +4862,17 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         // set other's position and end this turn - the
                         // unloading unit will get
                         // another turn for further unloading later
-                        cmd.addStep(MoveStepType.UNLOAD, other, pos);
-                        clientgui.getBoardView().drawMovementData(ce(), cmd);
+                        addStepToMovePath(MoveStepType.UNLOAD, other, pos);
                         ready();
                     }
                 } else {
                     // some different handling for small craft/dropship
                     // unloading
-                    cmd.addStep(MoveStepType.UNLOAD, other);
-                    clientgui.getBoardView().drawMovementData(ce(), cmd);
+                    addStepToMovePath(MoveStepType.UNLOAD, other);
                 }
             } // else - Player canceled the unload.
         } else if (actionCmd.equals(MoveCommand.MOVE_RAISE_ELEVATION.getCmd())) {
-            cmd.addStep(MoveStepType.UP);
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
+            addStepToMovePath(MoveStepType.UP);
         } else if (actionCmd.equals(MoveCommand.MOVE_LOWER_ELEVATION.getCmd())) {
             if (ce.isAero()
                     && (null != cmd.getLastStep())
@@ -4751,10 +4880,9 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     && (cmd.getLastStep().getVelocity() < 12)
                     && !(((IAero) ce).isSpheroid() || clientgui.getClient()
                             .getGame().getPlanetaryConditions().isVacuum())) {
-                cmd.addStep(MoveStepType.ACC, true);
+                addStepToMovePath(MoveStepType.ACC, true);
             }
-            cmd.addStep(MoveStepType.DOWN);
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
+            addStepToMovePath(MoveStepType.DOWN);
         } else if (actionCmd.equals(MoveCommand.MOVE_CLIMB_MODE.getCmd())) {
             MoveStep ms = cmd.getLastStep();
             if ((ms != null)
@@ -4767,16 +4895,15 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 // This affects how the StepSprite gets rendered, so it's more clear to keep a climb step
                 // once one has been added
                 if (lastStep.getType() == MoveStepType.CLIMB_MODE_ON) {
-                    cmd.addStep(MoveStepType.CLIMB_MODE_OFF);
+                    addStepToMovePath(MoveStepType.CLIMB_MODE_OFF);
                 } else {
-                    cmd.addStep(MoveStepType.CLIMB_MODE_ON);
+                    addStepToMovePath(MoveStepType.CLIMB_MODE_ON);
                 }
             } else if (cmd.getFinalClimbMode()) {
-                cmd.addStep(MoveStepType.CLIMB_MODE_OFF);
+                addStepToMovePath(MoveStepType.CLIMB_MODE_OFF);
             } else {
-                cmd.addStep(MoveStepType.CLIMB_MODE_ON);
+                addStepToMovePath(MoveStepType.CLIMB_MODE_ON);
             }
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
             computeMovementEnvelope(ce);
         } else if (actionCmd.equals(MoveCommand.MOVE_LAY_MINE.getCmd())) {
             int i = chooseMineToLay();
@@ -4791,64 +4918,53 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 if (cmd.getLastStep() == null
                         && ce instanceof BattleArmor
                         && ce.getMovementMode().equals(EntityMovementMode.INF_JUMP)) {
-                    cmd.addStep(MoveStepType.START_JUMP);
+                    addStepToMovePath(MoveStepType.START_JUMP);
                     gear = GEAR_JUMP;
                     Color jumpColor = GUIP.getMoveJumpColor();
                     clientgui.getBoardView().setHighlightColor(jumpColor);
                     computeMovementEnvelope(ce);
                 }
-                cmd.addStep(MoveStepType.LAY_MINE, i);
-                clientgui.getBoardView().drawMovementData(ce, cmd);
+                addStepToMovePath(MoveStepType.LAY_MINE, i);
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_CALL_SUPPORT.getCmd())) {
             ((Infantry) ce).createLocalSupport();
             clientgui.getClient().sendUpdateEntity(ce());
         } else if (actionCmd.equals(MoveCommand.MOVE_DIG_IN.getCmd())) {
-            cmd.addStep(MoveStepType.DIG_IN);
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
+            addStepToMovePath(MoveStepType.DIG_IN);
         } else if (actionCmd.equals(MoveCommand.MOVE_FORTIFY.getCmd())) {
-            cmd.addStep(MoveStepType.FORTIFY);
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
+            addStepToMovePath(MoveStepType.FORTIFY);
         } else if (actionCmd.equals(MoveCommand.MOVE_TAKE_COVER.getCmd())) {
-            cmd.addStep(MoveStepType.TAKE_COVER);
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
+            addStepToMovePath(MoveStepType.TAKE_COVER);
         } else if (actionCmd.equals(MoveCommand.MOVE_SHAKE_OFF.getCmd())) {
-            cmd.addStep(MoveStepType.SHAKE_OFF_SWARMERS);
-            clientgui.getBoardView().drawMovementData(ce(), cmd);
+            addStepToMovePath(MoveStepType.SHAKE_OFF_SWARMERS);
         } else if (actionCmd.equals(MoveCommand.MOVE_RECKLESS.getCmd())) {
             cmd.setCareful(false);
         } else if (actionCmd.equals(MoveCommand.MOVE_STRAFE.getCmd())) {
             gear = GEAR_STRAFE;
         } else if (actionCmd.equals(MoveCommand.MOVE_BOMB.getCmd())) {
             if (cmd.getLastStep() == null) {
-                cmd.addStep(MoveStepType.NONE);
+                addStepToMovePath(MoveStepType.NONE);
             }
             cmd.setVTOLBombStep(cmd.getFinalCoords());
             cmd.compile(clientgui.getClient().getGame(), ce, false);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            updateMove();
         } else if (actionCmd.equals(MoveCommand.MOVE_ACCN.getCmd())) {
-            cmd.addStep(MoveStepType.ACCN);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.ACCN);
         } else if (actionCmd.equals(MoveCommand.MOVE_DECN.getCmd())) {
-            cmd.addStep(MoveStepType.DECN);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.DECN);
         } else if (actionCmd.equals(MoveCommand.MOVE_ACC.getCmd())) {
-            cmd.addStep(MoveStepType.ACC);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.ACC);
         } else if (actionCmd.equals(MoveCommand.MOVE_DEC.getCmd())) {
-            cmd.addStep(MoveStepType.DEC);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.DEC);
         } else if (actionCmd.equals(MoveCommand.MOVE_EVADE.getCmd())) {
-            cmd.addStep(MoveStepType.EVADE);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.EVADE);
         } else if (actionCmd.equals(MoveCommand.MOVE_BOOTLEGGER.getCmd())) {
-            cmd.addStep(MoveStepType.BOOTLEGGER);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.BOOTLEGGER);
         } else if (actionCmd.equals(MoveCommand.MOVE_SHUTDOWN.getCmd())) {
             if (clientgui.doYesNoDialog(
                     Messages.getString("MovementDisplay.ShutdownDialog.title"),
                     Messages.getString("MovementDisplay.ShutdownDialog.message"))) {
-                cmd.addStep(MoveStepType.SHUTDOWN);
+                addStepToMovePath(MoveStepType.SHUTDOWN);
                 ready();
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_STARTUP.getCmd())) {
@@ -4856,31 +4972,28 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     Messages.getString("MovementDisplay.StartupDialog.title"),
                     Messages.getString("MovementDisplay.StartupDialog.message"))) {
                 clear();
-                cmd.addStep(MoveStepType.STARTUP);
+                addStepToMovePath(MoveStepType.STARTUP);
                 ready();
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_SELF_DESTRUCT.getCmd())) {
             if (clientgui.doYesNoDialog(
                     Messages.getString("MovementDisplay.SelfDestructDialog.title"),
                     Messages.getString("MovementDisplay.SelfDestructDialog.message"))) {
-                cmd.addStep(MoveStepType.SELF_DESTRUCT);
+                addStepToMovePath(MoveStepType.SELF_DESTRUCT);
                 ready();
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_EVADE_AERO.getCmd())) {
-            cmd.addStep(MoveStepType.EVADE);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.EVADE);
             setEvadeAeroEnabled(false);
         } else if (actionCmd.equals(MoveCommand.MOVE_ROLL.getCmd())) {
-            cmd.addStep(MoveStepType.ROLL);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.ROLL);
         } else if (actionCmd.equals(MoveCommand.MOVE_HOVER.getCmd())) {
-            cmd.addStep(MoveStepType.HOVER);
+            addStepToMovePath(MoveStepType.HOVER);
             if (ce instanceof LandAirMech
                     && ce.getMovementMode() == EntityMovementMode.WIGE
                     && ce.isAirborne()) {
                 gear = GEAR_LAND;
             }
-            clientgui.getBoardView().drawMovementData(ce, cmd);
         } else if (actionCmd.equals(MoveCommand.MOVE_MANEUVER.getCmd())) {
             ManeuverChoiceDialog choiceDialog = new ManeuverChoiceDialog(
                     clientgui.frame,
@@ -4910,20 +5023,15 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     distance, clientgui.getClient().getGame(), cmd);
             choiceDialog.setVisible(true);
             int manType = choiceDialog.getChoice();
-            if ((manType > ManeuverType.MAN_NONE) && addManeuver(manType)) {
-                clientgui.getBoardView().drawMovementData(ce, cmd);
-            }
+            updateMove((manType > ManeuverType.MAN_NONE) && addManeuver(manType));
         } else if (actionCmd.equals(MoveCommand.MOVE_LAUNCH.getCmd())) {
             TreeMap<Integer, Vector<Integer>> undocked = getUndockedUnits();
             if (!undocked.isEmpty()) {
-                cmd.addStep(MoveStepType.UNDOCK, undocked);
+                addStepToMovePath(MoveStepType.UNDOCK, undocked);
             }
             TreeMap<Integer, Vector<Integer>> launched = getLaunchedUnits();
             if (!launched.isEmpty()) {
-                cmd.addStep(MoveStepType.LAUNCH, launched);
-            }
-            if (!launched.isEmpty() || !undocked.isEmpty()) {
-                clientgui.getBoardView().drawMovementData(ce, cmd);
+                addStepToMovePath(MoveStepType.LAUNCH, launched);
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_RECOVER.getCmd())
                 || actionCmd.equals(MoveCommand.MOVE_DOCK.getCmd())) {
@@ -4931,8 +5039,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
             // then bring up an option dialog
             int recoverer = getRecoveryUnit();
             if (recoverer != -1) {
-                cmd.addStep(MoveStepType.RECOVER, recoverer, -1);
-                clientgui.getBoardView().drawMovementData(ce, cmd);
+                addStepToMovePath(MoveStepType.RECOVER, recoverer, -1);
             }
             if (actionCmd.equals(MoveCommand.MOVE_DOCK.getCmd())) {
                 cmd.getLastStep().setDocking(true);
@@ -4940,33 +5047,25 @@ public class MovementDisplay extends ActionPhaseDisplay {
         } else if (actionCmd.equals(MoveCommand.MOVE_DROP.getCmd())) {
             TreeMap<Integer, Vector<Integer>> dropped = getDroppedUnits();
             if (!dropped.isEmpty()) {
-                cmd.addStep(MoveStepType.DROP, dropped);
-                clientgui.getBoardView().drawMovementData(ce, cmd);
+                addStepToMovePath(MoveStepType.DROP, dropped);
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_JOIN.getCmd())) {
             // if more than one unit is available as a carrier
             // then bring up an option dialog
             int joined = getUnitJoined();
             if (joined != -1) {
-                cmd.addStep(MoveStepType.JOIN, joined, -1);
-                clientgui.getBoardView().drawMovementData(ce, cmd);
+                addStepToMovePath(MoveStepType.JOIN, joined, -1);
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_TURN_LEFT.getCmd())) {
-            cmd.addStep(MoveStepType.TURN_LEFT);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.TURN_LEFT);
         } else if (actionCmd.equals(MoveCommand.MOVE_TURN_RIGHT.getCmd())) {
-            cmd.addStep(MoveStepType.TURN_RIGHT);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.TURN_RIGHT);
         } else if (actionCmd.equals(MoveCommand.MOVE_THRUST.getCmd())) {
-            cmd.addStep(MoveStepType.THRUST);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.THRUST);
         } else if (actionCmd.equals(MoveCommand.MOVE_YAW.getCmd())) {
-            cmd.addStep(MoveStepType.YAW);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepToMovePath(MoveStepType.YAW);
         } else if (actionCmd.equals(MoveCommand.MOVE_END_OVER.getCmd())) {
-            cmd.addStep(MoveStepType.YAW);
-            cmd.addStep(MoveStepType.ROLL);
-            clientgui.getBoardView().drawMovementData(ce, cmd);
+            addStepsToMovePath(MoveStepType.YAW, MoveStepType.ROLL);
         } else if (actionCmd.equals(MoveCommand.MOVE_DUMP.getCmd())) {
             dumpBombs();
         } else if (actionCmd.equals(MoveCommand.MOVE_TAKE_OFF.getCmd())) {
@@ -4983,7 +5082,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         Messages.getString("MovementDisplay.TakeOffDialog.title"),
                         Messages.getString("MovementDisplay.TakeOffDialog.message"))) {
                     clear();
-                    cmd.addStep(MoveStepType.TAKEOFF);
+                    addStepToMovePath(MoveStepType.TAKEOFF);
                     ready();
                 }
             }
@@ -4992,7 +5091,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     Messages.getString("MovementDisplay.TakeOffDialog.title"),
                     Messages.getString("MovementDisplay.TakeOffDialog.message"))) {
                 clear();
-                cmd.addStep(MoveStepType.VTAKEOFF);
+                addStepToMovePath(MoveStepType.VTAKEOFF);
                 ready();
             }
         } else if (actionCmd.equals(MoveCommand.MOVE_LAND.getCmd())) {
@@ -5007,7 +5106,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         Messages.getString("MovementDisplay.LandDialog.title"),
                         Messages.getString("MovementDisplay.LandDialog.message"))) {
                     clear();
-                    cmd.addStep(MoveStepType.LAND);
+                    addStepToMovePath(MoveStepType.LAND);
                     ready();
                 }
             }
@@ -5023,7 +5122,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                         Messages.getString("MovementDisplay.LandDialog.title"),
                         Messages.getString("MovementDisplay.LandDialog.message"))) {
                     clear();
-                    cmd.addStep(MoveStepType.VLAND);
+                    addStepToMovePath(MoveStepType.VLAND);
                     ready();
                 }
             }
@@ -5145,13 +5244,14 @@ public class MovementDisplay extends ActionPhaseDisplay {
         }
         clear();
         ce().setConvertingNow(true);
-        cmd.addStep(MoveStepType.CONVERT_MODE);
+        addStepToMovePath(MoveStepType.CONVERT_MODE);
         if (cmd.getFinalConversionMode() != endMode) {
-            cmd.addStep(MoveStepType.CONVERT_MODE);
+            addStepToMovePath(MoveStepType.CONVERT_MODE);
         }
         if (ce() instanceof Mech && ((Mech) ce()).hasTracks()) {
             ce().setMovementMode(endMode);
         }
+        updateMove();
     }
 
     /**

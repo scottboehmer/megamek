@@ -23,11 +23,13 @@ import megamek.client.ui.swing.util.KeyCommandBind;
 import megamek.client.ui.swing.util.UIUtil;
 import megamek.client.ui.swing.widget.MegamekButton;
 import megamek.client.ui.swing.widget.SkinSpecification;
+import megamek.common.annotations.Nullable;
 import megamek.common.preference.PreferenceChangeEvent;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.util.List;
 
 import static megamek.client.ui.swing.util.UIUtil.guiScaledFontHTML;
 
@@ -47,8 +49,8 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
         butSkipTurn.setPreferredSize(new Dimension(DONE_BUTTON_WIDTH, MIN_BUTTON_SIZE.height * 1));
         String f = guiScaledFontHTML(UIUtil.uiLightViolet()) +  KeyCommandBind.getDesc(KeyCommandBind.DONE_NO_ACTION)+ "</FONT>";
         butSkipTurn.setToolTipText("<html><body>" + f + "</body></html>");
+        addToDonePanel(donePanel, butSkipTurn);
 
-        donePanel.add(butSkipTurn);
         if (clientgui != null) {
             butSkipTurn.addActionListener(new AbstractAction() {
                 private static final long serialVersionUID = -5034474968902280850L;
@@ -135,7 +137,12 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
      * @param skipButtonLabel
      * @param isDoingAction true if user has entered actions for this turn, false if not.
      */
-    protected void updateDonePanelButtons(String doneButtonLabel, String skipButtonLabel, boolean isDoingAction) {
+    protected void updateDonePanelButtons(final String doneButtonLabel, final String skipButtonLabel, final boolean isDoingAction,
+                                          @Nullable List<String> turnDetails) {
+        if (isIgnoringEvents()) {
+            return;
+        }
+
         this.isDoingAction = isDoingAction;
         if (GUIP.getNagForNoAction()) {
             butDone.setText("<html><b>" + doneButtonLabel + "</b></html>");
@@ -151,13 +158,19 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
         }
         butSkipTurn.setText("<html><b>" + skipButtonLabel + "</b></html>");
 
-        // enable/disable
-        if (this.isDoingAction || ignoreNoActionNag) {
+        if (!clientgui.getClient().isMyTurn()) {
+            butDone.setEnabled(false);
+            butSkipTurn.setEnabled(false);
+        } else if (this.isDoingAction || ignoreNoActionNag) {
             butDone.setEnabled(true);
             butSkipTurn.setEnabled(false);
         } else {
             butDone.setEnabled(!GUIP.getNagForNoAction());
             butSkipTurn.setEnabled(true);
+        }
+
+        if (clientgui.getBoardView().turnDetailsOverlay != null) {
+            clientgui.getBoardView().turnDetailsOverlay.setLines(turnDetails);
         }
     }
 }

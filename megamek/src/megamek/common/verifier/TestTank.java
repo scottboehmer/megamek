@@ -442,7 +442,7 @@ public class TestTank extends TestEntity {
         if (eq instanceof MiscType) {
             if (eq.hasFlag(MiscType.F_FLOTATION_HULL)) {
                 // Per errata, WiGE vehicles automatically include flotation hull
-                return mode.isHover() || mode.isVTOL();
+                return mode.isHoverVTOLOrWiGE();
             }
             if (eq.hasFlag(MiscType.F_FULLY_AMPHIBIOUS)
                     || eq.hasFlag(MiscType.F_LIMITED_AMPHIBIOUS)
@@ -635,7 +635,7 @@ public class TestTank extends TestEntity {
         }
 
         // JJs take just 1 slot
-        if (tank.getJumpMP(false) > 0) {
+        if (tank.getJumpMP(MPCalculationSetting.NO_GRAVITY) > 0) {
             buff.append(StringUtil.makeLength("Jump Jets", 30)).append("1\n");
         }
 
