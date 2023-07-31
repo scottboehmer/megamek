@@ -1780,6 +1780,10 @@ public class GameManager implements IGameManager {
     }
 
     private void entityStatusReport() {
+        if (game.getOptions().booleanOption(OptionsConstants.BASE_SUPPRESS_UNIT_TOOLTIP_IN_REPORT_LOG)) {
+            return;
+        }
+
         List<Report> reports = new ArrayList<>();
         List<Entity> entities = game.getEntitiesVector().stream()
                 .filter(e -> (e.isDeployed() && e.getPosition() != null))
@@ -1789,7 +1793,12 @@ public class GameManager implements IGameManager {
         comp = comp.thenComparing((Entity e) -> e.getDisplayName());
         entities.sort(comp);
 
-        Report r = new Report(7600);
+        // turn off preformatted text for unit tool tip
+        Report r = new Report(1230, Report.PUBLIC);
+        r.add("</pre>");
+        reports.add(r);
+
+        r = new Report(7600);
         reports.add(r);
 
         for (Entity e : entities) {
@@ -1809,6 +1818,11 @@ public class GameManager implements IGameManager {
             r.add("<BR>");
             reports.add(r);
         }
+
+        // turn preformatted text back on, so that text after will display properly
+        r = new Report(1230, Report.PUBLIC);
+        r.add("<pre>");
+        reports.add(r);
 
         vPhaseReport.addAll(reports);
     }
@@ -4813,7 +4827,7 @@ public class GameManager implements IGameManager {
                             addReport(r);
                             continue;
                         } else if (target instanceof Protomech) {
-                            if (target != Compute.stackingViolation(game, entity, nextPos, null)) {
+                            if (target != Compute.stackingViolation(game, entity, nextPos, null, entity.climbMode())) {
                                 r = new Report(2420);
                                 r.subject = target.getId();
                                 r.addDesc(target);
@@ -5140,7 +5154,7 @@ public class GameManager implements IGameManager {
                 // check for quicksand
                 addReport(checkQuickSand(nextPos));
                 // check for accidental stacking violation
-                Entity violation = Compute.stackingViolation(game, entity.getId(), curPos);
+                Entity violation = Compute.stackingViolation(game, entity.getId(), curPos, entity.climbMode());
                 if (violation != null) {
                     // target gets displaced, because of low elevation
                     Coords targetDest = Compute.getValidDisplacement(game, entity.getId(), curPos,
@@ -5173,7 +5187,7 @@ public class GameManager implements IGameManager {
         // If the skidding entity violates stacking,
         // displace targets until it doesn't.
         curPos = entity.getPosition();
-        Entity target = Compute.stackingViolation(game, entity.getId(), curPos);
+        Entity target = Compute.stackingViolation(game, entity.getId(), curPos, entity.climbMode());
         while (target != null) {
             nextPos = Compute.getValidDisplacement(game, target.getId(), target.getPosition(), direction);
             // ASSUMPTION
@@ -5196,7 +5210,7 @@ public class GameManager implements IGameManager {
             addReport(r);
             addReport(doEntityDisplacement(target, curPos, nextPos, null));
             addReport(doEntityDisplacementMinefieldCheck(entity, curPos, nextPos, entity.getElevation()));
-            target = Compute.stackingViolation(game, entity.getId(), curPos);
+            target = Compute.stackingViolation(game, entity.getId(), curPos, entity.climbMode());
         }
 
         // Mechs suffer damage for every hex skidded.
@@ -5806,7 +5820,7 @@ public class GameManager implements IGameManager {
 
         // check for a stacking violation - which should only happen in the
         // case of grounded dropships, because they are not movable
-        if (null != Compute.stackingViolation(game, entity.getId(), c)) {
+        if (null != Compute.stackingViolation(game, entity.getId(), c, entity.climbMode())) {
             Coords dest = Compute.getValidDisplacement(game, entity.getId(), c,
                     Compute.d6() - 1);
             if (null != dest) {
@@ -6262,7 +6276,7 @@ public class GameManager implements IGameManager {
                     // Checking for same hex and stacking violation
                     if ((dist == 0) && !continueTurnFromPBS
                             && (Compute.stackingViolation(game, entity.getId(),
-                            step.getPosition()) != null)) {
+                            step.getPosition(), entity.climbMode()) != null)) {
                         // Moving into hex of a hidden unit detects the unit
                         e.setHidden(false);
                         entityUpdate(e.getId());
@@ -6363,10 +6377,15 @@ public class GameManager implements IGameManager {
             // check for MASC failure on first step
             // also check Tanks because they can have superchargers that act
             // like MASc
-            if (firstStep && ((entity instanceof Mech) || (entity instanceof Tank))) {
-                // Not necessarily a fall, but we need to give them a new turn to plot movement with
-                // likely reduced MP.
-                fellDuringMovement = checkMASCFailure(entity, md) || checkSuperchargerFailure(entity, md);
+            if (firstStep) {
+                if (entity instanceof VTOL) {
+                    // No roll for failure, but +3 on rolls to avoid sideslip.
+                    entity.setMASCUsed(md.hasActiveMASC());
+                } else if ((entity instanceof Mech) || (entity instanceof Tank)) {
+                    // Not necessarily a fall, but we need to give them a new turn to plot movement with
+                    // likely reduced MP.
+                    fellDuringMovement = checkMASCFailure(entity, md) || checkSuperchargerFailure(entity, md);
+                }
             }
 
             if (firstStep) {
@@ -7397,7 +7416,7 @@ public class GameManager implements IGameManager {
                     && step.getClearance() > 0)) {
                 rollTarget = entity.checkSideSlip(moveType, prevHex,
                         overallMoveType, prevStep, prevFacing, curFacing,
-                        lastPos, curPos, distance);
+                        lastPos, curPos, distance, md.hasActiveMASC());
                 if (rollTarget.getValue() != TargetRoll.CHECK_FALSE) {
                     int moF = doSkillCheckWhileMoving(entity, lastElevation,
                             lastPos, curPos, rollTarget, false);
@@ -7560,7 +7579,7 @@ public class GameManager implements IGameManager {
                     addReport(checkQuickSand(curPos));
                     // check for accidental stacking violation
                     Entity violation = Compute.stackingViolation(game,
-                            entity.getId(), curPos);
+                            entity.getId(), curPos, entity.climbMode());
                     if (violation != null) {
                         // target gets displaced, because of low elevation
                         int direction = lastPos.direction(curPos);
@@ -8395,6 +8414,15 @@ public class GameManager implements IGameManager {
                     && game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_FUEL_CONSUMPTION))
                     || (entity instanceof TeleMissile)) {
                 int fuelUsed = ((IAero) entity).getFuelUsed(thrust);
+                
+                // if we're a gas hog, aerospace fighter and going faster than walking, then use 2x fuel
+                if (((overallMoveType == EntityMovementType.MOVE_RUN) ||
+                        (overallMoveType == EntityMovementType.MOVE_SPRINT) ||
+                        (overallMoveType == EntityMovementType.MOVE_OVER_THRUST)) &&
+                        entity.hasQuirk(OptionsConstants.QUIRK_NEG_GAS_HOG)) {
+                    fuelUsed *= 2;
+                }
+                
                 a.useFuel(fuelUsed);
             }
 
@@ -8932,7 +8960,7 @@ public class GameManager implements IGameManager {
 
                     // Check for stacking violations in the target hex
                     Entity violation = Compute.stackingViolation(game,
-                            entity.getId(), entity.getPosition());
+                            entity.getId(), entity.getPosition(), entity.climbMode());
                     if (violation != null) {
                         PilotingRollData prd = new PilotingRollData(
                                 violation.getId(), 2, "fallen on");
@@ -12139,7 +12167,7 @@ public class GameManager implements IGameManager {
 
                     // defender pushed away, or destroyed, if there is a
                     // stacking violation
-                    Entity violation = Compute.stackingViolation(game, entity.getId(), dest);
+                    Entity violation = Compute.stackingViolation(game, entity.getId(), dest, entity.climbMode());
                     if (violation != null) {
                         PilotingRollData prd = new PilotingRollData(violation.getId(), 2,
                                 "fallen on");
@@ -12191,7 +12219,7 @@ public class GameManager implements IGameManager {
         } else {
             // damage as normal
             vPhaseReport.addAll(doEntityFall(entity, dest, fallElevation, roll));
-            Entity violation = Compute.stackingViolation(game, entity.getId(), dest);
+            Entity violation = Compute.stackingViolation(game, entity.getId(), dest, entity.climbMode());
             if (violation != null) {
                 PilotingRollData prd = new PilotingRollData(violation.getId(), 0, "domino effect");
                 if (violation instanceof Dropship) {
@@ -12292,7 +12320,7 @@ public class GameManager implements IGameManager {
         ServerHelper.checkAndApplyMagmaCrust(destHex, entity.getElevation(), entity, dest, false, vPhaseReport, this);
         ServerHelper.checkEnteringMagma(destHex, entity.getElevation(), entity, this);
 
-        Entity violation = Compute.stackingViolation(game, entity.getId(), dest);
+        Entity violation = Compute.stackingViolation(game, entity.getId(), dest, entity.climbMode());
         if (violation == null) {
             // move and roll normally
             r = new Report(2235);
@@ -12741,7 +12769,7 @@ public class GameManager implements IGameManager {
             // Only do it for VTOLs, though; assume everything else is on the
             // ground.
             entity.setElevation((hex.ceiling() - hex.getLevel()) + 1);
-            while ((Compute.stackingViolation(game, entity, coords, null) != null)
+            while ((Compute.stackingViolation(game, entity, coords, null, entity.climbMode()) != null)
                     && (entity.getElevation() <= 50)) {
                 entity.setElevation(entity.getElevation() + 1);
             }
@@ -18299,7 +18327,7 @@ public class GameManager implements IGameManager {
                 ae.setDisplacementAttack(null);
                 addReport(doEntityFall(ae, dest, 2, 3, ae.getBasePilotingRoll(),
                         false, false), 1);
-                Entity violation = Compute.stackingViolation(game, ae.getId(), dest);
+                Entity violation = Compute.stackingViolation(game, ae.getId(), dest, ae.climbMode());
                 if (violation != null) {
                     // target gets displaced
                     targetDest = Compute.getValidDisplacement(game,
@@ -23096,7 +23124,7 @@ public class GameManager implements IGameManager {
             }
             unloadUnit(te, passenger, position, facing, te.getElevation(), false, false);
             Entity violation = Compute.stackingViolation(game,
-                    passenger.getId(), position);
+                    passenger.getId(), position, passenger.climbMode());
             if (violation != null) {
                 Coords targetDest = Compute.getValidDisplacement(game, passenger.getId(), position,
                         Compute.d6() - 1);
@@ -27096,7 +27124,7 @@ public class GameManager implements IGameManager {
             }
 
             // Mechanized BA that could die on a 3+
-            ArrayList<Entity> externalUnits = entity.getExternalUnits();
+            List<Entity> externalUnits = entity.getExternalUnits();
 
             // Handle escape of transported units.
             if (!entity.getLoadedUnits().isEmpty()) {
@@ -27150,7 +27178,7 @@ public class GameManager implements IGameManager {
                     // Can we unload the unit to the current hex?
                     // TODO : unloading into stacking violation is not
                     // explicitly prohibited in the BMRr.
-                    else if ((null != Compute.stackingViolation(game, other.getId(), curPos))
+                    else if ((null != Compute.stackingViolation(game, other.getId(), curPos, entity.climbMode()))
                             || other.isLocationProhibited(curPos)) {
                         // Nope.
                         other.setDestroyed(true);
@@ -33562,12 +33590,12 @@ public class GameManager implements IGameManager {
         // which for these particular purposes may or may not be the intent of
         // the rules in all cases.
         // Immobile hovercraft on water sink...
-        if (((te.getMovementMode() == EntityMovementMode.HOVER)
+        if (!te.isOffBoard() && (((te.getMovementMode() == EntityMovementMode.HOVER)
                 || ((te.getMovementMode() == EntityMovementMode.WIGE) && (te.getElevation() == 0)))
                 && (te.isMovementHitPending() || (te.getWalkMP() <= 0))
                 // HACK: Have to check for *pending* hit here and below.
                 && (game.getBoard().getHex(te.getPosition()).terrainLevel(Terrains.WATER) > 0)
-                && !game.getBoard().getHex(te.getPosition()).containsTerrain(Terrains.ICE)) {
+                && !game.getBoard().getHex(te.getPosition()).containsTerrain(Terrains.ICE))) {
             vDesc.addAll(destroyEntity(te, "a watery grave", false));
         }
         // ...while immobile WiGEs crash.
@@ -33736,7 +33764,7 @@ public class GameManager implements IGameManager {
             }
 
             // finally, check for any stacking violations
-            Entity violated = Compute.stackingViolation(game, entity, entity.getPosition(), null);
+            Entity violated = Compute.stackingViolation(game, entity, entity.getPosition(), null, entity.climbMode());
             if (violated != null) {
                 // StratOps explicitly says that this is not treated as an accident
                 // fall from above

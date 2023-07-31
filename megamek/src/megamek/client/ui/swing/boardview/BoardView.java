@@ -835,13 +835,6 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     private boolean shouldIgnoreKeyCommands() {
         return getChatterBoxActive() || !isVisible()
                || game.getPhase().isLounge()
-               || game.getPhase().isEndReport()
-               || game.getPhase().isMovementReport()
-               || game.getPhase().isTargetingReport()
-               || game.getPhase().isFiringReport()
-               || game.getPhase().isPhysicalReport()
-               || game.getPhase().isOffboardReport()
-               || game.getPhase().isInitiativeReport()
                || shouldIgnoreKeys;
     }
 
@@ -6664,13 +6657,15 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     public boolean shouldShowFieldOfFire() {
         return GUIP.getShowFieldOfFire() &&
                 (game.getPhase().isDeployment() || game.getPhase().isMovement()
-                        || game.getPhase().isTargeting() || game.getPhase().isFiring());
+                        || game.getPhase().isTargeting() || game.getPhase().isFiring()
+                        || game.getPhase().isOffboard());
     }
 
     public boolean shouldShowSensorRange() {
         return GUIP.getShowSensorRange() &&
                 (game.getPhase().isDeployment() || game.getPhase().isMovement()
-                        || game.getPhase().isTargeting() || game.getPhase().isFiring());
+                        || game.getPhase().isTargeting() || game.getPhase().isFiring()
+                        || game.getPhase().isOffboard());
     }
 
 }

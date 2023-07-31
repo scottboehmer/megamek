@@ -368,6 +368,11 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
 
         boolean isIndirect = (wtype.hasModes() && weapon.curMode().equals(Weapon.MODE_MISSILE_INDIRECT));
 
+        // BMM p. 31, semi-guided indirect missile attacks vs tagged targets ignore terrain modifiers
+        boolean semiGuidedIndirectVsTaggedTarget = isIndirect &&
+                (atype != null) && atype.getMunitionType() == AmmoType.M_SEMIGUIDED &&
+                Compute.isTargetTagged(target, game);
+
         boolean isInferno = ((atype != null)
                 && ((atype.getAmmoType() == AmmoType.T_SRM)
                         || (atype.getAmmoType() == AmmoType.T_SRM_IMP)
@@ -615,7 +620,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
                 }
             }
 
-            if (wtype.hasFlag(WeaponType.F_MORTARTYPE_INDIRECT) && isIndirect) {
+            if (wtype.hasFlag(WeaponType.F_MORTARTYPE_INDIRECT) || semiGuidedIndirectVsTaggedTarget) {
                 los.setArcedAttack(true);
             }
 
@@ -1148,7 +1153,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
         // Infantry can't clear woods.
         if (isAttackerInfantry && (Targetable.TYPE_HEX_CLEAR == target.getTargetType())) {
             Hex hexTarget = game.getBoard().getHex(target.getPosition());
-            if (hexTarget.containsTerrain(Terrains.WOODS)) {
+            if ((hexTarget != null) && hexTarget.containsTerrain(Terrains.WOODS)) {
                 return Messages.getString("WeaponAttackAction.NoInfantryWoodsClearing");
             }
         }
@@ -1508,21 +1513,25 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
         // for spheroid dropships in atmosphere (and on ground), the rules about
         // firing arcs are more complicated
         // TW errata 2.1
+        
         if ((Compute.useSpheroidAtmosphere(game, ae) ||
                 (ae.isAero() && ((IAero) ae).isSpheroid() && (ae.getAltitude() == 0) && game.getBoard().onGround()))
-                && weapon != null) {
-            int altDif = target.getAltitude() - ae.getAltitude();
+                && (weapon != null)) {
             int range = Compute.effectiveDistance(game, ae, target, false);
             // Only aft-mounted weapons can be fired at range 0 (targets directly underneath)
             if (!ae.isAirborne() && (range == 0) && (weapon.getLocation() != Aero.LOC_AFT)) {
                 return Messages.getString("WeaponAttackAction.OnlyAftAtZero");
             }
+            
+            int altDif = target.getAltitude() - ae.getAltitude();
+            
             // Nose-mounted weapons can only be fired at targets at least 1 altitude higher
             if ((weapon.getLocation() == Aero.LOC_NOSE) && (altDif < 1)
                     && wtype != null
                     // Unless the weapon is used as artillery
                     && (!(wtype instanceof ArtilleryWeapon || wtype.hasFlag(WeaponType.F_ARTILLERY)
-                            || (ae.getAltitude() == 0 && wtype instanceof CapitalMissileWeapon)))) {
+                            || (ae.getAltitude() == 0 && wtype instanceof CapitalMissileWeapon) 
+                            || isIndirect))) {
                 return Messages.getString("WeaponAttackAction.TooLowForNose");
             }
             // Front-side-mounted weapons can only be fired at targets at the same altitude or higher
@@ -2196,7 +2205,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
                     return Messages.getString("WeaponAttackAction.InvalidForFirefighting");
                 }
                 Hex hexTarget = game.getBoard().getHex(target.getPosition());
-                if (!hexTarget.containsTerrain(Terrains.FIRE)) {
+                if ((hexTarget != null) && !hexTarget.containsTerrain(Terrains.FIRE)) {
                     return Messages.getString("WeaponAttackAction.TargetNotBurning");
                 }
             } else if (wtype.hasFlag(WeaponType.F_EXTINGUISHER)) {
@@ -2277,13 +2286,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
             // Indirect Fire (LRMs)
 
             // Can't fire Indirect LRM with direct LOS
-            if (isIndirect && game.getOptions().booleanOption(OptionsConstants.BASE_INDIRECT_FIRE)
-                    && !game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_INDIRECT_ALWAYS_POSSIBLE)
-                    && LosEffects.calculateLOS(game, ae, target).canSee()
-                    && (!game.getOptions().booleanOption(OptionsConstants.ADVANCED_DOUBLE_BLIND)
-                            || Compute.canSee(game, ae, target))
-                    && !(wtype instanceof ArtilleryCannonWeapon)
-                    && !wtype.hasFlag(WeaponType.F_MORTARTYPE_INDIRECT)) {
+            if (isIndirect && Compute.indirectAttackImpossible(game, ae, target, wtype, weapon)) {
                 return Messages.getString("WeaponAttackAction.NoIndirectWithLOS");
             }
 
@@ -3795,7 +3798,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
             }
             // grounded aero
             if (!ae.isAirborne() && !ae.isSpaceborne()) {
-                if (!(ae instanceof Dropship)) {
+                if (ae.isFighter()) {
                     toHit.addModifier(+2, Messages.getString("WeaponAttackAction.GroundedAero"));
                 } else if (!target.isAirborne() && !isArtilleryIndirect) {
                     toHit.addModifier(-2, Messages.getString("WeaponAttackAction.GroundedDs"));
@@ -4531,12 +4534,15 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
                 (atype != null) && atype.getMunitionType() == AmmoType.M_SEMIGUIDED &&
                         Compute.isTargetTagged(target, game);
 
+        // TW p.111
+        boolean indirectMortarWithoutSpotter = (wtype != null) && wtype.hasFlag(WeaponType.F_MORTARTYPE_INDIRECT)
+                && isIndirect && (Compute.findSpotter(game, ae, target) == null);
+
         // Base terrain calculations, not applicable when delivering minefields or bombs
         // also not applicable in pointblank shots from hidden units
-        if ((ttype != Targetable.TYPE_MINEFIELD_DELIVER) && !isPointBlankShot && !semiGuidedIndirectVsTaggedTarget) {
+        if ((ttype != Targetable.TYPE_MINEFIELD_DELIVER) && !isPointBlankShot && !semiGuidedIndirectVsTaggedTarget
+                && !indirectMortarWithoutSpotter) {
             toHit.append(Compute.getTargetTerrainModifier(game, target, eistatus, inSameBuilding, underWater));
-            toSubtract += Compute.getTargetTerrainModifier(game, target, eistatus, inSameBuilding, underWater)
-                    .getValue();
         }
 
         // Fortified/Dug-In Infantry

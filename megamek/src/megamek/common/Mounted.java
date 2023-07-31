@@ -140,8 +140,8 @@ public class Mounted implements Serializable, RoundUpdated, PhaseUpdated {
     protected int damageTaken = 0;
 
     /**
-     * BA use locations for troopers, so we need a way to keep track of where
-     *  a piece of equipment is moutned on BA
+     * BattleArmor use the standard locations to track troopers. On BA, this field keeps track of where
+     * a piece of equipment is mounted.
      */
     private int baMountLoc = BattleArmor.MOUNT_LOC_NONE;
 
@@ -542,11 +542,11 @@ public class Mounted implements Serializable, RoundUpdated, PhaseUpdated {
      */
     public double getTonnage(RoundWeight defaultRounding) {
         if ((getType() instanceof MiscType) && getType().hasFlag(MiscType.F_DUMPER)) {
-            final Bay bay = getEntity().getBayById(getLinkedBayId());
-            if (bay != null) {
-                return defaultRounding.round(bay.getCapacity() * 0.05, getEntity());
+            Mounted cargo = getLinked();
+            if (cargo != null) {
+                return defaultRounding.round(cargo.getSize() * 0.05, getEntity());
             }
-            LogManager.getLogger().warn("Found dumper not linked to a cargo bay. Using zero for the weight.");
+            LogManager.getLogger().warn("Found dumper not linked to a Cargo equipment. Using zero for the weight.");
             return 0.0;
         }
         double retVal = getType().getTonnage(getEntity(), getLocation(), getSize(), defaultRounding);
@@ -1038,6 +1038,14 @@ public class Mounted implements Serializable, RoundUpdated, PhaseUpdated {
         }
     }
 
+    /**
+     * Returns the location this equipment is mounted in, such as {@link Tank#LOC_FRONT}. May also return
+     * {@link Entity#LOC_NONE} for unallocated equipment and some special equipment. For BattleArmor, will
+     * return one of the trooper locations, such as {@link BattleArmor#LOC_TROOPER_1}. To get the equipment
+     * location on BA, use {@link #getBaMountLoc()}.
+     *
+     * @return The location of this equipment on its unit
+     */
     public int getLocation() {
         return location;
     }
@@ -1928,6 +1936,10 @@ public class Mounted implements Serializable, RoundUpdated, PhaseUpdated {
         */
     }
 
+    /**
+     * @return For BattleArmor, returns the location where a piece of equipment is mounted, e.g.
+     * {@link BattleArmor#MOUNT_LOC_LARM}.
+     */
     public int getBaMountLoc() {
         return baMountLoc;
     }
