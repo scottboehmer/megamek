@@ -162,7 +162,6 @@ public class MechFileParser {
      */
     public static void postLoadInit(Entity ent) throws EntityLoadingException {
         try {
-            ent.loadDefaultQuirks();
             ent.loadDefaultCustomWeaponOrder();
         } catch (Exception ex) {
             LogManager.getLogger().error("Error in postLoadInit for " + ent.getDisplayName(), ex);
@@ -734,15 +733,20 @@ public class MechFileParser {
         // physical attacks for conventional infantry
         else if ((ent instanceof Infantry) && ((Infantry) ent).canMakeAntiMekAttacks()) {
             try {
-                ent.addEquipment(EquipmentType.get(Infantry.SWARM_MEK),
-                        Infantry.LOC_INFANTRY, false,
-                        BattleArmor.MOUNT_LOC_NONE, false);
-                ent.addEquipment(EquipmentType.get(Infantry.STOP_SWARM),
-                        Infantry.LOC_INFANTRY, false,
-                        BattleArmor.MOUNT_LOC_NONE, false);
-                ent.addEquipment(EquipmentType.get(Infantry.LEG_ATTACK),
-                        Infantry.LOC_INFANTRY, false,
-                        BattleArmor.MOUNT_LOC_NONE, false);
+                InfantryMount mount = ((Infantry) ent).getMount();
+                if ((mount == null) || mount.getSize().canMakeSwarmAttacks) {
+                    ent.addEquipment(EquipmentType.get(Infantry.SWARM_MEK),
+                            Infantry.LOC_INFANTRY, false,
+                            BattleArmor.MOUNT_LOC_NONE, false);
+                    ent.addEquipment(EquipmentType.get(Infantry.STOP_SWARM),
+                            Infantry.LOC_INFANTRY, false,
+                            BattleArmor.MOUNT_LOC_NONE, false);
+                }
+                if ((mount == null) || mount.getSize().canMakeLegAttacks) {
+                    ent.addEquipment(EquipmentType.get(Infantry.LEG_ATTACK),
+                            Infantry.LOC_INFANTRY, false,
+                            BattleArmor.MOUNT_LOC_NONE, false);
+                }
             } catch (LocationFullException ex) {
                 throw new EntityLoadingException(ex.getMessage());
             }

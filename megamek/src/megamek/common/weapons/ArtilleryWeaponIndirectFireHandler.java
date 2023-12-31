@@ -102,6 +102,15 @@ public class ArtilleryWeaponIndirectFireHandler extends AmmoWeaponHandler {
             return true;
         }
 
+        // Offboard shots are targeted at an entity rather than a hex. If null, the target has disengaged.
+        if (target == null) {
+            Report r = new Report(3158);
+            r.indent();
+            r.subject = subjectId;
+            r.add(wtype.getName());
+            vPhaseReport.add(r);
+            return true;
+        }
         final Vector<Integer> spottersBefore = aaa.getSpotterIds();
 
         Coords targetPos = target.getPosition();
@@ -198,7 +207,7 @@ public class ArtilleryWeaponIndirectFireHandler extends AmmoWeaponHandler {
             // If the shot hit the target hex, then all subsequent
             // fire will hit the hex automatically.
             // This should only happen for indirect shots
-            if (roll >= toHit.getValue()
+            if (roll.getIntValue() >= toHit.getValue()
                     && !(this instanceof ArtilleryWeaponDirectFireHandler)) {
                 ae.aTracker.setModifier(TargetRoll.AUTOMATIC_SUCCESS, targetPos);
             }
@@ -271,9 +280,9 @@ public class ArtilleryWeaponIndirectFireHandler extends AmmoWeaponHandler {
         vPhaseReport.addElement(r);
 
         // do we hit?
-        bMissed = roll < toHit.getValue();
+        bMissed = roll.getIntValue() < toHit.getValue();
         // Set Margin of Success/Failure.
-        toHit.setMoS(roll - Math.max(2, toHit.getValue()));
+        toHit.setMoS(roll.getIntValue() - Math.max(2, toHit.getValue()));
 
         // Do this stuff first, because some weapon's miss report reference the
         // amount of shots fired and stuff.

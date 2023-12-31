@@ -91,9 +91,16 @@ public class InfantryWeaponHandler extends WeaponHandler {
         double damage = calculateBaseDamage(ae, weapon, wtype);
 
         if ((ae instanceof Infantry)
-                && nRange == 0
-                && ae.hasAbility(OptionsConstants.MD_TSM_IMPLANT)) {
-            damage += 0.14;
+                && (nRange == 0)) {
+            if (ae.hasAbility(OptionsConstants.MD_TSM_IMPLANT)) {
+                damage += 0.14;
+            }
+            InfantryMount mount = ((Infantry) ae).getMount();
+            if ((mount != null) && target.isConventionalInfantry() && (mount.getBurstDamageDice() > 0)) {
+                damage += Compute.d6(mount.getBurstDamageDice());
+            } else if ((mount != null) && !target.isConventionalInfantry()) {
+                damage += mount.getVehicleDamage();
+            }
         }
         int damageDealt = (int) Math.round(damage * troopersHit);
 
@@ -215,7 +222,7 @@ public class InfantryWeaponHandler extends WeaponHandler {
                     waa.getAimedLocation(), waa.getAimingMode(), true);
             hit.setGeneralDamageType(generalDamageType);
             hit.setCapital(wtype.isCapital());
-            hit.setBoxCars(roll == 12);
+            hit.setBoxCars(roll.getIntValue() == 12);
             hit.setCapMisCritMod(getCapMisMod());
             hit.setFirstHit(firstHit);
             hit.setAttackerId(getAttackerId());

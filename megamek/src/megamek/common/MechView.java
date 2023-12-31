@@ -291,9 +291,8 @@ public class MechView {
                     Messages.getString("MechView.Unknown")));
         }
 
-        UnitRole role = UnitRoleHandler.getRoleFor(entity);
-        if (role != UnitRole.UNDETERMINED) {
-            sHead.add(new LabeledElement("Role", role.toString()));
+        if (entity.hasRole()) {
+            sHead.add(new LabeledElement("Role", entity.getRole().toString()));
         }
 
         //We may have altered the starting mode during configuration, so we save the current one here to restore it
@@ -339,6 +338,9 @@ public class MechView {
                         .append(" piloting)")
                         .append(warningEnd());
                 }
+            }
+            if (entity.isConventionalInfantry() && ((Infantry) entity).getMount() != null) {
+                moveString.append(" (").append(((Infantry) entity).getMount().getName()).append(")");
             }
 
             // TODO : Add STOL message as part of the movement line
@@ -415,10 +417,8 @@ public class MechView {
             }
             sBasic.add(new LabeledElement(Messages.getString("MechView.HeatSinks"), hsString.toString()));
             
-            if (a.getCockpitType() != Mech.COCKPIT_STANDARD) {
-                sBasic.add(new LabeledElement(Messages.getString("MechView.Cockpit"),
-                        a.getCockpitTypeString()));
-            }
+            sBasic.add(new LabeledElement(Messages.getString("MechView.Cockpit"),
+                    a.getCockpitTypeString()));
         }
 
         if (isMech) {
@@ -434,13 +434,10 @@ public class MechView {
                         .append(" damaged)").append(warningEnd());
             }
             sBasic.add(new LabeledElement(aMech.getHeatSinkTypeName() + "s", hsString.toString()));
-            if ((aMech.getCockpitType() != Mech.COCKPIT_STANDARD)
-                    || aMech.hasArmoredCockpit()) {
-                sBasic.add(new LabeledElement(Messages.getString("MechView.Cockpit"),
-                        aMech.getCockpitTypeString()
-                                + (aMech.hasArmoredCockpit() ? " (armored)" : "")));
-                                
-            }
+            sBasic.add(new LabeledElement(Messages.getString("MechView.Cockpit"),
+                    aMech.getCockpitTypeString()
+                            + (aMech.hasArmoredCockpit() ? " (armored)" : "")));
+
             String gyroString = aMech.getGyroTypeString();
             if (aMech.getGyroHits() > 0) {
                 gyroString += " " + warningStart() + "(" + aMech.getGyroHits()
@@ -486,53 +483,28 @@ public class MechView {
         Game game = entity.getGame();
 
         if ((game == null) || game.getOptions().booleanOption(OptionsConstants.ADVANCED_STRATOPS_QUIRKS)) {
-            List<String> quirksList = new ArrayList<>();
-            Quirks quirks = entity.getQuirks();
+            List<String> activeUnitQuirksNames = entity.getQuirks().activeQuirks().stream()
+                    .map(IOption::getDisplayableNameWithValue)
+                    .collect(Collectors.toList());
 
-            for (Enumeration<IOptionGroup> optionGroups = quirks.getGroups(); optionGroups.hasMoreElements();) {
-                IOptionGroup group = optionGroups.nextElement();
-
-                if (quirks.count(group.getKey()) > 0) {
-                    for (Enumeration<IOption> options = group.getOptions(); options.hasMoreElements();) {
-                        IOption option = options.nextElement();
-
-                        if (option != null && option.booleanValue()) {
-                            quirksList.add(option.getDisplayableNameWithValue());
-                        }
-                    }
-                }
-            }
-            if (!quirksList.isEmpty()) {
+            if (!activeUnitQuirksNames.isEmpty()) {
                 sFluff.add(new SingleLine());
                 ItemList list = new ItemList(Messages.getString("MechView.Quirks"));
-                quirksList.forEach(list::addItem);
+                activeUnitQuirksNames.forEach(list::addItem);
                 sFluff.add(list);
             }
 
             List<String> wpQuirksList = new ArrayList<>();
             for (Mounted weapon: entity.getWeaponList()) {
-                for (Enumeration<IOptionGroup> optionGroups = weapon.getQuirks().getGroups(); optionGroups.hasMoreElements();) {
-                    IOptionGroup group = optionGroups.nextElement();
-
-                    if (weapon.getQuirks().count(group.getKey()) > 0) {
-                        String wq = "";
-
-                        for (Enumeration<IOption> options = group.getOptions(); options.hasMoreElements(); ) {
-                            IOption option = options.nextElement();
-
-                            if (option != null && option.booleanValue()) {
-                                wq += option.getDisplayableNameWithValue() + " \u2022 ";
-                            }
-                        }
-
-                        if (!wq.isEmpty()) {
-                            wq = weapon.getDesc() + ": " + wq.substring(0, wq.length() - 2);
-                            wpQuirksList.add(wq);
-                        }
-                    }
+                List<String> activeWeaponQuirksNames = weapon.getQuirks().activeQuirks().stream()
+                        .map(IOption::getDisplayableNameWithValue)
+                        .collect(Collectors.toList());
+                if (!activeWeaponQuirksNames.isEmpty()) {
+                    String wq = weapon.getDesc() + " (" + entity.getLocationAbbr(weapon.getLocation()) + "): ";
+                    wq += String.join(", ", activeWeaponQuirksNames);
+                    wpQuirksList.add(wq);
                 }
             }
-
             if (!wpQuirksList.isEmpty()) {
                 sFluff.add(new SingleLine());
                 ItemList list = new ItemList(Messages.getString("MechView.WeaponQuirks"));
@@ -856,7 +828,7 @@ public class MechView {
             retVal.add(new SingleLine());
         }
 
-        if (entity.getWeaponList().size() < 1) {
+        if (entity.getWeaponList().isEmpty()) {
             return retVal;
         }
         
@@ -865,7 +837,8 @@ public class MechView {
         wpnTable.setJustification(TableElement.JUSTIFIED_LEFT, TableElement.JUSTIFIED_CENTER,
                 TableElement.JUSTIFIED_CENTER, TableElement.JUSTIFIED_CENTER);
         for (Mounted mounted : entity.getWeaponList()) {
-            String[] row = { mounted.getDesc(), entity.joinLocationAbbr(mounted.allLocations(), 3), "", "" };
+            String[] row = { mounted.getDesc() + quirkMarker(mounted),
+                    entity.joinLocationAbbr(mounted.allLocations(), 3), "", "" };
             WeaponType wtype = (WeaponType) mounted.getType();
 
             if (entity.isClan()
@@ -970,6 +943,10 @@ public class MechView {
         }
         retVal.add(wpnTable);
         return retVal;
+    }
+
+    private String quirkMarker(Mounted mounted) {
+        return (mounted.countQuirks() > 0) ? " (Q)" : "";
     }
 
     private ViewElement getAmmo() {

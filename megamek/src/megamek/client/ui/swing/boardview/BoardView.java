@@ -72,9 +72,7 @@ import java.util.Queue;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static megamek.client.ui.swing.tooltip.TipUtil.*;
 import static megamek.client.ui.swing.util.UIUtil.guiScaledFontHTML;
-import static megamek.client.ui.swing.util.UIUtil.uiBlack;
 import static megamek.client.ui.swing.util.UIUtil.uiWhite;
 
 /**
@@ -192,6 +190,8 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     private ArrayList<Coords> strafingCoords = new ArrayList<>(5);
 
     private ArrayList<FiringSolutionSprite> firingSprites = new ArrayList<>();
+
+    private ArrayList<ConstructionWarningSprite> cfWarningSprites = new ArrayList<>();
 
     private ArrayList<MovementEnvelopeSprite> moveEnvSprites = new ArrayList<>();
     private ArrayList<MovementModifierEnvelopeSprite> moveModEnvSprites = new ArrayList<>();
@@ -995,7 +995,10 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
             // Center on the starting hex of the moving unit.
             UnitLocation loc = movePath.get(0);
-            centerOnHex(loc.getCoords());
+
+            if (GUIP.getAutoCenter()) {
+                centerOnHex(loc.getCoords());
+            }
         }
     }
 
@@ -1135,7 +1138,8 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
             drawDeployment(g);
         }
 
-        if (game.getPhase().isSetArtilleryAutohitHexes() && showAllDeployment) {
+        if ((game.getPhase().isSetArtilleryAutohitHexes() && showAllDeployment)
+                || (game.getPhase().isLounge())) {
             drawAllDeployment(g);
         }
 
@@ -1153,6 +1157,12 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
         // draw onscreen entities
         drawSprites(g, entitySprites);
+
+        // draw structure warning in the deployment or movement phases
+        // draw this before moving entities, so they show up under if overlapped.
+        if (shouldShowCFWarning())  {
+            drawSprites(g, cfWarningSprites);
+        }
 
         // draw moving onscreen entities
         drawSprites(g, movingEntitySprites);
@@ -1181,7 +1191,6 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                 drawHexBorder(g, getHexLocation(c), Color.yellow, 0, 3);
             }
         }
-
 
         // draw the ruler line
         if (rulerStart != null) {
@@ -1847,20 +1856,30 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         int drawWidth = (view.width / (int) (HEX_WC * scale)) + 3;
         int drawHeight = (view.height / (int) (HEX_H * scale)) + 3;
 
+        List<Player> players = game.getPlayersList();
+        final GameOptions gOpts = game.getOptions();
+
+        if (gOpts.booleanOption(OptionsConstants.BASE_SET_PLAYER_DEPLOYMENT_TO_PLAYER0)) {
+            players = players.stream().filter(p -> p.isBot() || p.getId() == 0).collect(Collectors.toList());
+        }
+
+        if (game.getPhase().isLounge() && !localPlayer.isGameMaster()
+                && (gOpts.booleanOption(OptionsConstants.BASE_BLIND_DROP)
+                || gOpts.booleanOption(OptionsConstants.BASE_REAL_BLIND_DROP)) ) {
+            players = players.stream().filter(p -> !p.isEnemyOf(localPlayer)).collect(Collectors.toList());
+        }
+
         Board board = game.getBoard();
         // loop through the hexes
         for (int i = 0; i < drawHeight; i++) {
             for (int j = 0; j < drawWidth; j++) {
                 Coords c = new Coords(j + drawX, i + drawY);
-                Enumeration<Player> allP = game.getPlayers();
-                Player cp;
                 int pCount = 0;
                 int bThickness = 1 + 10 / game.getNoOfPlayers();
                 // loop through all players
-                while (allP.hasMoreElements()) {
-                    cp = allP.nextElement();
-                    if (board.isLegalDeployment(c, cp)) {
-                        Color bC = cp.getColour().getColour();
+                for (Player player : players) {
+                    if (board.isLegalDeployment(c, player)) {
+                        Color bC = player.getColour().getColour();
                         drawHexBorder(g, getHexLocation(c), bC, (bThickness + 2) * pCount, bThickness);
                         pCount++;
                     }
@@ -2230,6 +2249,12 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
             // draw onscreen entities
             drawSprites(boardGraph, entitySprites);
+
+            // draw structure collapse warning sprites if in movement or deploy phase.
+            // draw this before moving entities, so they show up under if overlapped.
+            if (shouldShowCFWarning()) {
+                drawSprites(boardGraph, cfWarningSprites);
+            }
 
             // draw moving onscreen entities
             drawSprites(boardGraph, movingEntitySprites);
@@ -3144,6 +3169,14 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         repaint();
     }
 
+    public Coords getRulerStart() {
+        return rulerStart;
+    }
+
+    public Coords getRulerEnd() {
+        return rulerEnd;
+    }
+
     /**
      * @return the coords at the specified point
      */
@@ -3847,6 +3880,25 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     public void clearFiringSolutionData() {
         firingSprites.clear();
         repaint();
+    }
+
+    public void setCFWarningSprites(List<Coords> warnList) {
+        // Clear existing sprites before setting new ones.
+        clearCFWarningData();
+
+        if (warnList == null) {
+            return;
+        }
+
+        // Loops through list of coordinates, and create new CF warning sprite and add it to the sprites list.
+        for (Coords c : warnList) {
+            ConstructionWarningSprite cfws = new ConstructionWarningSprite(this, c);
+            cfWarningSprites.add(cfws);
+        }
+    }
+
+    public void clearCFWarningData() {
+        cfWarningSprites.clear();
     }
 
     public void addStrafingCoords(Coords c) {
@@ -5104,6 +5156,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         movementSprites.clear();
         fieldOfFireSprites.clear();
         sensorRangeSprites.clear();
+        cfWarningSprites.clear();
     }
 
     public synchronized void updateBoard() {
@@ -5446,7 +5499,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         // Hex Terrain
         if (GUIP.getShowMapHexPopup() && (mhex != null)) {
             StringBuffer sbTerrain = new StringBuffer();
-            appendTerrainTooltip(sbTerrain, mhex);
+            appendTerrainTooltip(sbTerrain, mhex, GUIP);
             String sTrerain = sbTerrain.toString();
 
             // Distance from the selected unit and a planned movement end point
@@ -5493,10 +5546,10 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                 }
             }
 
-            sTrerain = guiScaledFontHTML(uiBlack()) + sTrerain + "</FONT>";
+            sTrerain = guiScaledFontHTML(GUIP.getUnitToolTipTerrainFGColor()) + sTrerain + "</FONT>";
             String col = "<TD>" + sTrerain + "</TD>";
             String row = "<TR>" + col + "</TR>";
-            String table = "<TABLE BORDER=0 BGCOLOR=" + TERRAIN_BGCOLOR + " width=100%>" + row + "</TABLE>";
+            String table = "<TABLE BORDER=0 BGCOLOR=" + GUIP.hexColor(GUIP.getUnitToolTipTerrainBGColor()) + " width=100%>" + row + "</TABLE>";
             result += table;
 
             StringBuffer sbBuildings = new StringBuffer();
@@ -5511,7 +5564,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                     String errors = errBuff.toString();
                     errors = errors.replace("\n", "<BR>");
                     sInvalidHex += errors;
-                    sInvalidHex = guiScaledFontHTML(uiWhite()) + sInvalidHex + "</FONT>";
+                    sInvalidHex = guiScaledFontHTML(GUIP.getUnitToolTipFGColor()) + sInvalidHex + "</FONT>";
                     result += "<BR>" + sInvalidHex;
                 }
             }
@@ -5569,7 +5622,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         for (var wSprite : wreckList) {
             if (wSprite.getPosition().equals(mcoords)) {
                 String sWreck = wSprite.getTooltip().toString();
-                sWreck = guiScaledFontHTML(uiBlack()) + sWreck + "</FONT>";
+                sWreck = guiScaledFontHTML(GUIP.getUnitToolTipAltFGColor()) + sWreck + "</FONT>";
                 String col = "<TD>" + sWreck + "</TD>";
                 String row = "<TR>" + col + "</TR>";
                 String rows = row;
@@ -5581,7 +5634,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                     rows += row;
                 }
 
-                String table = "<TABLE BORDER=0 BGCOLOR=" + ALT_BGCOLOR + " width=100%>" + rows + "</TABLE>";
+                String table = "<TABLE BORDER=0 BGCOLOR=" + GUIP.hexColor(GUIP.getUnitToolTipAltBGColor()) + " width=100%>" + rows + "</TABLE>";
                 result += table;
             }
         }
@@ -5612,10 +5665,10 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
             }
             sUnitsInfo += " in this hex...";
 
-            sUnitsInfo = guiScaledFontHTML(UIUtil.uiWhite()) + sUnitsInfo + "</FONT>";
+            sUnitsInfo = guiScaledFontHTML(GUIP.getUnitToolTipBlockFGColor()) + sUnitsInfo + "</FONT>";
             String col = "<TD>" + sUnitsInfo + "</TD>";
             String row = "<TR>" + col + "</TR>";
-            String table = "<TABLE BORDER=0 BGCOLOR=" + BLOCK_BGCOLOR + " width=100%>" + row + "</TABLE>";
+            String table = "<TABLE BORDER=0 BGCOLOR=" + GUIP.hexColor(GUIP.getUnitToolTipBlockBGColor()) + " width=100%>" + row + "</TABLE>";
             result += table;
         }
 
@@ -5623,10 +5676,10 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         for (AttackSprite aSprite : attackSprites) {
             if (aSprite.isInside(mcoords)) {
                 String sAttackSprite = aSprite.getTooltip().toString();
-                sAttackSprite = guiScaledFontHTML(uiBlack()) + sAttackSprite + "</FONT>";
+                sAttackSprite = guiScaledFontHTML(GUIP.getUnitToolTipAltFGColor()) + sAttackSprite + "</FONT>";
                 String col = "<TD>" + sAttackSprite + "</TD>";
                 String row = "<TR>" + col + "</TR>";
-                String table = "<TABLE BORDER=0 BGCOLOR=" + ALT_BGCOLOR + " width=100%>" + row + "</TABLE>";
+                String table = "<TABLE BORDER=0 BGCOLOR=" + GUIP.hexColor(GUIP.getUnitToolTipAltBGColor()) + " width=100%>" + row + "</TABLE>";
                 result += table;
             }
         }
@@ -5660,10 +5713,10 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                 msg_artilleryatack += Messages.getString("BoardView1.Tooltip.ArtilleryAttackN2", ammoName);
             }
 
-            msg_artilleryatack = guiScaledFontHTML(UIUtil.uiWhite()) + msg_artilleryatack + "</FONT>";
+            msg_artilleryatack = guiScaledFontHTML(GUIP.getUnitToolTipBlockFGColor()) + msg_artilleryatack + "</FONT>";
             String col = "<TD>" + msg_artilleryatack + "</TD>";
             String row = "<TR>" + col + "</TR>";
-            String table = "<TABLE BORDER=0 BGCOLOR=" + BLOCK_BGCOLOR + " width=100%>" + row + "</TABLE>";
+            String table = "<TABLE BORDER=0 BGCOLOR=" + GUIP.hexColor(GUIP.getUnitToolTipBlockBGColor()) + " width=100%>" + row + "</TABLE>";
             result += table;
         }
 
@@ -5723,12 +5776,12 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
             result += sSpecialHex;
         }
 
-        String div = "<DIV WIDTH=" + UIUtil.scaleForGUI(500) + ">" + result + "</DIV>";
         StringBuffer txt = new StringBuffer();
-        txt.append(HTML_BEGIN + div + HTML_END);
+        String div = "<DIV WIDTH=" + UIUtil.scaleForGUI(500) + ">" + result + "</DIV>";
+        txt.append(UnitToolTip.wrapWithHTML(div));
 
         // Check to see if the tool tip is completely empty
-        if (txt.toString().equals(HTML_BEGIN +HTML_END)) {
+        if (result.isEmpty()) {
             return "";
         }
 
@@ -5747,11 +5800,12 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     /**
      * Appends HTML describing the terrain of a given hex
      */
-    public void appendTerrainTooltip(StringBuffer txt, @Nullable Hex mhex) {
+    public void appendTerrainTooltip(StringBuffer txt, @Nullable Hex mhex, GUIPreferences GUIP) {
         if (mhex == null) {
             return;
         }
-        txt.append(HexTooltip.getTerrainTip(mhex));
+
+        txt.append(HexTooltip.getTerrainTip(mhex, GUIP, game));
     }
 
     /**
@@ -5759,7 +5813,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
      */
     public void appendBuildingsTooltip(StringBuffer txt, @Nullable Hex mhex) {
         if ((mhex != null) && (clientgui != null)) {
-            String result = HexTooltip.getHexTip(mhex, clientgui.getClient());
+            String result = HexTooltip.getHexTip(mhex, clientgui.getClient(), GUIP);
             txt.append(result);
         }
     }
@@ -5777,7 +5831,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         result += "<HR STYLE=WIDTH:90% />";
         // Table to add a bar to the left of an entity in
         // the player's color
-        String color = "C0C0C0";
+        String color = GUIP.hexColor(GUIP.getUnitToolTipFGColor());
         if (!EntityVisibilityUtils.onlyDetectedBySensors(localPlayer, entity)) {
             color = entity.getOwner().getColour().getHexString();
         }
@@ -5785,7 +5839,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         // Entity tooltip
         String col2 = "<TD>" + UnitToolTip.getEntityTipGame(entity, getLocalPlayer()) + "</TD>";
         String row = "<TR>" + col1 + col2 +  "</TR>";
-        String table = "<TABLE WIDTH=100% BGCOLOR=" + BGCOLOR + ">" + row + "</TABLE>";
+        String table = "<TABLE WIDTH=100% BGCOLOR=" + GUIP.hexColor(GUIP.getUnitToolTipBGColor()) + ">" + row + "</TABLE>";
         result += table;
 
         txt.append(result);
@@ -6013,6 +6067,10 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
         for (FiringSolutionSprite sprite : firingSprites) {
             sprite.prepare();
+        }
+
+        for (ConstructionWarningSprite sprite : cfWarningSprites) {
+        	sprite.prepare();
         }
         this.setSize(boardSize);
 
@@ -6421,13 +6479,8 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
     // prepares the sprites for visual and sensor ranges
     public void setSensorRange(Entity entity, Coords c) {
-        if (entity == null || c == null || !GUIP.getShowSensorRange()) {
-            clearSensorsRanges();
-            return;
-        }
-
-        // Do not display anything for offboard units
-        if (entity.isOffBoard()) {
+        // Do not calculate anything for offboard units
+        if (entity == null || c == null || entity.isOffBoard()) {
             clearSensorsRanges();
             return;
         }
@@ -6679,4 +6732,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                         || game.getPhase().isOffboard());
     }
 
+    public boolean shouldShowCFWarning() {
+    	return ConstructionFactorWarning.shouldShow(game.getPhase(), GUIP.getShowCFWarnings());
+    }
 }

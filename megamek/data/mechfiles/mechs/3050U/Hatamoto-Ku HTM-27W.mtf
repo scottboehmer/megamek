@@ -1,6 +1,5 @@
-Version:1.0
-Hatamoto-Ku
-HTM-27W
+chassis:Hatamoto-Ku
+model:HTM-27W
 mul id:1408
 
 Config:Biped
@@ -8,6 +7,14 @@ TechBase:Inner Sphere
 Era:3048
 Source:TRO: 3050
 Rules Level:2
+role:Sniper
+
+
+
+
+quirk:barrel_fists_la
+quirk:easy_maintain
+
 
 Mass:80
 Engine:320 Fusion Engine

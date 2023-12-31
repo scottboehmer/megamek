@@ -640,6 +640,7 @@ public class AmmoType extends EquipmentType {
         ArrayList<AmmoType> sniperCannonAmmos = new ArrayList<>(3);
         ArrayList<AmmoType> longTomAmmos = new ArrayList<>(4);
         ArrayList<AmmoType> longTomCannonAmmos = new ArrayList<>(4);
+        ArrayList<AmmoType> baTubeAmmos = new ArrayList<>(2);
         ArrayList<AmmoType> mortarAmmos = new ArrayList<>(4);
         ArrayList<AmmoType> clanMortarAmmos = new ArrayList<>(4);
         ArrayList<AmmoType> lrtAmmos = new ArrayList<>(26);
@@ -1203,7 +1204,9 @@ public class AmmoType extends EquipmentType {
         EquipmentType.addType(AmmoType.createISMRM4Ammo());
         EquipmentType.addType(AmmoType.createISMRM5Ammo());
         EquipmentType.addType(AmmoType.createISBATaserAmmo());
-        EquipmentType.addType(AmmoType.createBATubeArtyAmmo());
+        base = AmmoType.createBATubeArtyAmmo();
+        EquipmentType.addType(base);
+        baTubeAmmos.add(base);
         base = AmmoType.createBAISLRM1Ammo();
         isBaLrmAmmos.add(base);
         EquipmentType.addType(base);
@@ -1684,7 +1687,7 @@ public class AmmoType extends EquipmentType {
                         .setAvailability(RATING_X, RATING_X, RATING_F, RATING_E)
                         .setClanAdvancement(DATE_NONE, 3061, 3085, DATE_NONE, DATE_NONE)
                         .setClanApproximate(false, false, true, false, false).setPrototypeFactions(F_CGS)
-                        .setProductionFactions(F_CSF, F_RD).setStaticTechLevel(SimpleTechLevel.ADVANCED),
+                        .setProductionFactions(F_CSF, F_RD).setStaticTechLevel(SimpleTechLevel.STANDARD),
                 "283, TO"));
 
         munitions.add(new MunitionMutator("(Clan) Dead-Fire", 1, Munitions.M_DEAD_FIRE,
@@ -2656,6 +2659,17 @@ public class AmmoType extends EquipmentType {
         AmmoType.createMunitions(thumperCannonAmmos, munitions);
         AmmoType.createMunitions(longTomCannonAmmos, munitions);
 
+        munitions.clear();
+        munitions.add(new MunitionMutator("Smoke", 1, Munitions.M_SMOKE,
+                new TechAdvancement(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_E)
+                        .setAvailability(RATING_X, RATING_X, RATING_F, RATING_E)
+                        .setISAdvancement(3070, 3075, DATE_NONE, DATE_NONE, DATE_NONE)
+                        .setISApproximate(true, false, false, false, false).setPrototypeFactions(F_CS)
+                        .setProductionFactions(F_CS),
+                "375, TO"));
+        AmmoType.createMunitions(baTubeAmmos, munitions);
+
+
         // Create the munition types for SRT launchers.
         munitions.clear();
         munitions.add(new MunitionMutator("Artemis-capable", 1, Munitions.M_ARTEMIS_CAPABLE,
@@ -3235,7 +3249,6 @@ public class AmmoType extends EquipmentType {
         AmmoType ammo = new AmmoType();
 
         ammo.name = "BA Tube Artillery Ammo";
-        // TODO need mutator for Smoke Artillery
         ammo.shortName = "Tube Artillery";
         ammo.setInternalName("ISBATubeArtilleryAmmo");
         ammo.damagePerShot = 1;
@@ -7725,8 +7738,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -7750,8 +7764,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -7776,8 +7791,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -7801,8 +7817,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -7827,8 +7844,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -7852,8 +7870,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -7878,8 +7897,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -7903,8 +7923,9 @@ public class AmmoType extends EquipmentType {
         ammo.techAdvancement.setTechBase(TECH_BASE_IS).setIntroLevel(false).setUnofficial(false).setTechRating(RATING_D)
                 .setAvailability(RATING_X, RATING_X, RATING_E, RATING_D)
                 .setISAdvancement(DATE_NONE, 3067, 3073, DATE_NONE, DATE_NONE)
-                .setISApproximate(false, false, true, false, false)
-                .setProductionFactions(F_MERC,F_WB);
+                .setISApproximate(false, true, false, false, false)
+                .setProductionFactions(F_MERC,F_WB)
+                .setStaticTechLevel(SimpleTechLevel.STANDARD);
         return ammo;
     }
 
@@ -13238,6 +13259,7 @@ public class AmmoType extends EquipmentType {
                 case AmmoType.T_VEHICLE_FLAMER:
                 case AmmoType.T_HEAVY_FLAMER:
                 case AmmoType.T_FLUID_GUN:
+                case AmmoType.T_BA_TUBE:
                     // Add the munition name to the beginning of the display name.
                     nameBuf = new StringBuilder(name);
                     nameBuf.append(" ");
@@ -13302,14 +13324,14 @@ public class AmmoType extends EquipmentType {
                     cost *= 1.5;
                 } else if (munition.getMunitionType().contains(Munitions.M_TRACER)) {
                     cost *= 1.5;
-                    bv *= 0.25;
+                    bv *= 1.25;
                 } else if (munition.getMunitionType().contains(Munitions.M_INCENDIARY_AC)) {
                     cost *= 2;
                 } else if (munition.getMunitionType().contains(Munitions.M_PRECISION)) {
                     cost *= 6;
                 } else if (munition.getMunitionType().contains(Munitions.M_CASELESS)) {
                     cost *= 1.5;
-                    bv *= 1.0;
+                    bv *= 2.0;
                 }
             }
 
@@ -13318,7 +13340,7 @@ public class AmmoType extends EquipmentType {
                     || (munition.getAmmoType() == AmmoType.T_NLRM))
                     && (munition.getMunitionType().contains(Munitions.M_AX_HEAD))) {
                 cost *= 0.5;
-                bv *= 1;
+                bv *= 2;
             }
 
             if (((munition.getAmmoType() == AmmoType.T_LRM) || (munition.getAmmoType() == AmmoType.T_LRM_IMP)
@@ -13359,7 +13381,7 @@ public class AmmoType extends EquipmentType {
                     || (munition.getAmmoType() == AmmoType.T_MML) || (munition.getAmmoType() == AmmoType.T_NLRM))
                     && (munition.getMunitionType().contains(Munitions.M_SWARM_I))) {
                 cost *= 3;
-                bv *= 0.2;
+                bv *= 1.2;
             }
 
             if (((munition.getAmmoType() == AmmoType.T_LRM) || (munition.getAmmoType() == AmmoType.T_LRM_IMP)
@@ -13476,6 +13498,7 @@ public class AmmoType extends EquipmentType {
                     && ((munition.getMunitionType().contains(Munitions.M_TANDEM_CHARGE))
                             || (munition.getMunitionType().contains(Munitions.M_ARTEMIS_V_CAPABLE)))) {
                 cost *= 5;
+                bv *= 2;
             }
 
             if (((munition.getAmmoType() == AmmoType.T_LRM) || (munition.getAmmoType() == AmmoType.T_LRM_IMP)
@@ -13484,8 +13507,67 @@ public class AmmoType extends EquipmentType {
                     && ((munition.getMunitionType().contains(Munitions.M_HEAT_SEEKING))
                             || (munition.getMunitionType().contains(Munitions.M_FOLLOW_THE_LEADER)))) {
                 cost *= 2;
-                bv *= 0.5;
+                bv *= 1.5;
             }
+
+            if (munition.getMunitionType().contains(Munitions.M_DEAD_FIRE)) {
+                if (munition.getAmmoType() == AmmoType.T_MML) {
+                    if (base.rackSize == 3) {
+                        bv = base.hasFlag(F_MML_LRM) ? 3 : 4;
+                    } else if (base.rackSize == 5) {
+                        bv = base.hasFlag(F_MML_LRM) ? 4 : 6;
+                    } else if (base.rackSize == 7) {
+                        bv = base.hasFlag(F_MML_LRM) ? 6 : 10;
+                    } else if (base.rackSize == 9) {
+                        bv = base.hasFlag(F_MML_LRM) ? 8 : 14;
+                    }
+                } else {
+                    if (base.rackSize == 2) {
+                        bv = 2;
+                    } else if (base.rackSize == 4) {
+                        bv = 4;
+                    } else if (base.rackSize == 6) {
+                        bv = 5;
+                    } else if (base.rackSize == 10) {
+                        bv = 16;
+                    } else if (base.rackSize == 15) {
+                        bv = 27;
+                    } else if (base.rackSize == 20) {
+                        bv = 36;
+                    }
+                }
+            }
+
+            if (munition.getMunitionType().contains(Munitions.M_LISTEN_KILL)) {
+                if (munition.getAmmoType() == AmmoType.T_MML) {
+                    if (base.rackSize == 3) {
+                        bv = base.hasFlag(F_MML_LRM) ? 9 : 4;
+                    } else if (base.rackSize == 5) {
+                        bv = base.hasFlag(F_MML_LRM) ? 15 : 7;
+                    } else if (base.rackSize == 7) {
+                        bv = base.hasFlag(F_MML_LRM) ? 21 : 10;
+                    } else if (base.rackSize == 9) {
+                        bv = base.hasFlag(F_MML_LRM) ? 27 : 13;
+                    }
+                } else {
+                    if (base.rackSize == 2) {
+                        bv = 6;
+                    } else if (base.rackSize == 4) {
+                        bv = 12;
+                    } else if (base.rackSize == 6) {
+                        bv = 18;
+                    } else if (base.rackSize == 5) {
+                        bv = 7;
+                    } else if (base.rackSize == 10) {
+                        bv = 14;
+                    } else if (base.rackSize == 15) {
+                        bv = 21;
+                    } else if (base.rackSize == 20) {
+                        bv = 28;
+                    }
+                }
+            }
+
             if (((munition.getAmmoType() == AmmoType.T_VEHICLE_FLAMER)
                     || (munition.getAmmoType() == AmmoType.T_HEAVY_FLAMER)
                     || (munition.getAmmoType() == AmmoType.T_FLUID_GUN))

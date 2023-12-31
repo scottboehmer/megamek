@@ -41,6 +41,7 @@ public class MechSearchFilter {
     public int iOmni;
     public int iMilitary;
     public int iIndustrial;
+    public int iMountedInfantry;
     public int iWaterOnly;
     public int iDoomedOnGround;
     public int iDoomedInAtmosphere;
@@ -470,6 +471,10 @@ public class MechSearchFilter {
             return false;
         }
 
+        if (!isMatch(f.iMountedInfantry, mech.getMountedInfantry())) {
+            return false;
+        }
+
         if (!isMatch(f.iWaterOnly, (mech.hasWaterMovement() && !mech.hasAirMovement() && !mech.hasGroundMovement()))) {
             return false;
         }
@@ -806,6 +811,9 @@ public class MechSearchFilter {
         if (f.filterQuad == 1) {
             entityTypes = entityTypes | Entity.ETYPE_QUAD_MECH;
         }
+        if (f.filterQuadVee == 1) {
+            entityTypes = entityTypes | Entity.ETYPE_QUADVEE;
+        }
         if (f.filterAero == 1) {
             entityTypes = entityTypes | Entity.ETYPE_AERO;
         }
@@ -884,6 +892,9 @@ public class MechSearchFilter {
         }
         if (f.filterQuad == 2) {
             entityTypes = entityTypes | Entity.ETYPE_QUAD_MECH;
+        }
+        if (f.filterQuadVee == 2) {
+            entityTypes = entityTypes | Entity.ETYPE_QUADVEE;
         }
         if (f.filterAero == 2) {
             entityTypes = entityTypes | Entity.ETYPE_AERO;

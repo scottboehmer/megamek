@@ -1,13 +1,19 @@
-Version:1.1
-Celerity
-CLR-02-X-D
+chassis:Celerity
+model:CLR-02-X-D
 mul id:5553
-
 Config:Quad
 techbase:Inner Sphere
 era:3052
 source:XTR: ComStar
 rules level:4
+role:Scout
+
+
+
+
+quirk:prototype
+quirk:exp_actuator
+
 
 mass:15
 engine:240 XXL Engine(IS)
@@ -147,4 +153,12 @@ IS Endo Steel
 -Empty-
 -Empty-
 
+manufacturer:Comstar
+primaryfactory:Unknown
+systemmanufacturer:CHASSIS:Unknown
+systemmanufacturer:ENGINE:Unknown
+systemmanufacturer:ARMOR:Unknown
+systemmanufacturer:JUMPJET:Unknown
+systemmanufacturer:COMMUNICATIONS:Unknown
+systemmanufacturer:TARGETING:Unknown
 

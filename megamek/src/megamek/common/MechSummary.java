@@ -15,14 +15,14 @@
 package megamek.common;
 
 import megamek.common.alphaStrike.*;
-import megamek.common.options.IOption;
-import megamek.common.options.IOptionGroup;
-import megamek.common.options.Quirks;
-import megamek.common.options.WeaponQuirks;
+import megamek.common.annotations.Nullable;
+import megamek.common.options.*;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.File;
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The MechSummary of a unit offers compiled information about the unit without having to load the file.
@@ -39,6 +39,7 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     private Long entityType;
     private boolean omni;
     private boolean military;
+    private boolean mountedInfantry;
     private int tankTurrets;
     private File sourceFile;
     private String source;
@@ -168,7 +169,7 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     private int fullStructure;
     private int squadSize;
     private ASSpecialAbilityCollection specialAbilities = new ASSpecialAbilityCollection();
-    private UnitRole role;
+    private UnitRole role = UnitRole.UNDETERMINED;
 
     public MechSummary() {
         armorTypeSet = new HashSet<>();
@@ -335,6 +336,10 @@ public class MechSummary implements Serializable, ASCardDisplayable {
 
     public boolean getMilitary() {
         return military;
+    }
+
+    public boolean getMountedInfantry() {
+        return mountedInfantry;
     }
 
     public int getTankTurrets() {
@@ -637,7 +642,7 @@ public class MechSummary implements Serializable, ASCardDisplayable {
 
     @Override
     public UnitRole getRole() {
-        return role;
+        return (role == null) ? UnitRole.UNDETERMINED : role;
     }
 
     public void setFullAccurateUnitType(String type) {
@@ -654,6 +659,10 @@ public class MechSummary implements Serializable, ASCardDisplayable {
 
     public void setMilitary(boolean b) {
         military = b;
+    }
+
+    public void setMountedInfantry(boolean b) {
+        mountedInfantry = b;
     }
 
     public void setTankTurrets(int i) {
@@ -1024,18 +1033,11 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     }
 
     public void setQuirkNames(Quirks quirks) {
-        quirkNames = "";
-        for (final Enumeration<IOptionGroup> optionGroups = quirks.getGroups(); optionGroups.hasMoreElements();) {
-            final IOptionGroup group = optionGroups.nextElement();
-            for (final Enumeration<IOption> options = group.getOptions(); options.hasMoreElements(); ) {
-                final IOption option = options.nextElement();
-                if ((option != null) && option.booleanValue()) {
-                    if (!quirkNames.contains(option.getDisplayableNameWithValue())) {
-                        quirkNames += option.getDisplayableNameWithValue() + ";";
-                    }
-                }
-            }
-        }
+        Set<String> quirkNameList = quirks.getOptionsList().stream()
+                .filter(IOption::booleanValue)
+                .map(IOptionInfo::getDisplayableNameWithValue)
+                .collect(Collectors.toSet());
+        quirkNames = String.join(";", quirkNameList);
     }
 
     public String getQuirkNames() {
@@ -1043,29 +1045,14 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     }
 
     public void setWeaponQuirkNames(Entity entity) {
-        HashMap<Integer, WeaponQuirks> wpnQks = new HashMap<>();
-        weaponQuirkNames = "";
-        for (Mounted m : entity.getWeaponList()) {
-            wpnQks.put(entity.getEquipmentNum(m), m.getQuirks());
+        Set<String> weaponQuirkNameList = new HashSet<>();
+        for (Mounted mounted : entity.getEquipment()) {
+            weaponQuirkNameList.addAll(mounted.getQuirks().getOptionsList().stream()
+                    .filter(IOption::booleanValue)
+                    .map(IOptionInfo::getDisplayableNameWithValue)
+                    .collect(Collectors.toSet()));
         }
-        Set<Integer> set = wpnQks.keySet();
-
-        Iterator<Integer> iter = set.iterator();
-        while (iter.hasNext()) {
-            int key = iter.next();
-            WeaponQuirks wpnQuirks = wpnQks.get(key);
-            for (Enumeration<IOptionGroup> i = wpnQuirks.getGroups(); i.hasMoreElements(); ) {
-                IOptionGroup group = i.nextElement();
-                for (Enumeration<IOption> j = group.getSortedOptions(); j.hasMoreElements(); ) {
-                    IOption option = j.nextElement();
-                    if ((option != null) && option.booleanValue()) {
-                        if (!weaponQuirkNames.contains(option.getDisplayableNameWithValue())) {
-                            weaponQuirkNames += option.getDisplayableNameWithValue() + ";";
-                        }
-                    }
-                }
-            }
-        }
+        weaponQuirkNames = String.join(";", weaponQuirkNameList);
     }
 
     public String getWeaponQuirkNames() {
@@ -1276,5 +1263,25 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     @Override
     public String formatSUA(BattleForceSUA sua, String delimiter, ASSpecialAbilityCollector collection) {
         return AlphaStrikeHelper.formatAbility(sua, collection, this, delimiter);
+    }
+
+    /**
+     * Loads and returns the entity for this MechSummary. If the entity cannot be loaded, the error is logged
+     * and null is returned.
+     *
+     * @return The loaded entity or null in case of an error
+     */
+    public @Nullable Entity loadEntity() {
+        try {
+            return new MechFileParser(sourceFile, entryName).getEntity();
+        } catch (Exception ex) {
+            LogManager.getLogger().error("", ex);
+            return null;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }

@@ -162,6 +162,7 @@ public class ClientGUI extends JPanel implements BoardViewListener,
     public static final String VIEW_TOGGLE_FOV_DARKEN = "viewToggleFovDarken";
     public static final String VIEW_TOGGLE_FOV_HIGHLIGHT = "viewToggleFovHighlight";
     public static final String VIEW_TOGGLE_FIRING_SOLUTIONS = "viewToggleFiringSolutions";
+    public static final String VIEW_TOGGLE_CF_WARNING = "viewToggleCFWarnings";
     public static final String VIEW_MOVE_ENV = "viewMovementEnvelope";
     public static final String VIEW_TURN_DETAILS_OVERLAY = "viewTurnDetailsOverlay";
     public static final String VIEW_MOVE_MOD_ENV = "viewMovModEnvelope";
@@ -585,7 +586,7 @@ public class ClientGUI extends JPanel implements BoardViewListener,
 
         Ruler.color1 = GUIP.getRulerColor1();
         Ruler.color2 = GUIP.getRulerColor2();
-        ruler = new Ruler(frame, client, bv);
+        ruler = new Ruler(frame, client, bv, client.getGame());
         ruler.setLocation(GUIP.getRulerPosX(), GUIP.getRulerPosY());
         ruler.setSize(GUIP.getRulerSizeHeight(), GUIP.getRulerSizeWidth());
         UIUtil.updateWindowBounds(ruler);
@@ -648,7 +649,7 @@ public class ClientGUI extends JPanel implements BoardViewListener,
             URL helpUrl = new URL(helpPath.toString());
 
             // Launch the help dialog.
-            HelpDialog helpDialog = new HelpDialog(Messages.getString("ClientGUI.skinningHelpPath.title"), helpUrl);
+            HelpDialog helpDialog = new HelpDialog(Messages.getString("ClientGUI.skinningHelpPath.title"), helpUrl, frame);
             helpDialog.setVisible(true);
         } catch (MalformedURLException ex) {
             LogManager.getLogger().error("", ex);
@@ -680,7 +681,7 @@ public class ClientGUI extends JPanel implements BoardViewListener,
     }
 
     public void customizePlayer() {
-        PlayerSettingsDialog psd = new PlayerSettingsDialog(this, client);
+        PlayerSettingsDialog psd = new PlayerSettingsDialog(this, client, bv);
         psd.setVisible(true);
     }
 
@@ -933,6 +934,9 @@ public class ClientGUI extends JPanel implements BoardViewListener,
                     }
                 }
                 bv.refreshDisplayables();
+                break;
+            case VIEW_TOGGLE_CF_WARNING:
+                ConstructionFactorWarning.handleActionPerformed();
                 break;
             case VIEW_MOVE_ENV:
                 if (curPanel instanceof MovementDisplay) {

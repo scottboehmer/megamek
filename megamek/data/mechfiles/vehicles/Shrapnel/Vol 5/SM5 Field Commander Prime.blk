@@ -36,6 +36,10 @@ Prime
 Mixed (Clan Chassis) Experimental
 </type>
 
+<role>
+Striker
+</role>
+
 <motion_type>
 Hover
 </motion_type>
@@ -141,4 +145,9 @@ Shrapnel #6
 <tonnage>
 50.0
 </tonnage>
+
+
+<quirks>
+prototype
+</quirks>
 

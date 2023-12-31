@@ -43,6 +43,10 @@ TroopSpace:8
 <type>
 IS Level 2
 </type>
+
+<role>
+None
+</role>
 <year>
 3063
 </year>
@@ -61,3 +65,8 @@ VTOL
 <source>
 TRO: 3058
 </source>
+
+<quirks>
+vtol_rotor_dual
+</quirks>
+

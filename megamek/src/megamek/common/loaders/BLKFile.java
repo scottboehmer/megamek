@@ -20,11 +20,14 @@ import java.util.stream.Collectors;
 import com.sun.mail.util.DecodingException;
 import megamek.common.*;
 import megamek.common.InfantryBay.PlatoonType;
+import megamek.common.options.IBasicOption;
 import megamek.common.options.IOption;
 import megamek.common.options.PilotOptions;
 import megamek.common.util.BuildingBlock;
 import megamek.common.weapons.bayweapons.BayWeapon;
 import megamek.common.weapons.infantry.InfantryWeapon;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 public class BLKFile {
 
@@ -72,6 +75,60 @@ public class BLKFile {
      */
     protected int defaultVGLFacing(int location, boolean rear) {
         return rear ? 3 : 0;
+    }
+
+    protected void setBasicEntityData(Entity entity) throws EntityLoadingException {
+        if (!dataFile.exists("Name")) {
+            throw new EntityLoadingException("Could not find name block.");
+        }
+
+        entity.setChassis(dataFile.getDataAsString("Name")[0]);
+
+        // Model is not strictly necessary.
+        if (dataFile.exists("Model") && (dataFile.getDataAsString("Model")[0] != null)) {
+            entity.setModel(dataFile.getDataAsString("Model")[0]);
+        } else {
+            entity.setModel("");
+        }
+
+        if (dataFile.exists(MtfFile.MUL_ID)) {
+            entity.setMulId(dataFile.getDataAsInt(MtfFile.MUL_ID)[0]);
+        }
+
+        if (dataFile.exists("role")) {
+            entity.setUnitRole(UnitRole.parseRole(dataFile.getDataAsString("role")[0]));
+        }
+
+        if (dataFile.exists("source")) {
+            entity.setSource(dataFile.getDataAsString("source")[0]);
+        }
+
+        setTechLevel(entity);
+        setFluff(entity);
+        checkManualBV(entity);
+    }
+
+    protected void loadQuirks(Entity entity) throws EntityLoadingException {
+        try {
+            List<QuirkEntry> quirks = new ArrayList<>();
+            if (dataFile.exists("quirks")) {
+                for (String unitQuirk : dataFile.getDataAsVector("quirks")) {
+                    QuirkEntry quirkEntry = new QuirkEntry(unitQuirk);
+                    quirks.add(quirkEntry);
+                }
+            }
+            if (dataFile.exists("weaponQuirks")) {
+                for (String weaponQuirk : dataFile.getDataAsVector("weaponQuirks")) {
+                    String[] fields = weaponQuirk.split(":");
+                    int slot = Integer.parseInt(fields[2]);
+                    QuirkEntry quirkEntry = new QuirkEntry(fields[0], fields[1], slot, fields[3]);
+                    quirks.add(quirkEntry);
+                }
+            }
+            entity.loadQuirks(quirks);
+        } catch (Exception e) {
+            throw new EntityLoadingException("Error loading unit quirks!", e);
+        }
     }
 
     public int defaultAeroVGLFacing(int location, boolean rearFacing) {
@@ -595,7 +652,35 @@ public class BLKFile {
         }
         blk.writeBlockData("type", type);
 
-        blk.writeBlockData("motion_type", t.getMovementModeAsString());
+        if (t.hasRole()) {
+            blk.writeBlockData("role", t.getRole().toString());
+        }
+
+        List<String> quirkList = t.getQuirks().getOptionsList().stream()
+                .filter(IOption::booleanValue)
+                .map(IBasicOption::getName)
+                .collect(Collectors.toList());
+
+        if (!quirkList.isEmpty()) {
+            blk.writeBlockData("quirks", String.join("\n", quirkList));
+        }
+
+        List<String> weaponQuirkList = new ArrayList<>();
+        for (Mounted equipment : t.getEquipment()) {
+            for (IOption weaponQuirk : equipment.getQuirks().activeQuirks()) {
+                weaponQuirkList.add(weaponQuirk.getName() + ":" + t.getLocationAbbr(equipment.getLocation()) + ":"
+                        + t.slotNumber(equipment) + ":" + equipment.getType().getInternalName());
+            }
+        }
+        if (!weaponQuirkList.isEmpty()) {
+            blk.writeBlockData("weaponQuirks", String.join("\n", weaponQuirkList));
+        }
+
+        if ((t instanceof Infantry) && ((Infantry) t).getMount() != null) {
+            blk.writeBlockData("motion_type", ((Infantry) t).getMount().toString());
+        } else {
+            blk.writeBlockData("motion_type", t.getMovementModeAsString());
+        }
 
         if(t.getTransports().size() > 0) {
             // We should only write the transporters block for units that can and do

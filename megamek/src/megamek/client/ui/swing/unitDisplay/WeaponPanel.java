@@ -249,7 +249,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
             }
 
             // Fire Mode - lots of things have variable modes
-            if (wtype.hasModes()) {
+            if (mounted.hasModes()) {
                 wn.append(' ');
 
                 wn.append(mounted.curMode().getDisplayableName());
@@ -366,9 +366,6 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
     public static  final int LINE_HEIGHT = 25;
     public static final Color COLOR_FG = Color.WHITE;
     public static final Color TEXT_BG = Color.DARK_GRAY;
-    public static final String BODY = "<body style=\"color:white; background-color:SlateGray;\">";
-    public static final String LOW_CONTRAST_FONT = "<font color=\"#D3D3D3\">";
-    public  static final String HTML_BODY = "<html>"+BODY+"%s<html>";
 
     private static final GUIPreferences GUIP = GUIPreferences.getInstance();
 
@@ -871,44 +868,58 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
     }
 
     public void setToHit(ToHitData toHit, boolean natAptGunnery) {
+        String txt = "";
+
         switch (toHit.getValue()) {
             case TargetRoll.IMPOSSIBLE:
             case TargetRoll.AUTOMATIC_FAIL:
-                toHitText.setText(String.format("<html>%sTo Hit: (0%%) %s</body></html>", BODY, toHit.getDesc()));
+                txt = String.format("To Hit: (0%%) %s", toHit.getDesc());
                 break;
             case TargetRoll.AUTOMATIC_SUCCESS:
-                toHitText.setText(String.format("<html>%sTo Hit: (100%%) %s</body></html>", BODY, toHit.getDesc()));
+                txt = String.format("To Hit: (100%%) %s", toHit.getDesc());
                 break;
             default:
-                toHitText.setText(String.format("<html>%sTo Hit: <b>%2d (%2.0f%%)</b>%s = %s</font></body></html>", BODY,
-                        toHit.getValue(), Compute.oddsAbove(toHit.getValue(), natAptGunnery), LOW_CONTRAST_FONT, toHit.getDesc()));
+                txt = String.format("<font color=\"%s\">To Hit: <b>%2d (%2.0f%%)</b></font> = %s",
+                        GUIP.hexColor(GUIP.getUnitToolTipHighlightColor()),
+                        toHit.getValue(),
+                        Compute.oddsAbove(toHit.getValue(), natAptGunnery),
+                        toHit.getDesc());
                 break;
         }
+
+        toHitText.setText(UnitToolTip.wrapWithHTML(txt));
         toHitText.setCaretPosition(0);
     }
 
     public void setToHit(String message) {
-        toHitText.setText(String.format(HTML_BODY,message));
+        toHitText.setText(UnitToolTip.wrapWithHTML(message));
     }
 
     public void setTarget(@Nullable Targetable target, @Nullable String extraInfo) {
         this.target = target;
         updateTargetInfo();
+        String txt = "";
+
         if (extraInfo == null || extraInfo.isEmpty()) {
-            wTargetExtraInfo.setText("");
             wTargetExtraInfo.setOpaque(false);
         } else {
-            wTargetExtraInfo.setText(String.format(HTML_BODY, extraInfo));
+            txt = extraInfo;
             wTargetExtraInfo.setOpaque(true);
         }
+
+        wTargetExtraInfo.setText(UnitToolTip.wrapWithHTML(txt));
     }
 
     private void updateTargetInfo() {;
+        String txt = "";
+
         if (target == null) {
-            wTargetInfo.setText(String.format(HTML_BODY, Messages.getString("MechDisplay.NoTarget")));
+            txt = Messages.getString("MechDisplay.NoTarget");
         } else {
-            wTargetInfo.setText(String.format(HTML_BODY, UnitToolTip.getTargetTipDetail(target, client)));
+            txt = UnitToolTip.getTargetTipDetail(target, client);
         }
+
+        wTargetInfo.setText(UnitToolTip.wrapWithHTML(txt));
     }
 
     @Override
@@ -1149,6 +1160,10 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
 
         if (en.hasDamagedRHS() && hasFiredWeapons) {
             currentHeatBuildup++;
+        }
+
+        if (en.hasQuirk(OptionsConstants.QUIRK_POS_COMBAT_COMPUTER)) {
+            currentHeatBuildup -= 4;
         }
 
         // check for negative values due to extreme temp
@@ -1749,7 +1764,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
             }
             wDamR.setText(damage.toString());
         } else if (wtype.hasFlag(WeaponType.F_ENERGY)
-                   && wtype.hasModes()
+                   && mounted.hasModes()
                    && (unitDisplay.getClientGUI() != null) && unitDisplay.getClientGUI().getClient().getGame().getOptions().booleanOption(
                 OptionsConstants.ADVCOMBAT_TACOPS_ENERGY_WEAPONS)) {
             if (mounted.hasChargedCapacitor() != 0) {
@@ -1786,7 +1801,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
             extremeR = wtype.getWExtremeRange();
         } else if (wtype.hasFlag(WeaponType.F_PDBAY)) {
             //Point Defense bays have a variable range, depending on the mode they're in
-            if (wtype.hasModes() && mounted.curMode().equals("Point Defense")) {
+            if (mounted.hasModes() && mounted.curMode().equals("Point Defense")) {
                 shortR = 1;
                 wShortR.setText("1");
             } else {
@@ -2369,7 +2384,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
             wShortR.setText("1-12");
         } else if (wtype.hasFlag(WeaponType.F_PDBAY)) {
                 //Point Defense bays have a variable range too, depending on the mode they're in
-                if (wtype.hasModes() && weapon.curMode().equals("Point Defense")) {
+                if (weapon.hasModes() && weapon.curMode().equals("Point Defense")) {
                     wShortR.setText("1");
                 } else {
                     wShortR.setText("1-6");
@@ -2594,13 +2609,13 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
         }
         // check for bracketing
         double mult = 1.0;
-        if (wtype.hasModes() && weapon.curMode().equals("Bracket 80%")) {
+        if (weapon.hasModes() && weapon.curMode().equals("Bracket 80%")) {
             mult = 0.8;
         }
-        if (wtype.hasModes() && weapon.curMode().equals("Bracket 60%")) {
+        if (weapon.hasModes() && weapon.curMode().equals("Bracket 60%")) {
             mult = 0.6;
         }
-        if (wtype.hasModes() && weapon.curMode().equals("Bracket 40%")) {
+        if (weapon.hasModes() && weapon.curMode().equals("Bracket 40%")) {
             mult = 0.4;
         }
         avShort = mult * avShort;

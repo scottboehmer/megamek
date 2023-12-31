@@ -32,6 +32,10 @@ R10 Mechanized ICV
 IS Level 2
 </type>
 
+<role>
+Brawler
+</role>
+
 <motion_type>
 Wheeled
 </motion_type>
@@ -107,3 +111,9 @@ TRO: 3145 Free Worlds League
 <baseChassisTurretWeight>
 1.5
 </baseChassisTurretWeight>
+
+<quirks>
+easy_maintain
+poor_target_long
+</quirks>
+

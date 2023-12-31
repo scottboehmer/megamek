@@ -32,6 +32,10 @@ F
 IS Level 2
 </type>
 
+<role>
+Striker
+</role>
+
 <motion_type>
 Hover
 </motion_type>
@@ -92,3 +96,8 @@ TRO: 3058
 <baseChassisTurretWeight>
 1.0
 </baseChassisTurretWeight>
+
+<weaponQuirks>
+mod_weapons:FR:0:Medium Laser
+mod_weapons:TU:0:Large Laser
+</weaponQuirks>

@@ -1958,6 +1958,13 @@ public class MoveStep implements Serializable {
                         && (velocity != 0) && (getNTurns() > 1)) {
                     return;
                 }
+
+                // Jumpships cannot change velocity and use attitude jets in the same turn.
+                if ((a instanceof Jumpship) && ((Jumpship) a).hasStationKeepingDrive()
+                        && (prev.getMovementType(false) == EntityMovementType.MOVE_OVER_THRUST)
+                        && ((type == MoveStepType.TURN_LEFT) || (type == MoveStepType.TURN_RIGHT))) {
+                    return;
+                }
             }
 
             // atmosphere has its own rules about turning
@@ -2334,7 +2341,8 @@ public class MoveStep implements Serializable {
         if ((getEntity().getMovementMode() == EntityMovementMode.BIPED_SWIM)
                 || (getEntity().getMovementMode() == EntityMovementMode.QUAD_SWIM)
                 || ((getEntity() instanceof Infantry
-                        && getEntity().getMovementMode() == EntityMovementMode.SUBMARINE))) {
+                        && getEntity().getMovementMode().isSubmarine()
+                        && (currHex.terrainLevel(Terrains.WATER) > 0)))) {
             tmpWalkMP = entity.getActiveUMUCount();
         }
 
@@ -2962,7 +2970,8 @@ public class MoveStep implements Serializable {
         // 0 MP infantry units can move 1 hex
         if (isInfantry
                 && (cachedEntityState.getWalkMP() == 0)
-                && (moveMode != EntityMovementMode.SUBMARINE)
+                && !moveMode.isSubmarine()
+                && !moveMode.isVTOL()
                 && getEntity().getPosition().equals(prev)
                 && (getEntity().getPosition().distance(getPosition()) == 1)
                 && (!isJumping())) {
@@ -3167,6 +3176,8 @@ public class MoveStep implements Serializable {
             } else if (isMechanizedInfantry) {
                 // mechanized infantry pays 1 extra
                 mp += 1;
+            } else if (isInfantry && (((Infantry) entity).getMount() != null)) {
+                mp += ((Infantry) entity).getMount().getSize().buildingMP;
             }
         }
 
@@ -3236,6 +3247,11 @@ public class MoveStep implements Serializable {
 
         // If you want to flee, and you can flee, flee.
         if ((type == MoveStepType.FLEE) && entity.canFlee()) {
+            return true;
+        }
+
+        // Motive hit has immobilized CV, but it still wants to (and can) jump: okay!
+        if (movementType == EntityMovementType.MOVE_JUMP && (entity instanceof Tank) && !entity.isImmobileForJump()) {
             return true;
         }
 
