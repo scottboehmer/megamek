@@ -770,6 +770,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     protected int consecutiveRHSUses = 0;
 
     private final Set<Integer> attackedByThisTurn = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Integer> groundAttackedByThisTurn = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     /**
      * Determines the sort order for weapons in the UnitDisplay weapon list.
@@ -814,6 +815,12 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     private UnitRole role = UnitRole.UNDETERMINED;
 
     /**
+     * Vector storing references to friendly weapon attack actions this entity may need to support;
+     * Primarily used by Princess to speed up TAG utility calculations.
+     */
+    protected ArrayList<WeaponAttackAction> incomingGuidedAttacks;
+
+    /**
      * Generates a new, blank, entity.
      */
     public Entity() {
@@ -851,6 +858,7 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         externalId = UUID.randomUUID().toString();
         initTechAdvancement();
         offBoardShotObservers = new HashSet<>();
+        incomingGuidedAttacks = new ArrayList<WeaponAttackAction>();
     }
 
     /**
@@ -867,7 +875,9 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     }
 
     protected boolean hasViableWeapons() {
-        int totalDmg = 0;
+        int totalDmg = Compute.computeTotalDamage(getTotalWeaponList());
+
+        // Find any weapons with range of 6+
         boolean hasRangeSixPlus = false;
         List<Mounted> weaponList = getTotalWeaponList();
         for (Mounted weapon : weaponList) {
@@ -875,22 +885,9 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
                 continue;
             }
             WeaponType type = (WeaponType) weapon.getType();
-            if (type.getDamage() == WeaponType.DAMAGE_VARIABLE) {
-
-            } else if (type.getDamage() == WeaponType.DAMAGE_ARTILLERY) {
-                return true;
-            } else if (type.getDamage() == WeaponType.DAMAGE_BY_CLUSTERTABLE) {
-                totalDmg += type.getRackSize();
-            } else if (type.getDamage() == WeaponType.DAMAGE_SPECIAL) {
-                if (type instanceof ISBAPopUpMineLauncher) {
-                    totalDmg += 4;
-                }
-            } else {
-                totalDmg += type.getDamage();
-            }
-
             if (type.getLongRange() >= 6) {
                 hasRangeSixPlus = true;
+                break;
             }
         }
         return (totalDmg >= 5) || hasRangeSixPlus;
@@ -4183,6 +4180,11 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
             if (eq.getType().equals(spaceBomb) || eq.getType().equals(altBomb)
                     || eq.getType().equals(diveBomb)) {
                 bombAttacksToRemove.add(eq);
+            } else if (eq.getLinked() != null && eq.getLinked().isInternalBomb()){
+                // Remove any used internal bombs
+                if (eq.getLinked().getUsableShotsLeft() <= 0) {
+                    bombAttacksToRemove.add(eq);
+                }
             }
         }
         equipmentList.removeAll(bombAttacksToRemove);
@@ -4370,6 +4372,17 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
      return  miscList.stream()
              .filter(item -> item.getType().hasFlag(flag))
              .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns the number of equipment of the given internal name that are mounted on this unit, regardless of
+     * their working condition. Ideally use {@link EquipmentTypeLookup} for the internal name.
+     *
+     * @param internalName The {@link EquipmentType#internalName} of the equipment
+     * @return The equipment count on this unit
+     */
+    public long countEquipment(String internalName) {
+        return getEquipment().stream().filter(m -> m.is(internalName)).count();
     }
 
     /**
@@ -4725,6 +4738,20 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
      */
     public int getGyroType() {
         return -1;
+    }
+
+    public static Map<Integer, String> getGyroTypes() {
+        Map<Integer, String> result = new HashMap();
+
+        result.put(Mech.GYRO_UNKNOWN, Mech.getGyroDisplayString(Mech.GYRO_UNKNOWN));
+        result.put(Mech.GYRO_STANDARD, Mech.getGyroDisplayString(Mech.GYRO_STANDARD));
+        result.put(Mech.GYRO_XL, Mech.getGyroDisplayString(Mech.GYRO_XL));
+        result.put(Mech.GYRO_COMPACT, Mech.getGyroDisplayString(Mech.GYRO_COMPACT));
+        result.put(Mech.GYRO_HEAVY_DUTY, Mech.getGyroDisplayString(Mech.GYRO_HEAVY_DUTY));
+        result.put(Mech.GYRO_NONE, Mech.getGyroDisplayString(Mech.GYRO_NONE));
+        result.put(Mech.GYRO_SUPERHEAVY, Mech.getGyroDisplayString(Mech.GYRO_SUPERHEAVY));
+
+        return result;
     }
 
     /**
@@ -6316,6 +6343,13 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
 
         if (isBomber()) {
             resetBombAttacks();
+        }
+
+        // Reset deployed or incoming weapons which need TAG guidance (mainly for bot computations)
+        if (incomingGuidedAttacks == null) {
+            incomingGuidedAttacks = new ArrayList<WeaponAttackAction>();
+        } else {
+            incomingGuidedAttacks.clear();
         }
 
         // reset evasion
@@ -12036,6 +12070,20 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
     }
 
     /**
+     * @param attacksList of know or possible WAAs that might need TAG assistance this turn.
+     */
+    public void setIncomingGuidedAttacks(ArrayList<WeaponAttackAction> attacksList){
+        incomingGuidedAttacks = (ArrayList<WeaponAttackAction>) attacksList.clone();
+    }
+
+    /**
+     * @return the vector of possible WAAs that may need this entity's TAG support.
+     */
+    public ArrayList<WeaponAttackAction> getIncomingGuidedAttacks(){
+        return incomingGuidedAttacks;
+    }
+
+    /**
      * A method to determine if an aero has suffered 3 sensor hits.
      * When double-blind is on, this affects both standard visibility and sensor rolls
      */
@@ -12976,15 +13024,37 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
      * @return
      */
     public int[] getBombLoadout() {
+        return getBombLoadout(false);
+    }
+
+    public int[] getBombLoadout(boolean internalOnly) {
         int[] loadout = new int[BombType.B_NUM];
         for (Mounted bomb : getBombs()) {
             if ((bomb.getUsableShotsLeft() > 0)
                 && (bomb.getType() instanceof BombType)) {
-                int type = ((BombType) bomb.getType()).getBombType();
-                loadout[type] = loadout[type] + 1;
+                // Either count all bombs, or just internal bombs
+                if (internalOnly && !bomb.isInternalBomb()) {
+                    continue;
+                } else {
+                    int type = ((BombType) bomb.getType()).getBombType();
+                    loadout[type] = loadout[type] + 1;
+                }
             }
         }
         return loadout;
+    }
+
+    public int[] getInternalBombLoadout() {
+        return getBombLoadout(true);
+    }
+
+    public int[] getExternalBombLoadout() {
+        int[] allBombs = getBombLoadout();
+        int[] intBombs = getBombLoadout(true);
+        for (int i = 0; i < allBombs.length; i++) {
+            allBombs[i] -= intBombs[i];
+        }
+        return allBombs;
     }
 
     @Override
@@ -14459,12 +14529,23 @@ public abstract class Entity extends TurnOrdered implements Transporter, Targeta
         attackedByThisTurn.add(entityId);
     }
 
+    public void addGroundAttackedByThisTurn(int entityId) {
+        groundAttackedByThisTurn.add(entityId);
+    }
+
     public void clearAttackedByThisTurn() {
         attackedByThisTurn.clear();
+        if (groundAttackedByThisTurn != null) {
+            groundAttackedByThisTurn.clear();
+        }
     }
 
     public Collection<Integer> getAttackedByThisTurn() {
         return new HashSet<>(attackedByThisTurn);
+    }
+
+    public Collection<Integer> getGroundAttackedByThisTurn() {
+        return new HashSet<>(groundAttackedByThisTurn);
     }
 
     public WeaponSortOrder getWeaponSortOrder() {

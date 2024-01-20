@@ -19,6 +19,7 @@ import megamek.client.ui.Messages;
 import megamek.common.*;
 import megamek.common.enums.AimingMode;
 import megamek.common.options.OptionsConstants;
+import megamek.common.weapons.DiveBombAttack;
 import megamek.common.weapons.InfantryAttack;
 import megamek.common.weapons.Weapon;
 import megamek.common.weapons.artillery.ArtilleryCannonWeapon;
@@ -80,7 +81,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
     private int swarmMissiles = 0;
 
     // bomb stuff
-    private int[] bombPayload = new int[BombType.B_NUM];
+    private HashMap<String, int[]> bombPayloads = new HashMap<String, int[]>();
 
     // equipment that affects this attack (AMS, ECM?, etc)
     // only used server-side
@@ -116,11 +117,15 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
     public WeaponAttackAction(int entityId, int targetId, int weaponId) {
         super(entityId, targetId);
         this.weaponId = weaponId;
+        this.bombPayloads.put("internal", new int[BombType.B_NUM]);
+        this.bombPayloads.put("external", new int[BombType.B_NUM]);
     }
 
     public WeaponAttackAction(int entityId, int targetType, int targetId, int weaponId) {
         super(entityId, targetType, targetId);
         this.weaponId = weaponId;
+        this.bombPayloads.put("internal", new int[BombType.B_NUM]);
+        this.bombPayloads.put("external", new int[BombType.B_NUM]);
     }
 
     public int getWeaponId() {
@@ -1606,6 +1611,9 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
 
             // Air-to-ground attacks
             if (Compute.isAirToGround(ae, target) && !isArtilleryIndirect && !ae.isDropping()) {
+                if (ae.isBomber() && weapon.isInternalBomb() && ((IBomber)ae).getUsedInternalBombs() >= 6) {
+                    return Messages.getString("WeaponAttackAction.AlreadyUsedMaxInternalBombs");
+                }
                 // Can't strike from above altitude 5. Dive bombing uses a different test below
                 if ((ae.getAltitude() > 5)
                         && !wtype.hasFlag(WeaponType.F_DIVE_BOMB) && !wtype.hasFlag(WeaponType.F_ALT_BOMB)) {
@@ -1615,7 +1623,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
                 if ((ae.getAltitude() > 3) && isStrafing) {
                     return Messages.getString("WeaponAttackAction.AttackerTooHigh");
                 }
-                // Additional Nape-of-Earth restrictions for strafing
+                // Additional Nap-of-Earth restrictions for strafing
                 if ((ae.getAltitude() == 1) && isStrafing) {
                     Vector<Coords> passedThrough = ae.getPassedThrough();
                     if (passedThrough.isEmpty() || passedThrough.get(0).equals(target.getPosition())) {
@@ -2151,7 +2159,9 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
             // Capital weapons fire by grounded units
             if (wtype.isSubCapital() || wtype.isCapital()) {
                 // Can't fire any but capital/subcapital missiles surface to surface
+                // (but VTOL dive bombing is allowed)
                 if (Compute.isGroundToGround(ae, target)
+                        && !((ae.getMovementMode() == EntityMovementMode.VTOL) && (wtype instanceof DiveBombAttack))
                         && !(wtype instanceof CapitalMissileWeapon)) {
                     return Messages.getString("WeaponAttackAction.NoS2SCapWeapons");
                 }
@@ -2742,16 +2752,25 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
     }
 
     public int[] getBombPayload() {
+        int[] bombPayload = new int[BombType.B_NUM];
+        for (int i=0; i<bombPayloads.get("internal").length; i++) {
+            bombPayload[i] = bombPayloads.get("internal")[i] + bombPayloads.get("external")[i];
+        }
         return bombPayload;
+    }
+
+    public HashMap<String, int[]> getBombPayloads() {
+        return bombPayloads;
     }
 
     /**
      *
-     * @param load This is the "bomb payload". It's an array indexed by the constants declared in BombType.
+     * @param bpls These are the "bomb payload" for internal and external bomb stores.
+     *             It's a HashMap of two arrays, each indexed by the constants declared in BombType.
      * Each element indicates how many types of that bomb should be fired.
      */
-    public void setBombPayload(int[] load) {
-        bombPayload = load;
+    public void setBombPayloads(HashMap<String, int[]> bpls) {
+        bombPayloads = (HashMap<String, int[]>) bpls.clone();
     }
 
     public boolean isStrafing() {
@@ -3593,7 +3612,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
             // So it's here instead of with other weapon mods that apply across the board
             if ((wtype != null) &&
                     ((wtype.ammoType == AmmoType.T_GAUSS_HEAVY) ||
-                    (wtype.ammoType == AmmoType.T_IGAUSS_HEAVY)) && 
+                    (wtype.ammoType == AmmoType.T_IGAUSS_HEAVY)) &&
                     !(ae instanceof Dropship)
                     && !(ae instanceof Jumpship)) {
                 toHit.addModifier(+1, Messages.getString("WeaponAttackAction.FighterHeavyGauss"));
@@ -4345,10 +4364,13 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
         // Add range mods - If the attacker and target are in the same building
         // & hex, range mods don't apply (and will cause the shot to fail)
         // Don't apply this to bomb attacks either, which are going to be at 0 range of necessity
+        // Also don't apply to ADA Missiles (range computed separately)
         if (((los.getThruBldg() == null) || !los.getTargetPosition().equals(ae.getPosition()))
                 && (wtype != null
-                    && (!(wtype.hasFlag(WeaponType.F_ALT_BOMB) || wtype.hasFlag(WeaponType.F_DIVE_BOMB))))
-                && weaponId > WeaponType.WEAPON_NA) {
+                    && (!(wtype.hasFlag(WeaponType.F_ALT_BOMB)
+                        || wtype.hasFlag(WeaponType.F_DIVE_BOMB)
+                        || (atype != null && atype.getMunitionType().contains(AmmoType.Munitions.M_ADA))))
+                && weaponId > WeaponType.WEAPON_NA)) {
             toHit.append(Compute.getRangeMods(game, ae, weaponId, target));
         }
 
@@ -4482,7 +4504,7 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
         }
 
         // Ground-to-air attacks always hit from below
-        if (Compute.isGroundToAir(ae, target) && ((ae.getAltitude() - target.getAltitude()) > 2)) {
+        if (Compute.isGroundToAir(ae, target) && ((target.getAltitude() - ae.getAltitude()) > 2)) {
             toHit.setHitTable(ToHitData.HIT_BELOW);
         }
 
@@ -4864,39 +4886,17 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
             te = (Entity) target;
         }
         if (atype.getMunitionType().contains(AmmoType.Munitions.M_ADA)){
-            // Air-Defense Arrow missiles use a much-simplified to-hit calculation because they:
+            // Air-Defense Arrow missiles use a simplified to-hit calculation because they:
             // A) are Flak; B) are not Artillery, C) use three ranges (same low-alt hex, 1 hex, 2 hexes)
             // as S/M/L
-            // Per TO:AR 6th printing, p153, other mods are: Flak (-2), AMM, damage, intervening trees/jungle
-            int distance = Compute.effectiveDistance(game, ae, target);
-            toHit = new ToHitData(ae.getCrew().getGunnery(), Messages.getString("WeaponAttackAction.GunSkill"));
+            // Per TO:AR 6th printing, p153, ADA Missiles should use TW Flak rules rather than TO Artillery Flak rules.
+            // Per TW pg 114, all other mods _should_ be included.
 
-            /// Re-apply quirks and SPAs after wiping out toHit
-            // Quirks
-            processAttackerQuirks(toHit, ae, te, weapon);
-
-            // SPAs
-            processAttackerSPAs(toHit, ae, te, weapon, game);
-            processDefenderSPAs(toHit, ae, te, weapon, game);
-
-            // Flak; ADA won't hit the later artillery flak check so add this modifier directly.
-            toHit.addModifier(-2, Messages.getString("WeaponAttackAction.Flak"));
-            // AMM
-            toHit.append(Compute.getAttackerMovementModifier(game, ae.getId()));
-            // LOS
-            toHit.append(losMods);
             // Special range calc
+            int distance = Compute.effectiveDistance(game, ae, target);
             toHit.addModifier(Compute.getADARangeModifier(distance), Messages.getString("WeaponAttackAction.ADARangeBracket"));
-            // actuator & sensor damage to attacker
-            if (weapon != null) {
-                toHit.append(Compute.getDamageWeaponMods(ae, weapon));
-            }
-            // Vs Aero, hits from below
-            if (Compute.isGroundToAir(ae, target) && ((ae.getAltitude() - target.getAltitude()) > 2)) {
-                toHit.setHitTable(ToHitData.HIT_BELOW);
-            }
 
-            srt.setSpecialResolution(true);
+            // Return without SRT set so that regular to-hit mods get applied.
             return toHit;
         }
         //If an airborne unit occupies the target hex, standard artillery ammo makes a flak attack against it
