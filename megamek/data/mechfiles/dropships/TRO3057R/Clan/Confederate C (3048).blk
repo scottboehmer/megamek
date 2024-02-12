@@ -17,15 +17,19 @@ Confederate C
 </Name>
 
 <Model>
-(3048)
+(2850)
 </Model>
 
+<mul id:>
+3988
+</mul id:>
+
 <year>
-3048
+2850
 </year>
 
 <originalBuildYear>
-3048
+2850
 </originalBuildYear>
 
 <type>
