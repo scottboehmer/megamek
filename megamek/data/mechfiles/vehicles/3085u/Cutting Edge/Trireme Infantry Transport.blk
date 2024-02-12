@@ -41,7 +41,7 @@ VTOL
 </motion_type>
 
 <transporters>
-battlearmorbay:4.5:1
+troopspace:36
 </transporters>
 
 <cruiseMP>
