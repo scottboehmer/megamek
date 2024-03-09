@@ -40,6 +40,7 @@ public class MtfFile implements IMechLoader {
 
     private String chassis;
     private String model;
+    private String clanChassisName = "";
     private int mulId = -1;
 
     private String chassisConfig;
@@ -76,7 +77,9 @@ public class MtfFile implements IMechLoader {
     private final Map<EntityFluff.System, String> systemManufacturers = new EnumMap<>(EntityFluff.System.class);
     private final Map<EntityFluff.System, String> systemModels = new EnumMap<>(EntityFluff.System.class);
     private String notes = "";
-    private String imagePath = "";
+
+    private String fluffImageEncoded = "";
+    private String iconEncoded = "";
 
     private int bv = 0;
     private String role;
@@ -95,6 +98,7 @@ public class MtfFile implements IMechLoader {
     public static final String MTF_VERSION = "version:";
     public static final String GENERATOR = "generator:";
     public static final String CHASSIS = "chassis:";
+    public static final String CLAN_CHASSIS_NAME = "clanname:";
     public static final String MODEL = "model:";
     public static final String COCKPIT = "cockpit:";
     public static final String GYRO = "gyro:";
@@ -130,7 +134,6 @@ public class MtfFile implements IMechLoader {
     public static final String SYSTEM_MANUFACTURER = "systemmanufacturer:";
     public static final String SYSTEM_MODEL = "systemmode:";
     public static final String NOTES = "notes:";
-    public static final String IMAGE_FILE = "imagefile:";
     public static final String BV = "bv:";
     public static final String WEAPONS = "weapons:";
     public static final String EMPTY = "-Empty-";
@@ -142,6 +145,8 @@ public class MtfFile implements IMechLoader {
     public static final String QUIRK = "quirk:";
     public static final String WEAPON_QUIRK = "weaponquirk:";
     public static final String ROLE = "role:";
+    public static final String FLUFF_IMAGE = "fluffimage:";
+    public static final String ICON = "icon:";
 
     public MtfFile(InputStream is) throws EntityLoadingException {
         try (InputStreamReader isr = new InputStreamReader(is);
@@ -221,6 +226,7 @@ public class MtfFile implements IMechLoader {
             }
             mech.setFullHeadEject(fullHead);
             mech.setChassis(chassis.trim());
+            mech.setClanChassisName(clanChassisName);
             mech.setModel(model.trim());
             mech.setMulId(mulId);
             mech.setYear(Integer.parseInt(techYear.substring(4).trim()));
@@ -457,9 +463,10 @@ public class MtfFile implements IMechLoader {
             mech.getFluff().setManufacturer(manufacturer);
             mech.getFluff().setPrimaryFactory(primaryFactory);
             mech.getFluff().setNotes(notes);
+            mech.getFluff().setFluffImage(fluffImageEncoded);
+            mech.setIcon(iconEncoded);
             systemManufacturers.forEach((k, v) -> mech.getFluff().setSystemManufacturer(k, v));
             systemModels.forEach((k, v) -> mech.getFluff().setSystemModel(k, v));
-            mech.getFluff().setMMLImagePath(imagePath);
 
             mech.setArmorTonnage(mech.getArmorWeight());
 
@@ -793,6 +800,16 @@ public class MtfFile implements IMechLoader {
                                               isTurreted);
                         m.setOmniPodMounted(isOmniPod);
                         hSharedEquip.put(etype, m);
+                    } else if (etype.hasFlag(MiscType.F_TARGCOMP)) {
+                        // Targeting computers are special, they need to be loaded like spreadable equipment, but they aren't spreadable
+                        Mounted m = hSharedEquip.get(etype);
+                        if (m == null) {
+                            m = mech.addEquipment(etype, loc, rearMounted, BattleArmor.MOUNT_LOC_NONE, isArmored, isTurreted);
+                            m.setOmniPodMounted(isOmniPod);
+                            hSharedEquip.put(etype, m);
+                        }
+                        mech.addCritical(loc, new CriticalSlot(m));
+
                     } else if (((etype instanceof WeaponType) && ((WeaponType) etype).isSplitable()) || ((etype instanceof MiscType) && etype.hasFlag(MiscType.F_SPLITABLE))) {
                         // do we already have this one in this or an outer location?
                         Mounted m = null;
@@ -1175,6 +1192,11 @@ public class MtfFile implements IMechLoader {
             return true;
         }
 
+        if (lineLower.startsWith(CLAN_CHASSIS_NAME)) {
+            clanChassisName = line.substring(CLAN_CHASSIS_NAME.length());
+            return true;
+        }
+
         if (lineLower.startsWith(CAPABILITIES)) {
             capabilities = line.substring(CAPABILITIES.length());
             return true;
@@ -1227,11 +1249,6 @@ public class MtfFile implements IMechLoader {
             return true;
         }
 
-        if (lineLower.startsWith(IMAGE_FILE)) {
-            imagePath = line.substring(IMAGE_FILE.length());
-            return true;
-        }
-
         if (lineLower.startsWith(BV)) {
             bv = Integer.parseInt(line.substring(BV.length()));
             return true;
@@ -1239,6 +1256,16 @@ public class MtfFile implements IMechLoader {
 
         if (lineLower.startsWith(MUL_ID)) {
             mulId = Integer.parseInt(line.substring(MUL_ID.length()));
+            return true;
+        }
+
+        if (lineLower.startsWith(FLUFF_IMAGE)) {
+            fluffImageEncoded = line.substring(FLUFF_IMAGE.length());
+            return true;
+        }
+
+        if (lineLower.startsWith(ICON)) {
+            iconEncoded = line.substring(ICON.length());
             return true;
         }
 

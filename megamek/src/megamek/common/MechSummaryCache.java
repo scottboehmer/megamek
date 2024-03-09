@@ -389,12 +389,16 @@ public class MechSummaryCache {
         MechSummary ms = new MechSummary();
         ms.setName(e.getShortNameRaw());
         ms.setChassis(e.getChassis());
+        ms.setClanChassisName(e.getClanChassisName());
         ms.setModel(e.getModel());
         ms.setMulId(e.getMulId());
         ms.setUnitType(UnitType.getTypeName(e.getUnitType()));
         ms.setFullAccurateUnitType(Entity.getEntityTypeName(e.getEntityType()));
         ms.setEntityType(e.getEntityType());
         ms.setOmni(e.isOmni());
+        if (e.getFluff().hasEmbeddedFluffImage()) {
+            ms.setFluffImage(e.getFluff().getBase64FluffImage().getBase64String());
+        }
         ms.setMilitary(e.isMilitary());
         ms.setMountedInfantry((e instanceof Infantry) && ((Infantry) e).getMount() != null);
 
@@ -489,29 +493,8 @@ public class MechSummaryCache {
             ms.setCockpitType(-2);
         }
 
-        TestEntity testEntity = null;
-        if (e instanceof Mech) {
-            testEntity = new TestMech((Mech) e, entityVerifier.mechOption, null);
-        } else if (e instanceof Protomech) {
-            testEntity = new TestProtomech((Protomech) e, entityVerifier.protomechOption, null);
-        } else if (e.isSupportVehicle()) {
-            testEntity = new TestSupportVehicle(e, entityVerifier.tankOption, null);
-        } else if (e instanceof Tank && !(e instanceof GunEmplacement)) {
-            testEntity = new TestTank((Tank) e, entityVerifier.tankOption, null);
-        } else if (e instanceof BattleArmor) {
-            testEntity = new TestBattleArmor((BattleArmor) e, entityVerifier.baOption, null);
-        } else if (e instanceof Infantry) {
-            testEntity = new TestInfantry((Infantry) e, entityVerifier.infOption, null);
-        } else if (e instanceof Jumpship) {
-            testEntity = new TestAdvancedAerospace((Jumpship) e, entityVerifier.aeroOption, null);
-        } else if (e instanceof SmallCraft) {
-            testEntity = new TestSmallCraft((SmallCraft) e, entityVerifier.aeroOption, null);
-        } else if (e instanceof Aero) {
-            // FighterSquadron and TeleMissile are also instanceof Aero but they won't be showing up in the unit files
-            testEntity = new TestAero((Aero) e, entityVerifier.aeroOption, null);
-        }
-        if (testEntity != null &&
-                !testEntity.correctEntity(new StringBuffer())) {
+        TestEntity testEntity = TestEntity.getEntityVerifier(e);
+        if (testEntity != null && !testEntity.correctEntity(new StringBuffer())) {
             ms.setLevel("F");
             ms.setInvalid(true);
         } else {
@@ -519,6 +502,7 @@ public class MechSummaryCache {
         }
 
         ms.setTechLevel(e.getStaticTechLevel().toString());
+        ms.setTechLevelCode(e.getStaticTechLevel().ordinal());
         ms.setTechBase(e.getTechBaseDescription());
 
         ms.setFailedToLoadEquipment(e.getFailedEquipment().hasNext());
@@ -526,8 +510,10 @@ public class MechSummaryCache {
         ms.setGyroType(e.getGyroType());
         if (e.hasEngine()) {
             ms.setEngineName(e.getEngine().getEngineName());
+            ms.setEngineType(e.getEngine().getEngineType());
         } else {
             ms.setEngineName("None");
+            ms.setEngineType(-1);
         }
 
         if (e instanceof Mech) {

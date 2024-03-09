@@ -268,6 +268,11 @@ public class OptionsConstants {
     // GAME OPTIONS TO BE MOVED.
     public static final String BASE_FRIENDLY_FIRE = "friendly_fire";
     public static final String BASE_TURN_TIMER = "turn_timer";
+    public static final String BASE_TURN_TIMER_TARGETING = "turn_timer_targeting";
+    public static final String BASE_TURN_TIMER_MOVEMENT = "turn_timer_movement";
+    public static final String BASE_TURN_TIMER_FIRING = "turn_timer_firing";
+    public static final String BASE_TURN_TIMER_PHYSICAL = "turn_timer_physical";
+    public static final String BASE_TURN_TIMER_ALLOW_EXTENSION = "turn_timer_allow_extension";
     public static final String BASE_SKIP_INELIGABLE_MOVEMENT = "skip_ineligable_movement";
     public static final String BASE_SKIP_INELIGABLE_FIRING = "skip_ineligable_firing";
     public static final String BASE_SKIP_INELIGABLE_PHYSICAL = "skip_ineligable_physical";
@@ -325,6 +330,7 @@ public class OptionsConstants {
     public static final String ALLOWED_REALLY_ALLOW_NUKES = "really_allow_nukes";
     public static final String ADVANCED_MINEFIELDS = "minefields";
     public static final String ADVANCED_HIDDEN_UNITS = "hidden_units";
+    public static final String ADVANCED_BLACK_ICE= "black_ice";
     public static final String ADVANCED_DOUBLE_BLIND = "double_blind";
     public static final String ADVANCED_SINGLE_BLIND_BOTS = "single_blind_bots";
     public static final String ADVANCED_TACOPS_SENSORS = "tacops_sensors";
@@ -401,6 +407,7 @@ public class OptionsConstants {
     public static final String ADVCOMBAT_TACOPS_WOODS_COVER = "tacops_woods_cover";
     public static final String ADVCOMBAT_TACOPS_VEHICLE_EFFECTIVE = "tacops_vehicle_effective";
     public static final String ADVCOMBAT_TACOPS_VEHICLE_ARCS = "tacops_vehicle_arcs";
+
     public static final String ADVCOMBAT_TACOPS_VTOL_ATTACKS = "tacops_vtol_attacks";
     public static final String ADVCOMBAT_TACOPS_ADVANCED_MECH_HIT_LOCATIONS = "tacops_advanced_mech_hit_locations";
     public static final String ADVCOMBAT_TACOPS_COOLANT_FAILURE = "tacops_coolant_failure";
@@ -498,7 +505,6 @@ public class OptionsConstants {
     public static final String INIT_INF_MOVE_LATER = "inf_move_later";
     public static final String INIT_INF_MOVE_MULTI = "inf_move_multi";
     public static final String INIT_PROTOS_MOVE_EVEN = "protos_move_even";
-    public static final String INIT_PROTOS_DEPLOY_EVEN = "protos_deploy_even";
     public static final String INIT_PROTOS_MOVE_LATER = "protos_move_later";
     public static final String INIT_PROTOS_MOVE_MULTI = "protos_move_multi";
     public static final String INIT_INF_PROTO_MOVE_MULTI = "inf_proto_move_multi";
@@ -519,4 +525,6 @@ public class OptionsConstants {
     public static final String RPG_CONDITIONAL_EJECTION = "conditional_ejection";
     public static final String RPG_MANUAL_SHUTDOWN = "manual_shutdown";
     public static final String RPG_BEGIN_SHUTDOWN = "begin_shutdown";
+
+    private OptionsConstants() { }
 }

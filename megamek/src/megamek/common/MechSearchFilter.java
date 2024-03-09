@@ -16,6 +16,7 @@
 package megamek.common;
 
 import megamek.client.ui.swing.unitSelector.TWAdvancedSearchPanel;
+import megamek.common.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
 
 import java.util.*;
@@ -141,10 +142,10 @@ public class MechSearchFilter {
     public String sStartBV;
     public String sEndBV;
     public boolean isDisabled;
-    public List<String> engineType = new ArrayList<>();
-    public List<String> engineTypeExclude = new ArrayList<>();
-    public Map<Integer, String> gyroType = new HashMap();
-    public Map<Integer, String> gyroTypeExclude = new HashMap();
+    public List<Integer> engineType = new ArrayList<>();
+    public List<Integer> engineTypeExclude = new ArrayList<>();
+    public List<Integer> gyroType = new ArrayList<>();
+    public List<Integer> gyroTypeExclude = new ArrayList<>();
     public List<Integer> armorType = new ArrayList<>();
     public List<Integer> armorTypeExclude = new ArrayList<>();
     public List<Integer> internalsType = new ArrayList<>();
@@ -153,8 +154,8 @@ public class MechSearchFilter {
     public List<Integer> cockpitType = new ArrayList<>();
     public List<Integer> cockpitTypeExclude = new ArrayList<>();
 
-    public List<String> techLevel = new ArrayList<>();
-    public List<String> techLevelExclude = new ArrayList<>();
+    public List<Integer> techLevel = new ArrayList<>();
+    public List<Integer> techLevelExclude = new ArrayList<>();
 
     public List<String> techBase = new ArrayList<>();
     public List<String> techBaseExclude = new ArrayList<>();
@@ -366,25 +367,13 @@ public class MechSearchFilter {
 
     }
 
-    private static int toInt(String s, int i) {
-        if (s.isEmpty()) {
-            return i;
-        }
-
-        try {
-            return Integer.parseInt(s);
-        } catch (Exception ignored) {
-            return i;
-        }
-    }
-
     private static boolean isBetween(double value, String sStart, String sEnd) {
         if (sStart.isEmpty() && sEnd.isEmpty()) {
             return true;
         }
 
-        int iStart = toInt(sStart, Integer.MIN_VALUE);
-        int iEnd = toInt(sEnd, Integer.MAX_VALUE);
+        int iStart = StringUtil.toInt(sStart, Integer.MIN_VALUE);
+        int iEnd = StringUtil.toInt(sEnd, Integer.MAX_VALUE);
 
         if ((value < iStart) || (value > iEnd)) {
             return false;
@@ -410,11 +399,11 @@ public class MechSearchFilter {
         return list.stream().allMatch(search::contains);
     }
 
-    private static boolean anyMatch(Map<Integer, String> list, int search) {
-        return list.entrySet().stream().anyMatch(e -> e.getKey() == search);
+    private static boolean anyMatch(List<Integer> list, int search) {
+        return list.stream().anyMatch(i -> i == search);
     }
-    private static boolean allMatch(Map<Integer, String> list, int search) {
-        return list.entrySet().stream().allMatch(e -> e.getKey() == search);
+    private static boolean allMatch(List<Integer> list, int search) {
+        return list.stream().allMatch(i -> i == search);
     }
 
     private static boolean anyMatch(List<Integer> list, HashSet<Integer> search) {
@@ -461,7 +450,7 @@ public class MechSearchFilter {
             return false;
         }
 
-        if ((!f.mulid.isEmpty()) && (mech.getMulId() != toInt(f.mulid, -2))) {
+        if ((!f.mulid.isEmpty()) && (mech.getMulId() != StringUtil.toInt(f.mulid, -2))) {
             return false;
         }
 
@@ -735,11 +724,11 @@ public class MechSearchFilter {
             return false;
         }
 
-        if ((!f.engineType.isEmpty()) && (!anyMatch(f.engineType, mech.getEngineName()))) {
+        if ((!f.engineType.isEmpty()) && (!anyMatch(f.engineType, mech.getEngineType()))) {
             return false;
         }
 
-        if ((!f.engineTypeExclude.isEmpty()) && (anyMatch(f.engineTypeExclude, mech.getEngineName()))) {
+        if ((!f.engineTypeExclude.isEmpty()) && (anyMatch(f.engineTypeExclude, mech.getEngineType()))) {
             return false;
         }
 
@@ -751,11 +740,11 @@ public class MechSearchFilter {
             return false;
         }
 
-        if ((!f.techLevel.isEmpty()) && (!anyMatch(f.techLevel, mech.getTechLevel()))) {
+        if ((!f.techLevel.isEmpty()) && (!anyMatch(f.techLevel, mech.getTechLevelCode()))) {
             return false;
         }
 
-        if ((!f.techLevelExclude.isEmpty()) && (anyMatch(f.techLevelExclude, mech.getTechLevel()))) {
+        if ((!f.techLevelExclude.isEmpty()) && (anyMatch(f.techLevelExclude, mech.getTechLevelCode()))) {
             return false;
         }
 

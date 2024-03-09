@@ -1,5 +1,6 @@
-chassis:Vulture Mk III (Mad Dog Mk III)
-model:Prime
+chassis:Vulture Mk III
+clanname:Mad Dog Mk III
+model:(Prime)
 mul id:6271
 
 Config:Biped Omnimech

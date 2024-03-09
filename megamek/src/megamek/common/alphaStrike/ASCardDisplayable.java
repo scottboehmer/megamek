@@ -43,11 +43,24 @@ public interface ASCardDisplayable extends BattleForceSUAFormatter, BTObject, Co
 
     // TODO : Must also be able to return more "current" values for MV, Dmg, crits etc.
 
+
+    @Override
+    default String generalName() {
+        return getChassis();
+    }
+
+    @Override
+    default String specificName() {
+        return getModel();
+    }
+
     /** @return The AS element's model, such as "AS7-D". */
     String getModel();
 
     /** @return The AS element's chassis, such as "Atlas". */
     String getChassis();
+
+    String getFullChassis();
 
     /** @return This AS element's MUL ID if it has one, -1 otherwise. */
     int getMulId();
@@ -349,5 +362,20 @@ public interface ASCardDisplayable extends BattleForceSUAFormatter, BTObject, Co
     @Override
     default boolean isIndustrialMek() {
         return isType(IM);
+    }
+
+    @Override
+    default boolean isWarShip() {
+        return isType(WS);
+    }
+
+    @Override
+    default boolean isJumpShip() {
+        return isType(JS);
+    }
+
+    @Override
+    default boolean isSpaceStation() {
+        return isType(SS);
     }
 }

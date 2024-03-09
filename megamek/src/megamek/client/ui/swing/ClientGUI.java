@@ -975,7 +975,12 @@ public class ClientGUI extends JPanel implements BoardViewListener,
             case VIEW_MOVE_ENV:
                 if (curPanel instanceof MovementDisplay) {
                     GUIP.setMoveEnvelope(!GUIP.getMoveEnvelope());
-                    ((MovementDisplay) curPanel).computeMovementEnvelope(getUnitDisplay().getCurrentEntity());
+                    Entity entity = getUnitDisplay().getCurrentEntity();
+                    if (!entity.isAero()) {
+                        ((MovementDisplay) curPanel).computeMovementEnvelope(entity);
+                    } else {
+                        ((MovementDisplay) curPanel).computeAeroMovementEnvelope(entity);
+                    }
                 }
                 break;
             case VIEW_MOVE_MOD_ENV:
@@ -1141,12 +1146,8 @@ public class ClientGUI extends JPanel implements BoardViewListener,
             menuBar = null;
         }
 
-        if (curPanel instanceof FiringDisplay) {
-            ((FiringDisplay) curPanel).stopTimer();
-        }
-
-        if (curPanel instanceof MovementDisplay) {
-            ((MovementDisplay) curPanel).stopTimer();
+        if (curPanel instanceof StatusBarPhaseDisplay) {
+            ((StatusBarPhaseDisplay) curPanel).stopTimer();
         }
 
         GUIP.removePreferenceChangeListener(this);

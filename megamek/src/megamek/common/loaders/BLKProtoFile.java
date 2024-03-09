@@ -14,6 +14,7 @@
 package megamek.common.loaders;
 
 import megamek.common.*;
+import megamek.common.equipment.ArmorType;
 import megamek.common.util.BuildingBlock;
 import megamek.common.verifier.TestProtomech;
 
@@ -91,9 +92,13 @@ public class BLKProtoFile extends BLKFile implements IMechLoader {
         t.setHasMainGun(hasMainGun);
 
         if (dataFile.exists("armor_type")) {
-            t.setArmorType(dataFile.getDataAsInt("armor_type")[0]);
+            int at = dataFile.getDataAsInt("armor_type")[0];
+            if (at == ArmorType.T_ARMOR_STANDARD) {
+                at = ArmorType.T_ARMOR_STANDARD_PROTOMEK;
+            }
+            t.setArmorType(at);
         } else {
-            t.setArmorType(EquipmentType.T_ARMOR_STANDARD);
+            t.setArmorType(EquipmentType.T_ARMOR_STANDARD_PROTOMEK);
         }
         
         if (dataFile.exists("armor_tech")) {
@@ -149,7 +154,7 @@ public class BLKProtoFile extends BLKFile implements IMechLoader {
             }
 
             // ProtoMech Ammo comes in non-standard amounts.
-            int ammoIndex = equipName.indexOf(" (");
+            int ammoIndex = equipName.lastIndexOf(" (");
             int shotsCount = 0;
             if (ammoIndex > 0) {
                 // Try to get the number of shots.

@@ -411,6 +411,11 @@ public class AreaEffectHelper {
                         toHit.addModifier(2, "cluster artillery hitting a Tank");
                     }
                 }
+
+                // According to TW, need to set attack to hit either front or back, 50/50
+                if (ammo instanceof BombType) {
+                    toHit.setSideTable((Compute.d6() <= 3) ? ToHitData.SIDE_FRONT : ToHitData.SIDE_REAR);
+                }
             }
         }
 
@@ -428,7 +433,7 @@ public class AreaEffectHelper {
         // Entity/ammo specific damage modifiers
         if (ammo != null) {
             if (ammo.getMunitionType().contains(AmmoType.Munitions.M_CLUSTER)) {
-                if (hex.containsTerrain(Terrains.FORTIFIED) && entity.isConventionalInfantry()) {
+                if (hex != null && hex.containsTerrain(Terrains.FORTIFIED) && entity.isConventionalInfantry()) {
                     hits *= 2;
                 }
             }

@@ -14,14 +14,18 @@
  */
 package megamek.common;
 
+import megamek.client.ui.Base64Image;
+import megamek.codeUtilities.StringUtility;
 import megamek.common.alphaStrike.*;
 import megamek.common.annotations.Nullable;
 import megamek.common.options.*;
 import org.apache.logging.log4j.LogManager;
 
+import java.awt.*;
 import java.io.File;
 import java.io.Serializable;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -31,12 +35,14 @@ public class MechSummary implements Serializable, ASCardDisplayable {
 
     private String name;
     private String chassis;
+    private String clanChassisName;
     private String model;
     private int mulId;
     private String unitType;
     private String unitSubType;
     private String fullAccurateUnitType;
     private Long entityType;
+    private Base64Image fluffImage = new Base64Image();
     private boolean omni;
     private boolean military;
     private boolean mountedInfantry;
@@ -45,6 +51,7 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     private String source;
     private boolean invalid;
     private String techLevel;
+    private int techLevelCode;
     private String techBase;
     private boolean failedToLoadEquipment;
     private String entryName; // for files in zips
@@ -82,6 +89,7 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     private int totalInternal;
     private int cockpitType;
     private String engineName;
+    private int engineType;
     private int gyroType;
     private String myomerName;
     private int lowerArms;
@@ -185,6 +193,19 @@ public class MechSummary implements Serializable, ASCardDisplayable {
     }
 
     @Override
+    public String getFullChassis() {
+        return chassis + (StringUtility.isNullOrBlank(clanChassisName) ? "" : " (" + clanChassisName + ")");
+    }
+
+    public void setClanChassisName(String name) {
+        clanChassisName = name;
+    }
+
+    public String getClanChassisName() {
+        return clanChassisName;
+    }
+
+    @Override
     public String getModel() {
         return model;
     }
@@ -284,6 +305,10 @@ public class MechSummary implements Serializable, ASCardDisplayable {
 
     public String getTechLevel() {
         return techLevel;
+    }
+
+    public int getTechLevelCode() {
+        return techLevelCode;
     }
 
     public String getTechBase() {
@@ -850,6 +875,10 @@ public class MechSummary implements Serializable, ASCardDisplayable {
         this.techLevel = s;
     }
 
+    public void setTechLevelCode(int i) {
+        this.techLevelCode = i;
+    }
+
     public void setTechBase(String s) {
         this.techBase = s;
     }
@@ -999,6 +1028,15 @@ public class MechSummary implements Serializable, ASCardDisplayable {
         this.jumpMp = jumpMp;
     }
 
+    public void setFluffImage(String base64image) {
+        fluffImage = new Base64Image(base64image);
+    }
+
+    @Override
+    public @Nullable Image getFluffImage() {
+        return fluffImage.getImage();
+    }
+
     /**
      * Given the list of equipment mounted on this unit, parse it into a unique
      * list of names and the number of times that name appears.
@@ -1132,6 +1170,14 @@ public class MechSummary implements Serializable, ASCardDisplayable {
 
     public void setEngineName(String engineName) {
         this.engineName = engineName;
+    }
+
+    public int getEngineType() {
+        return engineType;
+    }
+
+    public void setEngineType(int engineType) {
+        this.engineType = engineType;
     }
 
     public int getGyroType() {

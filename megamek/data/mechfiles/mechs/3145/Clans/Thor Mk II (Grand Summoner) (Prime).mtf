@@ -1,5 +1,6 @@
-chassis:Thor II (Grand Summoner)
-model:Prime
+chassis:Thor II
+clanname:Grand Summoner
+model:(Prime)
 mul id:6281
 
 Config:Biped Omnimech

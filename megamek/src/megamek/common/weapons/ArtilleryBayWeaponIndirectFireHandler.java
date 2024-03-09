@@ -105,7 +105,7 @@ public class ArtilleryBayWeaponIndirectFireHandler extends AmmoBayWeaponHandler 
                 r.indent();
                 r.newlines = 0;
                 r.subject = subjectId;
-                r.add(wtype.getName());
+                r.add(wtype.getName() + " (" + atype.getShortName() + ")");
                 r.add(aaa.getTurnsTilHit());
                 vPhaseReport.addElement(r);
                 Report.addNewline(vPhaseReport);
@@ -148,8 +148,9 @@ public class ArtilleryBayWeaponIndirectFireHandler extends AmmoBayWeaponHandler 
         final Vector<Integer> spottersBefore = aaa.getSpotterIds();
         Coords targetPos = target.getPosition();
         final int playerId = aaa.getPlayerId();
-        boolean isFlak = (target instanceof VTOL) || (target.isAero());
-        boolean asfFlak = target.isAero();
+        boolean targetIsEntity = target.getTargetType() == Targetable.TYPE_ENTITY;
+        boolean isFlak = targetIsEntity && Compute.isFlakAttack(ae, (Entity) target);
+        boolean asfFlak = isFlak && target.isAirborne();
         boolean mineClear = target.getTargetType() == Targetable.TYPE_MINEFIELD_CLEAR;
         Entity bestSpotter = null;
         if (ae == null) {

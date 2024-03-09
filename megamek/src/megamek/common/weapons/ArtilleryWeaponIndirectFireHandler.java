@@ -69,7 +69,7 @@ public class ArtilleryWeaponIndirectFireHandler extends AmmoWeaponHandler {
                 r.indent();
                 r.newlines = 0;
                 r.subject = subjectId;
-                r.add(wtype.getName());
+                r.add(wtype.getName() + " (" + atype.getShortName() + ")");
                 r.add(aaa.getTurnsTilHit());
                 vPhaseReport.addElement(r);
                 Report.addNewline(vPhaseReport);
@@ -123,9 +123,8 @@ public class ArtilleryWeaponIndirectFireHandler extends AmmoWeaponHandler {
 
         final int playerId = aaa.getPlayerId();
         boolean targetIsEntity = target.getTargetType() == Targetable.TYPE_ENTITY;
-        boolean targetIsAirborneVTOL = targetIsEntity && target.isAirborneVTOLorWIGE();
-        boolean isFlak = targetIsAirborneVTOL || target.isAirborne();
-        boolean asfFlak = target.isAirborne();
+        boolean isFlak = targetIsEntity && Compute.isFlakAttack(ae, (Entity) target);
+        boolean asfFlak = isFlak && target.isAirborne();
         Entity bestSpotter = null;
         if (ae == null) {
             LogManager.getLogger().error("Artillery Entity is null!");
@@ -140,9 +139,6 @@ public class ArtilleryWeaponIndirectFireHandler extends AmmoWeaponHandler {
         if (aaa.getAmmoCarrier() != ae.getId()) {
             ammoCarrier = aaa.getEntity(game, aaa.getAmmoCarrier());
         }
-
-        Mounted ammoUsed = ammoCarrier.getEquipment(aaa.getAmmoId());
-        final AmmoType atype = (ammoUsed != null) ? (AmmoType) ammoUsed.getType() : null;
 
         // Are there any valid spotters?
         if ((null != spottersBefore) && !isFlak) {
@@ -238,7 +234,7 @@ public class ArtilleryWeaponIndirectFireHandler extends AmmoWeaponHandler {
         r.newlines = 0;
         r.subject = subjectId;
         if (wtype != null) {
-            r.add(wtype.getName());
+            r.add(wtype.getName() + " (" + atype.getShortName() + ")");
         } else {
             r.add("Error: From Nowhere");
         }

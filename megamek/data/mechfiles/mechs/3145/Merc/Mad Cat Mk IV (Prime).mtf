@@ -1,5 +1,6 @@
-chassis:Mad Cat Mk IV (Savage Wolf)
-model:Prime
+chassis:Mad Cat Mk IV
+clanname:Savage Wolf
+model:(Prime)
 mul id:6570
 
 Config:Biped Omnimech

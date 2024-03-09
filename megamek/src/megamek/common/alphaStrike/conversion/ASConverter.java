@@ -28,7 +28,7 @@ import megamek.common.alphaStrike.BattleForceSUA;
 import megamek.common.annotations.Nullable;
 import org.apache.logging.log4j.LogManager;
 
-import java.util.*;
+import java.util.Objects;
 
 /**
  * Static AlphaStrike Conversion class; contains all information for conversion except for some weapon specifics
@@ -101,9 +101,10 @@ public final class ASConverter {
         element.setName(entity.getShortName());
         element.setQuirks(entity.getQuirks());
         element.setModel(entity.getModel());
-        element.setChassis(entity.getChassis());
+        element.setChassis(entity.getFullChassis());
         element.setMulId(entity.getMulId());
         element.setRole(entity.getRole());
+        element.setFluff(entity.getFluff());
 
         if (entity.getShortName().length() < 15) {
             conversionReport.addHeader("Alpha Strike Conversion for " + entity.getShortName());

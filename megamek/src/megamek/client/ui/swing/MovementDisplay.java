@@ -473,8 +473,12 @@ public class MovementDisplay extends ActionPhaseDisplay {
 
                     @Override
                     public void performAction() {
-                        removeLastStep();
-                        if (ce() instanceof Aero) {
+                        // Remove all illegal steps, if none, then do normal backspace function.
+                        if (!removeIllegalSteps()) {
+                            removeLastStep();
+                        }
+
+                        if (ce() != null && ce().isAero()) {
                             computeAeroMovementEnvelope(ce());
                         } else {
                             computeMovementEnvelope(ce());
@@ -483,7 +487,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                 });
 
         // Register the action for UNDO_ILLEGAL_STEPS
-        controller.registerCommandAction(KeyCommandBind.UNDO_ILLEGAL_STEPS.cmd,
+        controller.registerCommandAction(KeyCommandBind.UNDO_SINGLE_STEP.cmd,
                 new CommandAction() {
                     @Override
                     public boolean shouldPerformAction() {
@@ -495,8 +499,8 @@ public class MovementDisplay extends ActionPhaseDisplay {
 
                     @Override
                     public void performAction() {
-                        removeIllegalSteps();
-                        if (ce() instanceof Aero) {
+                        removeLastStep();
+                        if (ce() != null && ce().isAero()) {
                             computeAeroMovementEnvelope(ce());
                         } else {
                             computeMovementEnvelope(ce());
@@ -1456,18 +1460,23 @@ public class MovementDisplay extends ActionPhaseDisplay {
     /**
      * Removes all the trailing illegal movement steps and the end of the current entities movement path.
      * (This is helpful for Aero movement, overshooting MP and wanting to evade etc.)
+     *
+     * @return - Returns true if the call removed any illegal steps otherwise returns false.
      */
-    private void removeIllegalSteps() {
+    private boolean removeIllegalSteps() {
         if (cmd == null) {
-            return;
+            return false;
         }
+
+        boolean removed = false;
 
         // Keep removing last step until it's a valid movement step.
-        while ((cmd.getLastStepMovementType() != null) && (cmd.getLastStepMovementType() == EntityMovementType.MOVE_ILLEGAL)) {
+        while (cmd.getLastStepMovementType() == EntityMovementType.MOVE_ILLEGAL) {
             removeLastStep();
+            removed = true;
         }
 
-        return;
+        return removed;
     }
 
     /**
@@ -4539,7 +4548,14 @@ public class MovementDisplay extends ActionPhaseDisplay {
             mp.addStep(MoveStepType.START_JUMP);
         }
 
-        ShortestPathFinder pf = ShortestPathFinder.newInstanceOfOneToAll(maxMP, stepType, en.getGame());
+        // Create a path finder to find possible moves; if aerodyne, use a custom Aero path finder.
+        ShortestPathFinder pf = null;
+        if (!en.isAerodyne()) {
+            pf = ShortestPathFinder.newInstanceOfOneToAll(maxMP, stepType, en.getGame());
+        } else {
+            pf = ShortestPathFinder.newInstanceOfOneToAllAero(maxMP, stepType, en.getGame());
+        }
+
         pf.run(mp);
         mvEnvData = pf.getAllComputedPaths();
         Map<Coords, Integer> mvEnvMP = new HashMap<>((int) ((mvEnvData.size() * 1.25) + 1));
@@ -4560,8 +4576,8 @@ public class MovementDisplay extends ActionPhaseDisplay {
      * @return - This method will do nothing if the Entity passed in is null or
      *           is not an Aero based unity.
      */
-    private void computeAeroMovementEnvelope(Entity entity) {
-        if ((entity == null) || !(entity instanceof Aero) || (cmd == null)) {
+    public void computeAeroMovementEnvelope(Entity entity) {
+        if ((entity == null) || !(entity.isAero()) || (cmd == null)) {
             return;
         }
 
@@ -5030,6 +5046,7 @@ public class MovementDisplay extends ActionPhaseDisplay {
                     && !(((IAero) ce).isSpheroid() || clientgui.getClient()
                     .getGame().getPlanetaryConditions().isVacuum())) {
                 addStepToMovePath(MoveStepType.ACC, true);
+                computeAeroMovementEnvelope(ce);
             }
             addStepToMovePath(MoveStepType.DOWN);
         } else if (actionCmd.equals(MoveCommand.MOVE_CLIMB_MODE.getCmd())) {
@@ -5098,8 +5115,10 @@ public class MovementDisplay extends ActionPhaseDisplay {
             cmd.compile(clientgui.getClient().getGame(), ce, false);
             updateMove();
         } else if (actionCmd.equals(MoveCommand.MOVE_ACCN.getCmd())) {
+            removeIllegalSteps();
             addStepToMovePath(MoveStepType.ACCN);
         } else if (actionCmd.equals(MoveCommand.MOVE_DECN.getCmd())) {
+            removeIllegalSteps();
             addStepToMovePath(MoveStepType.DECN);
         } else if (actionCmd.equals(MoveCommand.MOVE_ACC.getCmd())) {
             addStepToMovePath(MoveStepType.ACC);

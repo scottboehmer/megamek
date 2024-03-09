@@ -29,6 +29,7 @@ import org.apache.logging.log4j.LogManager;
 
 import java.util.Enumeration;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
 
 public class ChatProcessor {
 
@@ -187,7 +188,7 @@ public class ChatProcessor {
 
         // Tell me what behavior you are using.
         if (command.toLowerCase().startsWith(ChatCommands.SHOW_BEHAVIOR.getAbbreviation())) {
-            msg = "Current Behavior: " + princess.getBehaviorSettings().getDescription();
+            msg = "Current Behavior: " + princess.getBehaviorSettings().toLog();
             princess.sendChat(msg);
             LogManager.getLogger().info(msg);
         }
@@ -230,7 +231,7 @@ public class ChatProcessor {
         // Make sure the command came from my team.
         int speakerTeam = speakerPlayer.getTeam();
         int princessTeam = princessPlayer.getTeam();
-        if (princessTeam != speakerTeam) {
+        if ((princessTeam != speakerTeam) && !speakerPlayer.getGameMaster()) {
             msg = "You are not my boss. [wrong team]";
             princess.sendChat(msg);
             LogManager.getLogger().warn(msg);
@@ -436,6 +437,13 @@ public class ChatProcessor {
             princess.getBehaviorSettings().addPriorityUnit(id);
             msg = "Unit " + id + " added to priority unit targets list.";
             princess.sendChat(msg);
+        }
+
+        // Specify a priority unit target.
+        if (command.toLowerCase().startsWith(ChatCommands.SHOW_DISHONORED.getAbbreviation())) {
+            msg = "Dishonored Player ids: " + princess.getHonorUtil().getDishonoredEnemies().stream().map(Object::toString).collect(Collectors.joining(", "));
+            princess.sendChat(msg);
+            LogManager.getLogger().info(msg);
         }
     }
 }

@@ -156,9 +156,9 @@ public abstract class Mech extends Entity {
     public static final int COCKPIT_QUADVEE = 13;
 
     public static final int COCKPIT_SUPERHEAVY_INDUSTRIAL = 14;
-    
+
     public static final int COCKPIT_SUPERHEAVY_COMMAND_CONSOLE = 15;
-    
+
     public static final int COCKPIT_SMALL_COMMAND_CONSOLE = 16;
 
     public static final String[] COCKPIT_STRING = { "Standard Cockpit",
@@ -167,14 +167,14 @@ public abstract class Mech extends Entity {
             "Primitive Industrial Cockpit", "Superheavy Cockpit",
             "Superheavy Tripod Cockpit", "Tripod Cockpit", "Interface Cockpit",
             "Virtual Reality Piloting Pod", "QuadVee Cockpit",
-            "Superheavy Industrial Cockpit", "Superheavy Command Console", 
+            "Superheavy Industrial Cockpit", "Superheavy Command Console",
         "Small Command Console"};
 
     public static final String[] COCKPIT_SHORT_STRING = { "Standard", "Small",
             "Command Console", "Torso Mounted", "Dual", "Industrial",
             "Primitive", "Primitive Industrial", "Superheavy",
             "Superheavy Tripod", "Tripod", "Interface", "VRRP", "Quadvee",
-            "Superheavy Industrial", "Superheavy Command", 
+            "Superheavy Industrial", "Superheavy Command",
             "Small Command"};
 
     public static final String FULL_HEAD_EJECT_STRING = "Full Head Ejection System";
@@ -1103,7 +1103,7 @@ public abstract class Mech extends Entity {
         if (!mpCalculationSetting.ignoreModularArmor && hasModularArmor()) {
             mp--;
         }
-        
+
         if (!mpCalculationSetting.ignoreGravity) {
             return Math.max(applyGravityEffectsOnMP(mp), 0);
         }
@@ -1531,7 +1531,7 @@ public abstract class Mech extends Entity {
                 return m.getName();
             }
         }
-        
+
         // if a mech has no heat sink equipment, we pretend like it has standard heat sinks.
         return "Heat Sink";
     }
@@ -1631,7 +1631,7 @@ public abstract class Mech extends Entity {
         }
         return sinksUnderwater;
     }
-    
+
     @Override
     public boolean tracksHeat() {
         return true;
@@ -1704,7 +1704,7 @@ public abstract class Mech extends Entity {
         if (hasQuirk(OptionsConstants.QUIRK_NEG_NO_TWIST)) {
             return false;
         }
-        return !isProne() && !isBracing();
+        return !(isProne() || isBracing() || getAlreadyTwisted());
     }
 
     /**
@@ -3597,8 +3597,7 @@ public abstract class Mech extends Entity {
      */
     @Override
     public boolean isRepairable() {
-        // A Mech is repairable if it is salvageable,
-        // and its CT internals are not gone.
+        // A Mech is repairable if it is salvageable, and its CT internals are not gone.
         int loc_is = this.getInternal(Mech.LOC_CT);
         return isSalvage() && (loc_is != IArmorState.ARMOR_DOOMED)
                 && (loc_is != IArmorState.ARMOR_DESTROYED);
@@ -3608,17 +3607,21 @@ public abstract class Mech extends Entity {
     public boolean canCharge() {
         // Mechs can charge, unless they are Clan and the "no clan physicals" option is set
         return super.canCharge()
-                && !(game.getOptions().booleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) && isClan());
+                && !(game.getOptions().booleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL)
+                        && getCrew().isClanPilot());
     }
 
     @Override
     public boolean canDFA() {
         // Mechs can DFA, unless they are Clan and the "no clan physicals" option is set
         return super.canDFA()
-                && !(game.getOptions().booleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL) && isClan());
+                && !(game.getOptions().booleanOption(OptionsConstants.ALLOWED_NO_CLAN_PHYSICAL)
+                        && getCrew().isClanPilot());
     }
 
-    // gives total number of sinks
+    /**
+     * @return the total number of sinks
+     */
     public int getNumberOfSinks() {
         int sinks = 0;
         for (Mounted mounted : getMisc()) {
@@ -4181,9 +4184,12 @@ public abstract class Mech extends Entity {
         boolean standard = (getCockpitType() == Mech.COCKPIT_STANDARD)
                 && (getGyroType() == Mech.GYRO_STANDARD);
         sb.append(MtfFile.CHASSIS).append(chassis).append(newLine);
+        if (!clanChassisName.isBlank()) {
+            sb.append(MtfFile.CLAN_CHASSIS_NAME).append(clanChassisName).append(newLine);
+        }
         sb.append(MtfFile.MODEL).append(model).append(newLine);
         if (hasMulId()) {
-            sb.append(MtfFile.MUL_ID).append(mulId);
+            sb.append(MtfFile.MUL_ID).append(mulId).append(newLine);
         }
         sb.append(newLine);
 
@@ -4435,12 +4441,6 @@ public abstract class Mech extends Entity {
             sb.append(newLine);
         }
 
-        if (!getFluff().getMMLImagePath().isBlank()) {
-            sb.append(MtfFile.IMAGE_FILE);
-            sb.append(getFluff().getMMLImagePath());
-            sb.append(newLine);
-        }
-
         for (EntityFluff.System system : EntityFluff.System.values()) {
             if (!getFluff().getSystemManufacturer(system).isBlank()) {
                 sb.append(MtfFile.SYSTEM_MANUFACTURER);
@@ -4460,6 +4460,20 @@ public abstract class Mech extends Entity {
         if (getUseManualBV()) {
             sb.append(MtfFile.BV);
             sb.append(getManualBV());
+            sb.append(newLine);
+        }
+
+        if (!icon.isEmpty()) {
+            sb.append(newLine);
+            sb.append(MtfFile.ICON);
+            sb.append(icon.getBase64String());
+            sb.append(newLine);
+        }
+
+        if (getFluff().hasEmbeddedFluffImage()) {
+            sb.append(newLine);
+            sb.append(MtfFile.FLUFF_IMAGE);
+            sb.append(getFluff().getBase64FluffImage().getBase64String());
             sb.append(newLine);
         }
 
@@ -4783,7 +4797,7 @@ public abstract class Mech extends Entity {
         setCockpitType(COCKPIT_SUPERHEAVY_COMMAND_CONSOLE);
         return true;
     }
-    
+
     //The location of critical is based on small cockpit, but since command console requires two cockpit slots the second Sensor is return to the location 4.
     public boolean addSmallCommandConsole() {
         if (getEmptyCriticals(LOC_HEAD) < 5) {
@@ -4855,14 +4869,14 @@ public abstract class Mech extends Entity {
         }
         return success;
     }
-    
+
     /**
      * Convenience function that returns the critical slot containing the cockpit
      * @return
      */
     public List<CriticalSlot> getCockpit() {
         List<CriticalSlot> retVal = new ArrayList<>();
-        
+
         switch (cockpitType) {
             // these always occupy slots 2 and 3 in the head
             case Mech.COCKPIT_COMMAND_CONSOLE:
@@ -4885,7 +4899,7 @@ public abstract class Mech extends Entity {
                 retVal.add(getCritical(Mech.LOC_HEAD, 2));
                 break;
         }
-        
+
         return retVal;
     }
 
@@ -4917,7 +4931,7 @@ public abstract class Mech extends Entity {
 
     @Override
     public boolean hasCommandConsoleBonus() {
-        return ((getCockpitType() == COCKPIT_COMMAND_CONSOLE) 
+        return ((getCockpitType() == COCKPIT_COMMAND_CONSOLE)
         || (getCockpitType() == COCKPIT_SUPERHEAVY_COMMAND_CONSOLE)
         || (getCockpitType() == COCKPIT_SMALL_COMMAND_CONSOLE))
                 && getCrew().hasActiveCommandConsole()
@@ -5380,14 +5394,7 @@ public abstract class Mech extends Entity {
      */
     @Override
     public int getBARRating(int loc) {
-        if (armorType[loc] == EquipmentType.T_ARMOR_COMMERCIAL) {
-            return 5;
-        }
-        if ((armorType[loc] == EquipmentType.T_ARMOR_INDUSTRIAL)
-                || (armorType[loc] == EquipmentType.T_ARMOR_HEAVY_INDUSTRIAL)) {
-            return 10;
-        }
-        return 10;
+        return (armorType[loc] == EquipmentType.T_ARMOR_COMMERCIAL) ? 5 : 10;
     }
 
     /**
@@ -6375,7 +6382,28 @@ public abstract class Mech extends Entity {
         return true;
     }
 
-    public static List<String> getCockpitDescrtiption() {
-        return Arrays.stream(COCKPIT_STRING).collect(Collectors.toList());
+    public static Map<Integer, String> getAllCockpitCodeName() {
+        Map<Integer, String> result = new HashMap();
+
+        result.put(COCKPIT_STANDARD, getCockpitDisplayString(COCKPIT_STANDARD));
+        result.put(COCKPIT_SMALL, getCockpitDisplayString(COCKPIT_SMALL));
+        result.put(COCKPIT_COMMAND_CONSOLE, getCockpitDisplayString(COCKPIT_COMMAND_CONSOLE));
+        result.put(COCKPIT_TORSO_MOUNTED, getCockpitDisplayString(COCKPIT_TORSO_MOUNTED));
+        result.put(COCKPIT_DUAL, getCockpitDisplayString(COCKPIT_DUAL));
+        result.put(COCKPIT_INDUSTRIAL, getCockpitDisplayString(COCKPIT_INDUSTRIAL));
+        result.put(COCKPIT_PRIMITIVE, getCockpitDisplayString(COCKPIT_PRIMITIVE));
+        result.put(COCKPIT_PRIMITIVE_INDUSTRIAL, getCockpitDisplayString(COCKPIT_PRIMITIVE_INDUSTRIAL));
+        result.put(COCKPIT_SUPERHEAVY, getCockpitDisplayString(COCKPIT_SUPERHEAVY));
+        result.put(COCKPIT_SUPERHEAVY_TRIPOD, getCockpitDisplayString(COCKPIT_SUPERHEAVY_TRIPOD));
+        result.put(COCKPIT_TRIPOD, getCockpitDisplayString(COCKPIT_TRIPOD));
+        result.put(COCKPIT_INTERFACE, getCockpitDisplayString(COCKPIT_INTERFACE));
+        result.put(COCKPIT_VRRP, getCockpitDisplayString(COCKPIT_VRRP));
+        result.put(COCKPIT_QUADVEE, getCockpitDisplayString(COCKPIT_QUADVEE));
+        result.put(COCKPIT_SUPERHEAVY_INDUSTRIAL, getCockpitDisplayString(COCKPIT_SUPERHEAVY_INDUSTRIAL));
+        result.put(COCKPIT_SUPERHEAVY_COMMAND_CONSOLE, getCockpitDisplayString(COCKPIT_SUPERHEAVY_COMMAND_CONSOLE));
+        result.put(COCKPIT_SMALL_COMMAND_CONSOLE, getCockpitDisplayString(COCKPIT_SMALL_COMMAND_CONSOLE));
+        result.put(COCKPIT_UNKNOWN, getCockpitDisplayString(COCKPIT_UNKNOWN));
+
+        return result;
     }
 }
