@@ -23,11 +23,8 @@ import megamek.common.Building.DemolitionCharge;
 import megamek.common.actions.*;
 import megamek.common.annotations.Nullable;
 import megamek.common.containers.PlayerIDandList;
-import megamek.common.enums.BasementType;
-import megamek.common.enums.GamePhase;
-import megamek.common.enums.WeaponSortOrder;
+import megamek.common.enums.*;
 import megamek.common.equipment.ArmorType;
-import megamek.common.event.GameListener;
 import megamek.common.event.GameVictoryEvent;
 import megamek.common.force.Force;
 import megamek.common.force.Forces;
@@ -37,11 +34,12 @@ import megamek.common.options.GameOptions;
 import megamek.common.options.IBasicOption;
 import megamek.common.options.IOption;
 import megamek.common.options.OptionsConstants;
+import megamek.common.planetaryconditions.Atmosphere;
+import megamek.common.planetaryconditions.Light;
+import megamek.common.planetaryconditions.PlanetaryConditions;
+import megamek.common.planetaryconditions.Wind;
 import megamek.common.preference.PreferenceManager;
-import megamek.common.util.BoardUtilities;
-import megamek.common.util.EmailService;
-import megamek.common.util.SerializationHelper;
-import megamek.common.util.StringUtil;
+import megamek.common.util.*;
 import megamek.common.util.fileUtils.MegaMekFile;
 import megamek.common.verifier.*;
 import megamek.common.weapons.*;
@@ -1081,8 +1079,9 @@ public class GameManager implements IGameManager {
             // reset spotlights
             // If deployment phase, set Searchlight state based on startSearchLightsOn;
             if (phase.isDeployment()) {
+                PlanetaryConditions conditions = game.getPlanetaryConditions();
                 boolean startSLOn = PreferenceManager.getClientPreferences().getStartSearchlightsOn()
-                        && game.getPlanetaryConditions().isIlluminationEffective();
+                        && conditions.getLight().isDarkerThan(Light.DAY);
                 entity.setSearchlightState(startSLOn);
                 entity.setIlluminated(startSLOn);
             }
@@ -2010,8 +2009,8 @@ public class GameManager implements IGameManager {
                 resetEntityPhase(phase);
                 clearReports();
                 resolveHeat();
-                if (game.getPlanetaryConditions().isSandBlowing()
-                        && (game.getPlanetaryConditions().getWindStrength() > PlanetaryConditions.WI_LIGHT_GALE)) {
+                PlanetaryConditions conditions = game.getPlanetaryConditions();
+                if (conditions.isBlowingSandActive()) {
                     addReport(resolveBlowingSandDamage());
                 }
                 addReport(resolveControlRolls());
@@ -2913,7 +2912,7 @@ public class GameManager implements IGameManager {
         }
         if (game.getPlanetaryConditions().isTerrainAffected()) {
             BoardUtilities.addWeatherConditions(newBoard, game.getPlanetaryConditions().getWeather(),
-                    game.getPlanetaryConditions().getWindStrength());
+                    game.getPlanetaryConditions().getWind());
         }
         game.setBoard(newBoard);
     }
@@ -3485,19 +3484,20 @@ public class GameManager implements IGameManager {
             // we don't much care about wind direction and such in a hard vacuum
             if (!game.getBoard().inSpace()) {
                 // Wind direction and strength
+                PlanetaryConditions conditions = game.getPlanetaryConditions();
                 Report rWindDir = new Report(1025, Report.PUBLIC);
-                rWindDir.add(game.getPlanetaryConditions().getWindDirDisplayableName());
+                rWindDir.add(conditions.getWindDirection().toString());
                 rWindDir.newlines = 0;
                 Report rWindStr = new Report(1030, Report.PUBLIC);
-                rWindStr.add(game.getPlanetaryConditions().getWindDisplayableName());
+                rWindStr.add(conditions.getWind().toString());
                 rWindStr.newlines = 0;
                 Report rWeather = new Report(1031, Report.PUBLIC);
-                rWeather.add(game.getPlanetaryConditions().getWeatherDisplayableName());
+                rWeather.add(conditions.getWeather().toString());
                 rWeather.newlines = 0;
                 Report rLight = new Report(1032, Report.PUBLIC);
-                rLight.add(game.getPlanetaryConditions().getLightDisplayableName());
+                rLight.add(conditions.getLight().toString());
                 Report rVis = new Report(1033, Report.PUBLIC);
-                rVis.add(game.getPlanetaryConditions().getFogDisplayableName());
+                rVis.add(conditions.getFog().toString());
                 addReport(rWindDir);
                 addReport(rWindStr);
                 addReport(rWeather);
@@ -7938,7 +7938,7 @@ public class GameManager implements IGameManager {
             int minTemp = -30;
             boolean useBlackIce = game.getOptions().booleanOption(OptionsConstants.ADVANCED_BLACK_ICE);
             boolean goodTemp = game.getPlanetaryConditions().getTemperature() <= minTemp;
-            boolean goodWeather = game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_ICE_STORM;
+            boolean goodWeather = game.getPlanetaryConditions().getWeather().isIceStorm();
             if (isPavementStep && ((useBlackIce && goodTemp) || goodWeather)) {
                 if (!curHex.containsTerrain(Terrains.BLACK_ICE)) {
                     int blackIceChance = Compute.d6(1);
@@ -8838,7 +8838,7 @@ public class GameManager implements IGameManager {
             // check for black ice
             boolean useBlackIce = game.getOptions().booleanOption(OptionsConstants.ADVANCED_BLACK_ICE);
             boolean goodTemp = game.getPlanetaryConditions().getTemperature() <= PlanetaryConditions.BLACK_ICE_TEMP;
-            boolean goodWeather = game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_ICE_STORM;
+            boolean goodWeather = game.getPlanetaryConditions().getWeather().isIceStorm();
             if ((useBlackIce && goodTemp) || goodWeather) {
                 if (ServerHelper.checkEnteringBlackIce(this, curPos, curHex, useBlackIce, goodTemp, goodWeather)) {
                     rollTarget = entity.checkLandingOnBlackIce(overallMoveType, curHex);
@@ -11694,6 +11694,8 @@ public class GameManager implements IGameManager {
     public Vector<Report> doSetLocationsExposure(Entity entity, Hex hex,
                                                  boolean isJump, int elevation) {
         Vector<Report> vPhaseReport = new Vector<>();
+        PlanetaryConditions conditions = game.getPlanetaryConditions();
+        boolean aeroSpaceborne = (entity.getEntityType() & Entity.ETYPE_AERO) == 0 && entity.isSpaceborne();
         if (hex == null) {
             return vPhaseReport;
         }
@@ -11706,8 +11708,8 @@ public class GameManager implements IGameManager {
             if ((entity instanceof Mech) && !entity.isProne()
                     && (hex.terrainLevel(Terrains.WATER) <= partialWaterLevel)) {
                 for (int loop = 0; loop < entity.locations(); loop++) {
-                    if (game.getPlanetaryConditions().isVacuum()
-                            || ((entity.getEntityType() & Entity.ETYPE_AERO) == 0 && entity.isSpaceborne())) {
+                    if (conditions.getAtmosphere().isLighterThan(Atmosphere.THIN)
+                            || aeroSpaceborne) {
                         entity.setLocationStatus(loop, ILocationExposureStatus.VACUUM);
                     } else {
                         entity.setLocationStatus(loop, ILocationExposureStatus.NORMAL);
@@ -11730,8 +11732,7 @@ public class GameManager implements IGameManager {
             } else {
                 int status = ILocationExposureStatus.WET;
                 if (entity.relHeight() >= 0) {
-                    status = game.getPlanetaryConditions().isVacuum() ?
-                            ILocationExposureStatus.VACUUM : ILocationExposureStatus.NORMAL;
+                    status = conditions.getAtmosphere().isLighterThan(Atmosphere.THIN) ? ILocationExposureStatus.VACUUM : ILocationExposureStatus.NORMAL;
                 }
                 for (int loop = 0; loop < entity.locations(); loop++) {
                     entity.setLocationStatus(loop, status);
@@ -11742,8 +11743,8 @@ public class GameManager implements IGameManager {
             }
         } else {
             for (int loop = 0; loop < entity.locations(); loop++) {
-                if (game.getPlanetaryConditions().isVacuum()
-                        || ((entity.getEntityType() & Entity.ETYPE_AERO) == 0 && entity.isSpaceborne())) {
+                if (conditions.getAtmosphere().isLighterThan(Atmosphere.THIN)
+                        || aeroSpaceborne) {
                     entity.setLocationStatus(loop, ILocationExposureStatus.VACUUM);
                 } else {
                     entity.setLocationStatus(loop, ILocationExposureStatus.NORMAL);
@@ -12976,7 +12977,8 @@ public class GameManager implements IGameManager {
                 // all spheroid craft should have velocity of zero in atmosphere
                 // regardless of what was entered
                 IAero a = (IAero) entity;
-                if (a.isSpheroid() || game.getPlanetaryConditions().isVacuum()) {
+                if (a.isSpheroid()
+                        || game.getPlanetaryConditions().getAtmosphere().isLighterThan(Atmosphere.THIN)) {
                     a.setCurrentVelocity(0);
                     a.setNextVelocity(0);
                 }
@@ -14680,7 +14682,7 @@ public class GameManager implements IGameManager {
         }
 
         // no lighting fires in tornadoes
-        if (game.getPlanetaryConditions().getWindStrength() > PlanetaryConditions.WI_STORM) {
+        if (game.getPlanetaryConditions().getWind().isStrongerThan(Wind.STORM)) {
             nTargetRoll = new TargetRoll(TargetRoll.AUTOMATIC_FAIL, "tornado");
         }
 
@@ -20282,12 +20284,17 @@ public class GameManager implements IGameManager {
                 continue;
             }
             final Hex curHex = game.getBoard().getHex(entity.getPosition());
-            if ((((entity.getElevation() < 0) && ((curHex
-                    .terrainLevel(Terrains.WATER) > 1) || ((curHex
-                    .terrainLevel(Terrains.WATER) == 1) && entity.isProne()))) || game
-                    .getPlanetaryConditions().isVacuum())
-                    && (entity.getHitCriticals(CriticalSlot.TYPE_SYSTEM,
-                    Mech.SYSTEM_LIFE_SUPPORT, Mech.LOC_HEAD) > 0)) {
+
+            boolean depthOneProne = (curHex.terrainLevel(Terrains.WATER) == 1)
+                    && entity.isProne();
+            boolean inWater = (curHex.terrainLevel(Terrains.WATER) > 1)
+                    || depthOneProne;
+            boolean underWater = (entity.getElevation() < 0)
+                    && inWater;
+            boolean canNotBeathe = underWater
+                    || game.getPlanetaryConditions().getAtmosphere().isLighterThan(Atmosphere.THIN);
+            if (canNotBeathe
+                    && (entity.getHitCriticals(CriticalSlot.TYPE_SYSTEM, Mech.SYSTEM_LIFE_SUPPORT, Mech.LOC_HEAD) > 0)) {
                 Report r = new Report(6020);
                 r.subject = entity.getId();
                 r.addDesc(entity);
@@ -21806,8 +21813,11 @@ public class GameManager implements IGameManager {
         }
 
         // Is the infantry in vacuum?
-        if ((isPlatoon || isBattleArmor) && !te.isDestroyed() && !te.isDoomed()
-                && game.getPlanetaryConditions().isVacuum()) {
+        boolean platoonOrBattleArmor = isPlatoon || isBattleArmor;
+        if (platoonOrBattleArmor
+                && !te.isDestroyed()
+                && !te.isDoomed()
+                && game.getPlanetaryConditions().getAtmosphere().isLighterThan(Atmosphere.THIN)) {
             // PBI. Double damage.
             damage *= 2;
             r = new Report(6041);
@@ -22631,14 +22641,10 @@ public class GameManager implements IGameManager {
 
                     // divide damage in half
                     // do not divide by half if it is an ammo explosion
+                    // Minimum SI damage is now 1 (per errata: https://bg.battletech.com/forums/index.php?topic=81913.0 )
                     if (!ammoExplosion && !nukeS2S
                             && !game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_AERO_SANITY)) {
-                        damage /= 2;
-                    }
-
-                    // this should result in a crit
-                    // but only if it really did damage after rounding down
-                    if (damage > 0) {
+                        damage = (int) Math.round(damage / 2.0);
                         critSI = true;
                     }
 
@@ -25137,12 +25143,13 @@ public class GameManager implements IGameManager {
                     }
                 }
             case Aero.CRIT_WEAPON:
-                if (aero.isCapitalFighter()) {
-                    FighterSquadron cf = (FighterSquadron) aero;
+                FighterSquadron cf = (FighterSquadron) game.getEntity(aero.getTransportId());
+                if (aero.isCapitalFighter() && cf != null) {
+                    // The Squadron should be set as the "transport" of the Squadron members, but may be null
                     boolean destroyAll = false;
                     // CRIT_WEAPON damages the capital fighter/squadron's weapon groups
-                    // Go ahead and map damage for the fighter's weapon criticals for MHQ
-                    // resolution.
+                    // TODO: Go ahead and map damage for the fighters' weapon criticals for MHQ resolution.
+                    // (Currently this is not working as the Capital Fighter has no weapons of its own, only groups.
                     cf.damageCapFighterWeapons(loc);
                     if ((loc == Aero.LOC_NOSE) || (loc == Aero.LOC_AFT)) {
                         destroyAll = true;
@@ -27185,10 +27192,11 @@ public class GameManager implements IGameManager {
             int breachroll = 0;
             // set the target roll for the breach
             int target = 10;
+            PlanetaryConditions conditions = game.getPlanetaryConditions();
             // if this is a vacuum check and we are in trace atmosphere then
             // adjust target
             if ((entity.getLocationStatus(loc) == ILocationExposureStatus.VACUUM)
-                    && (game.getPlanetaryConditions().getAtmosphere() == PlanetaryConditions.ATMO_TRACE)) {
+                    && conditions.getAtmosphere().isTrace()) {
                 target = 12;
             }
             // if this is a surface naval vessel and the attack is not from
@@ -28763,7 +28771,7 @@ public class GameManager implements IGameManager {
      */
     public void addSmoke(ArrayList<Coords> coords, int windDir, boolean bInferno) {
         // if a tornado, then no smoke!
-        if (game.getPlanetaryConditions().getWindStrength() > PlanetaryConditions.WI_STORM) {
+        if (game.getPlanetaryConditions().getWind().isStrongerThan(Wind.STORM)) {
             return;
         }
 
@@ -29580,75 +29588,18 @@ public class GameManager implements IGameManager {
 
             // Now we relink C3/NC3/C3i to our guys! Yes, this is hackish... but, we
             // do what we must. Its just too bad we have to loop over the entire entities array..
-            if (entity.hasC3() || entity.hasC3i() || entity.hasNavalC3()) {
-                boolean C3iSet = false;
 
-                for (Entity e : game.getEntitiesVector()) {
-
-                    // C3 Checks
-                    if (entity.hasC3()) {
-                        if ((entity.getC3MasterIsUUIDAsString() != null)
-                                && entity.getC3MasterIsUUIDAsString().equals(e.getC3UUIDAsString())) {
-                            entity.setC3Master(e, false);
-                            entity.setC3MasterIsUUIDAsString(null);
-                        } else if ((e.getC3MasterIsUUIDAsString() != null)
-                                && e.getC3MasterIsUUIDAsString().equals(entity.getC3UUIDAsString())) {
-                            e.setC3Master(entity, false);
-                            e.setC3MasterIsUUIDAsString(null);
-                            // Taharqa: we need to update the other entity for
-                            // the
-                            // client
-                            // or it won't show up right. I am not sure if I
-                            // like
-                            // the idea of updating other entities in this
-                            // method,
-                            // but it
-                            // will work for now.
-                            if (!entities.contains(e)) {
-                                entityUpdate(e.getId());
-                            }
-                        }
-                    }
-
-                    // C3i Checks
-                    if (entity.hasC3i() && !C3iSet) {
-                        entity.setC3NetIdSelf();
-                        int pos = 0;
-                        while (pos < Entity.MAX_C3i_NODES) {
-                            // We've found a network, join it.
-                            if ((entity.getC3iNextUUIDAsString(pos) != null)
-                                    && (e.getC3UUIDAsString() != null)
-                                    && entity.getC3iNextUUIDAsString(pos)
-                                    .equals(e.getC3UUIDAsString())) {
-                                entity.setC3NetId(e);
-                                C3iSet = true;
-                                break;
-                            }
-
-                            pos++;
-                        }
-                    }
-
-                    // NC3 Checks
-                    if (entity.hasNavalC3() && !C3iSet) {
-                        entity.setC3NetIdSelf();
-                        int pos = 0;
-                        while (pos < Entity.MAX_C3i_NODES) {
-                            // We've found a network, join it.
-                            if ((entity.getNC3NextUUIDAsString(pos) != null)
-                                    && (e.getC3UUIDAsString() != null)
-                                    && entity.getNC3NextUUIDAsString(pos)
-                                    .equals(e.getC3UUIDAsString())) {
-                                entity.setC3NetId(e);
-                                C3iSet = true;
-                                break;
-                            }
-
-                            pos++;
-                        }
-                    }
+            var c3affected = C3Util.wireC3(game, entity);
+            for (Entity e : c3affected) {
+                // Taharqa: we need to update the other entities for
+                // the client or it won't show up right. I am not sure if I
+                // like the idea of updating other entities in this
+                // method, but it will work for now.
+                if (!entities.contains(e)) {
+                    entityUpdate(e.getId());
                 }
             }
+
             // Give the unit a spotlight, if it has the spotlight quirk
             entity.setExternalSearchlight(entity.hasExternalSearchlight()
                     || entity.hasQuirk(OptionsConstants.QUIRK_POS_SEARCHLIGHT));
@@ -33278,6 +33229,7 @@ public class GameManager implements IGameManager {
                                                      boolean autoEject, Coords targetCoords, String desc) {
         PilotingRollData rollTarget = new PilotingRollData(entity.getId(),
                 entity.getCrew().getPiloting(crewPos), desc);
+        PlanetaryConditions conditions = game.getPlanetaryConditions();
         // Per SO p26, fighters can eject as per TO rules on 196 with some exceptions
         if (entity.isProne()) {
             rollTarget.addModifier(5, "Mech is prone");
@@ -33339,35 +33291,33 @@ public class GameManager implements IGameManager {
         if (!entity.isSpaceborne()) {
             // At present, the UI lets you set these atmospheric conditions for a space battle, but it shouldn't
             // That's a fix for another day, probably when I get around to space terrain and 'weather'
-            if (game.getPlanetaryConditions().getGravity() == 0) {
+            if (conditions.getGravity() == 0) {
                 rollTarget.addModifier(3, "Zero-G");
-            } else if (game.getPlanetaryConditions().getGravity() < 0.8) {
+            } else if (conditions.getGravity() < 0.8) {
                 rollTarget.addModifier(2, "Low-G");
-            } else if (game.getPlanetaryConditions().getGravity() > 1.2) {
+            } else if (conditions.getGravity() > 1.2) {
                 rollTarget.addModifier(2, "High-G");
             }
 
             //Vacuum shouldn't apply to ASF ejection since they're designed for it, but the rules don't specify
             //High and low pressures make more sense to apply to all
-            if (game.getPlanetaryConditions().getAtmosphere() == PlanetaryConditions.ATMO_VACUUM) {
+            if (conditions.getAtmosphere().isVacuum()) {
                 rollTarget.addModifier(3, "Vacuum");
-            } else if (game.getPlanetaryConditions().getAtmosphere() == PlanetaryConditions.ATMO_VHIGH) {
+            } else if (conditions.getAtmosphere().isVeryHigh()) {
                 rollTarget.addModifier(2, "Very High Atmosphere Pressure");
-            } else if (game.getPlanetaryConditions().getAtmosphere() == PlanetaryConditions.ATMO_TRACE) {
+            } else if (conditions.getAtmosphere().isTrace()) {
                 rollTarget.addModifier(2, "Trace atmosphere");
             }
         }
 
-        if ((game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_HEAVY_SNOW)
-                || (game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_ICE_STORM)
-                || (game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_DOWNPOUR)
-                || (game.getPlanetaryConditions().getWindStrength() == PlanetaryConditions.WI_STRONG_GALE)) {
+
+        if (conditions.getWeather().isDownpourOrHeavySnowOrIceStorm()
+                || conditions.getWind().isStrongGale()) {
             rollTarget.addModifier(2, "Bad Weather");
         }
 
-        if ((game.getPlanetaryConditions().getWindStrength() >= PlanetaryConditions.WI_STORM)
-                || ((game.getPlanetaryConditions().getWeather() == PlanetaryConditions.WE_HEAVY_SNOW) && (game
-                .getPlanetaryConditions().getWindStrength() == PlanetaryConditions.WI_STRONG_GALE))) {
+        if (conditions.getWind().isStrongerThan(Wind.STRONG_GALE)
+                || (conditions.getWeather().isHeavySnow() && conditions.getWind().isStrongGale())) {
             rollTarget.addModifier(3, "Really Bad Weather");
         }
         return rollTarget;
@@ -33456,7 +33406,9 @@ public class GameManager implements IGameManager {
             r.indent(3);
             vDesc.addElement(r);
             // Don't make ill-equipped pilots abandon into vacuum
-            if (game.getPlanetaryConditions().isVacuum() && !entity.isAero()) {
+            PlanetaryConditions conditions = game.getPlanetaryConditions();
+            if (conditions.getAtmosphere().isLighterThan(Atmosphere.THIN)
+                    && !entity.isAero()) {
                 return vDesc;
             }
 
@@ -33498,7 +33450,8 @@ public class GameManager implements IGameManager {
         else if (game.getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_VEHICLES_CAN_EJECT)
                 && (entity instanceof Tank)) {
             // Don't make them abandon into vacuum
-            if (game.getPlanetaryConditions().isVacuum()) {
+            PlanetaryConditions conditions = game.getPlanetaryConditions();
+            if (conditions.getAtmosphere().isLighterThan(Atmosphere.THIN)) {
                 return vDesc;
             }
             EjectedCrew crew = new EjectedCrew(entity);
@@ -34828,8 +34781,8 @@ public class GameManager implements IGameManager {
     private Vector<Report> resolveBlowingSandDamage() {
         Vector<Report> vFullReport = new Vector<>();
         vFullReport.add(new Report(5002, Report.PUBLIC));
-        int damage_bonus = Math.max(0, game.getPlanetaryConditions().getWindStrength()
-                - PlanetaryConditions.WI_MOD_GALE);
+        int damage_bonus = Math.max(0, game.getPlanetaryConditions().getWind().ordinal()
+                - Wind.MOD_GALE.ordinal());
         // cycle through each team and damage 1d6 airborne VTOL/WiGE
         for (Team team : game.getTeams()) {
             Vector<Integer> airborne = getAirborneVTOL(team);

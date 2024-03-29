@@ -40,12 +40,14 @@ import megamek.common.*;
 import megamek.common.MovePath.MoveStepType;
 import megamek.common.actions.*;
 import megamek.common.annotations.Nullable;
-import megamek.common.enums.IlluminationLevel;
 import megamek.common.event.*;
 import megamek.common.options.GameOptions;
 import megamek.common.options.OptionsConstants;
 import megamek.common.pathfinder.BoardClusterTracker;
 import megamek.common.pathfinder.BoardClusterTracker.BoardCluster;
+import megamek.common.planetaryconditions.IlluminationLevel;
+import megamek.common.planetaryconditions.Light;
+import megamek.common.planetaryconditions.PlanetaryConditions;
 import megamek.common.preference.ClientPreferences;
 import megamek.common.preference.IPreferenceChangeListener;
 import megamek.common.preference.PreferenceChangeEvent;
@@ -97,7 +99,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     static final int HEX_ELEV = 12;
 
     private static final float[] ZOOM_FACTORS = {0.30f, 0.41f, 0.50f, 0.60f,
-            0.68f, 0.79f, 0.90f, 1.00f, 1.09f, 1.17f, 1.3f};
+            0.68f, 0.79f, 0.90f, 1.00f, 1.09f, 1.17f, 1.3f, 1.6f, 2.0f, 3.0f};
 
     private static final int[] ZOOM_SCALE_TYPES = {
             ImageUtil.IMAGE_SCALE_AVG_FILTER, ImageUtil.IMAGE_SCALE_AVG_FILTER,
@@ -105,7 +107,9 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
             ImageUtil.IMAGE_SCALE_BICUBIC, ImageUtil.IMAGE_SCALE_BICUBIC,
             ImageUtil.IMAGE_SCALE_BICUBIC, ImageUtil.IMAGE_SCALE_BICUBIC,
             ImageUtil.IMAGE_SCALE_BICUBIC, ImageUtil.IMAGE_SCALE_BICUBIC,
-            ImageUtil.IMAGE_SCALE_BICUBIC};
+            ImageUtil.IMAGE_SCALE_BICUBIC, ImageUtil.IMAGE_SCALE_BICUBIC,
+            ImageUtil.IMAGE_SCALE_BICUBIC, ImageUtil.IMAGE_SCALE_BICUBIC};
+
 
     public static final int[] allDirections = {0, 1, 2, 3, 4, 5};
 
@@ -130,6 +134,11 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     private static Font FONT_9 = new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 9);
     private static Font FONT_10 = new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 10);
     private static Font FONT_12 = new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 12);
+    private static Font FONT_14 = new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 14);
+    private static Font FONT_16 = new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 16);
+    private static Font FONT_18 = new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 18);
+    private static Font FONT_24 = new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 24);
+
 
     Dimension hex_size;
 
@@ -1389,7 +1398,8 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
             g.dispose();
             mask = createShadowMask(mask);
             mask = blurOp.filter(mask, null);
-            if (game.getPlanetaryConditions().getLight() != PlanetaryConditions.L_DAY) {
+            PlanetaryConditions conditions = game.getPlanetaryConditions();
+            if (!conditions.getLight().isDay()) {
                 mask = blurOp.filter(mask, null);
             }
             shadowImageCache.put(orig.hashCode(), mask);
@@ -1432,6 +1442,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
             return;
         }
 
+        PlanetaryConditions conditions = game.getPlanetaryConditions();
         long stT = System.nanoTime();
 
         // 1) create or get the hex shadow
@@ -1457,10 +1468,9 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
         // Compute shadow angle based on planentary conditions.
         double[] lightDirection = {-19, 7};
-        if ((game.getPlanetaryConditions().getLight() == PlanetaryConditions.L_MOONLESS) ||
-                (game.getPlanetaryConditions().getLight() == PlanetaryConditions.L_PITCH_BLACK)) {
+        if (conditions.getLight().isDarkerThan(Light.FULL_MOON)) {
             lightDirection = new double[]{0, 0};
-        } else if (game.getPlanetaryConditions().getLight() == PlanetaryConditions.L_DUSK) {
+        } else if (conditions.getLight().isDusk()) {
             // TODO: replace when made user controlled
             lightDirection = new double[]{-38, 14};
         } else {
@@ -2340,9 +2350,6 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                             }
                             drawHexSpritesForHex(c, g, moveEnvSprites);
                             drawHexSpritesForHex(c, g, moveModEnvSprites);
-                            if (shouldShowCFWarning()) {
-                                drawHexSpritesForHex(c, g, cfWarningSprites);
-                            }
                             if ((en_Deployer != null)
                                     && board.isLegalDeployment(c, en_Deployer)) {
                                 drawHexBorder(g, getHexLocation(c), Color.YELLOW);
@@ -2361,6 +2368,11 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                                 drawIsometricWreckSpritesForHex(c, g, isometricWreckSprites);
                             }
                             drawIsometricSpritesForHex(c, g, isometricSprites);
+
+                            // Draw CF warning here to prevent it from being rendered under bridges and turrets #5219
+                            if (shouldShowCFWarning()) {
+                                drawHexSpritesForHex(c, g, cfWarningSprites);
+                            }
                         }
                     }
                 }
@@ -2393,6 +2405,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
         final Hex hex = game.getBoard().getHex(c);
         final Point hexLoc = getHexLocation(c);
+        PlanetaryConditions conditions = game.getPlanetaryConditions();
 
         // Check the cache to see if we already have the image
         HexImageCacheEntry cacheEntry = hexImageCache.get(c);
@@ -2545,7 +2558,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
             Point p2DST = new Point(hex_size.width, hex_size.height);
 
             Composite svComp = g.getComposite();
-            if (game.getPlanetaryConditions().getLight() == PlanetaryConditions.L_DAY) {
+            if (conditions.getLight().isDay()) {
                 g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, 0.55f));
             } else {
                 g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, 0.45f));
@@ -2650,7 +2663,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         // Darken the hex for nighttime, if applicable
         if (GUIP.getDarkenMapAtNight()
                 && IlluminationLevel.determineIlluminationLevel(game, c).isNone()
-                && (game.getPlanetaryConditions().getLight() > PlanetaryConditions.L_DAY)) {
+                && conditions.getLight().isDarkerThan(Light.DAY)) {
             for (int x = 0; x < hexImage.getWidth(); ++x) {
                 for (int y = 0; y < hexImage.getHeight(); ++y) {
                     hexImage.setRGB(x, y, getNightDarkenedColor(hexImage.getRGB(x, y)));
@@ -2863,9 +2876,10 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                 BufferedImage scaledImage = ImageUtil.createAcceleratedImage(getScaledImage(image, true));
 
                 // Darken the hex for nighttime, if applicable
+                PlanetaryConditions conditions = game.getPlanetaryConditions();
                 if (GUIP.getDarkenMapAtNight()
                         && IlluminationLevel.determineIlluminationLevel(game, c).isNone()
-                        && (game.getPlanetaryConditions().getLight() > PlanetaryConditions.L_DAY)) {
+                        && conditions.getLight().isDarkerThan(Light.DAY)) {
                     for (int x = 0; x < scaledImage.getWidth(null); ++x) {
                         for (int y = 0; y < scaledImage.getHeight(); ++y) {
                             scaledImage.setRGB(x, y, getNightDarkenedColor(scaledImage.getRGB(x, y)));
@@ -3027,13 +3041,13 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
         int al = (rgb >> 24);
 
         switch (game.getPlanetaryConditions().getLight()) {
-            case PlanetaryConditions.L_FULL_MOON:
-            case PlanetaryConditions.L_MOONLESS:
+            case FULL_MOON:
+            case MOONLESS:
                 rd = rd / 4; // 1/4 red
                 gr = gr / 4; // 1/4 green
                 bl = bl / 2; // half blue
                 break;
-            case PlanetaryConditions.L_PITCH_BLACK:
+            case PITCH_BLACK:
                 int gy = (rd + gr + bl) / 16;
                 if (Math.random() < 0.3) {
                     gy = gy * 4 / 5;
@@ -3045,7 +3059,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
                 gr = gy + gr / 5;
                 bl = gy + bl / 5;
                 break;
-            case PlanetaryConditions.L_DUSK:
+            case DUSK:
                 bl = bl * 3 / 4;
                 break;
             default:
@@ -6093,22 +6107,34 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
     }
 
     private void updateFontSizes() {
-        if (zoomIndex <= 4) {
+        if (zoomIndex < 7) {
             font_elev = FONT_7;
             font_hexnum = FONT_7;
             font_minefield = FONT_7;
-        }
-
-        if ((zoomIndex <= 5) & (zoomIndex > 4)) {
-            font_elev = FONT_8;
-            font_hexnum = FONT_8;
-            font_minefield = FONT_8;
-        }
-
-        if (zoomIndex > 5) {
-            font_elev = FONT_9;
-            font_hexnum = FONT_9;
-            font_minefield = FONT_9;
+        } else if ((zoomIndex < 8)) {
+            font_elev = FONT_10;
+            font_hexnum = FONT_10;
+            font_minefield = FONT_10;
+        } else if ((zoomIndex < 10)) {
+            font_elev = FONT_12;
+            font_hexnum = FONT_12;
+            font_minefield = FONT_12;
+        } else if ((zoomIndex < 11)) {
+            font_elev = FONT_14;
+            font_hexnum = FONT_14;
+            font_minefield = FONT_14;
+        } else if (zoomIndex < 12) {
+            font_elev = FONT_16;
+            font_hexnum = FONT_16;
+            font_minefield = FONT_16;
+        } else if (zoomIndex < 13) {
+            font_elev = FONT_18;
+            font_hexnum = FONT_18;
+            font_minefield = FONT_18;;
+        } else {
+            font_elev = FONT_24;
+            font_hexnum = FONT_24;
+            font_minefield = FONT_24;;
         }
     }
 
@@ -6539,7 +6565,7 @@ public class BoardView extends JPanel implements Scrollable, BoardListener, Mous
 
         minSensorRange = 0;
 
-        if (game.getPlanetaryConditions().isIlluminationEffective()) {
+        if (game.getPlanetaryConditions().getLight().isDarkerThan(Light.DAY)) {
             maxSensorRange = Compute.getMaxVisualRange(entity, true);
         } else {
             maxSensorRange = 0;

@@ -18,10 +18,12 @@ package megamek.common;
 import megamek.common.MovePath.MoveStepType;
 import megamek.common.actions.*;
 import megamek.common.annotations.Nullable;
-import megamek.common.enums.AimingMode;
-import megamek.common.enums.BasementType;
-import megamek.common.enums.IlluminationLevel;
+import megamek.common.enums.*;
 import megamek.common.options.OptionsConstants;
+import megamek.common.planetaryconditions.Atmosphere;
+import megamek.common.planetaryconditions.IlluminationLevel;
+import megamek.common.planetaryconditions.Light;
+import megamek.common.planetaryconditions.PlanetaryConditions;
 import megamek.common.weapons.DiveBombAttack;
 import megamek.common.weapons.InfantryAttack;
 import megamek.common.weapons.Weapon;
@@ -33,7 +35,6 @@ import megamek.common.weapons.infantry.InfantryWeapon;
 import megamek.common.weapons.mgs.MGWeapon;
 import megamek.server.Server;
 import megamek.server.SmokeCloud;
-import org.apache.commons.logging.Log;
 import org.apache.logging.log4j.LogManager;
 
 import java.util.*;
@@ -2587,8 +2588,7 @@ public class Compute {
 
         if (attacker.getCrew().getOptions().stringOption(OptionsConstants.MISC_ENV_SPECIALIST).equals(Crew.ENVSPC_LIGHT)
                 && !target.isIlluminated()
-                && ((game.getPlanetaryConditions().getLight() == PlanetaryConditions.L_MOONLESS)
-                || (game.getPlanetaryConditions().getLight() == PlanetaryConditions.L_PITCH_BLACK))) {
+                && game.getPlanetaryConditions().getLight().isDarkerThan(Light.FULL_MOON)) {
             toHit.addModifier(-1, "light specialist");
         }
 
@@ -7144,6 +7144,10 @@ public class Compute {
 
     // Taken from MekHQ, assumptions are whatever Taharqa made for there - Dylan
     public static int getTotalGunnerNeeds(Entity entity) {
+        if (entity.hasDroneOs()) {
+            return 0;
+        }
+
         if (entity instanceof SmallCraft || entity instanceof Jumpship) {
             int nStandardW = 0;
             int nCapitalW = 0;
@@ -7176,6 +7180,9 @@ public class Compute {
 
     // Taken from MekHQ, assumptions are whatever Taharqa made for there - Dylan
     public static int getAeroCrewNeeds(Entity entity) {
+        if (entity.hasDroneOs()) {
+            return 0;
+        }
         if (entity instanceof Dropship) {
             if (((Dropship) entity).isMilitary()) {
                 return 4 + (int) Math.ceil(entity.getWeight() / 5000.0);
@@ -7199,6 +7206,10 @@ public class Compute {
      * @return       The minimum base crew
      */
     public static int getSVBaseCrewNeeds(Entity entity) {
+        if (entity.hasDroneOs()) {
+            return 0;
+        }
+
         if (entity.isTrailer() && (entity.getEngine().getEngineType() == Engine.NONE)) {
             return 0;
         }
@@ -7232,6 +7243,10 @@ public class Compute {
      * @return       The number of gunners required.
      */
     public static int getSupportVehicleGunnerNeeds(Entity entity) {
+        if (entity.hasDroneOs()) {
+            return 0;
+        }
+
         final boolean advFireCon = entity.hasMisc(MiscType.F_ADVANCED_FIRECONTROL);
         final boolean basicFireCon = !advFireCon && entity.hasMisc(MiscType.F_BASIC_FIRECONTROL);
         if (entity.getWeightClass() == EntityWeightClass.WEIGHT_SMALL_SUPPORT) {
@@ -7242,19 +7257,20 @@ public class Compute {
                 // Otherwise we require one gunner per facing, with turrets and pintle mounts counting
                 // as separate facings
                 Set<Integer> facings = new HashSet<>();
-                int pintles = 0;
+                Set<Integer> pintleLocations = new HashSet<>();
                 for (Mounted m : entity.getWeaponList()) {
                     if (m.isPintleTurretMounted()) {
-                        pintles++;
+                        // We consider pintle-mounted weapons in the same location to be in the same pintle
+                        pintleLocations.add(m.getLocation());
                     } else {
                         facings.add(m.getLocation());
                     }
                 }
                 if (advFireCon) {
                     // Advanced fire control lets the driver count as a gunner, so one fewer dedicated gunners is needed.
-                    return Math.max(0, pintles + facings.size() - 1);
+                    return Math.max(0, pintleLocations.size() + facings.size() - 1);
                 } else {
-                    return pintles + facings.size();
+                    return pintleLocations.size() + facings.size();
                 }
             }
         } else {
@@ -7284,6 +7300,10 @@ public class Compute {
      * @return       The number of additional crew required
      */
     public static int getAdditionalNonGunner(Entity entity) {
+        if (entity.hasDroneOs()) {
+            return 0;
+        }
+
         int crew = 0;
         for (Mounted m : entity.getMisc()) {
             if (m.getType().hasFlag(MiscType.F_COMMUNICATIONS)) {
@@ -7296,7 +7316,7 @@ public class Compute {
                 crew += 5 * (int) m.getSize();
             }
         }
-        if (entity.isSuperHeavy()) {
+        if (entity instanceof Mech && entity.isSuperHeavy()) {
             // Tactical Officer
             return 1;
         }
@@ -7305,6 +7325,10 @@ public class Compute {
 
     // Taken from MekHQ, assumptions are whatever Taharqa made for there - Dylan
     public static int getFullCrewSize(Entity entity) {
+        if (entity.hasDroneOs()) {
+            return 0;
+        }
+
         if (entity.isSupportVehicle()) {
             int crew = getSVBaseCrewNeeds(entity) + getSupportVehicleGunnerNeeds(entity)
                     + getAdditionalNonGunner(entity);
@@ -7349,6 +7373,9 @@ public class Compute {
 
     // Taken from MekHQ, assumptions are whatever Taharqa made for there - Dylan
     public static int getTotalDriverNeeds(Entity entity) {
+        if (entity.hasDroneOs()) {
+            return 0;
+        }
         //Fix for MHQ Bug #3. Space stations have as much need for pilots as jumpships do.
         if (entity instanceof SpaceStation) {
             return 2;
@@ -7391,8 +7418,9 @@ public class Compute {
             return false;
         }
         // aerodyne's will operate like spheroids in vacuum
+        PlanetaryConditions conditions = game.getPlanetaryConditions();
         if (!((IAero) en).isSpheroid()
-                && !game.getPlanetaryConditions().isVacuum()) {
+                && !conditions.getAtmosphere().isLighterThan(Atmosphere.THIN)) {
             return false;
         }
         // are we in atmosphere?

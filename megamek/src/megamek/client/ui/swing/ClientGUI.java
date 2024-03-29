@@ -14,6 +14,10 @@
  */
 package megamek.client.ui.swing;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import megamek.MMConstants;
 import megamek.client.Client;
 import megamek.client.TimerSingleton;
@@ -50,6 +54,7 @@ import megamek.common.annotations.Nullable;
 import megamek.common.enums.GamePhase;
 import megamek.common.event.*;
 import megamek.common.icons.Camouflage;
+import megamek.common.jacksonadapters.MMUReader;
 import megamek.common.preference.ClientPreferences;
 import megamek.common.preference.IPreferenceChangeListener;
 import megamek.common.preference.PreferenceChangeEvent;
@@ -281,6 +286,9 @@ public class ClientGUI extends JPanel implements BoardViewListener,
     private MiniReportDisplay miniReportDisplay;
     private MiniReportDisplayDialog miniReportDisplayDialog;
 
+    /** Boolean indicating whether client should be disconnected without a pop-up warning **/
+    private boolean disconnectQuietly = false;
+
     /**
      * The <code>JPanel</code> containing the main display area.
      */
@@ -426,6 +434,10 @@ public class ClientGUI extends JPanel implements BoardViewListener,
 
     public void setPlayerListDialog(final PlayerListDialog playerListDialog) {
         this.playerListDialog = playerListDialog;
+    }
+
+    public void setDisconnectQuietly(boolean quietly) {
+        disconnectQuietly = quietly;
     }
 
     /**
@@ -964,7 +976,7 @@ public class ClientGUI extends JPanel implements BoardViewListener,
                     bv.clearFiringSolutionData();
                 } else {
                     if (curPanel instanceof FiringDisplay) {
-                        ((FiringDisplay) curPanel).setFiringSolutions();
+                        ((FiringDisplay) curPanel).setFiringSolutions(((FiringDisplay) curPanel).ce());
                     }
                 }
                 bv.refreshDisplayables();
@@ -1972,70 +1984,59 @@ public class ClientGUI extends JPanel implements BoardViewListener,
                 dlgLoadList = new JFileChooser(".");
                 dlgLoadList.setLocation(frame.getLocation().x + 150, frame.getLocation().y + 100);
                 dlgLoadList.setDialogTitle(Messages.getString("ClientGUI.openUnitListFileDialog.title"));
-                dlgLoadList.setFileFilter(new FileFilter() {
-                    @Override
-                    public boolean accept(File dir) {
-                        return (dir.getName().endsWith(CG_FILEEXTENTIONMUL) || dir.isDirectory());
-                    }
-
-                    @Override
-                    public String getDescription() {
-                        return "*" + CG_FILEEXTENTIONMUL;
-                    }
-                });
+                dlgLoadList.setFileFilter(new FileNameExtensionFilter("MUL files", "mul", "mmu"));
                 // Default to the player's name.
                 dlgLoadList.setSelectedFile(new File(player.getName() + CG_FILEEXTENTIONMUL));
             }
 
             int returnVal = dlgLoadList.showOpenDialog(frame);
             if ((returnVal != JFileChooser.APPROVE_OPTION) || (dlgLoadList.getSelectedFile() == null)) {
-                // I want a file, y'know!
                 return;
             }
 
             // Did the player select a file?
             File unitFile = dlgLoadList.getSelectedFile();
-            if (unitFile != null) {
-                try {
-                    // Read the units from the file.
-                    final Vector<Entity> loadedUnits = new MULParser(unitFile, getClient().getGame().getOptions())
-                            .getEntities();
 
-                    // in the Lounge, set default deployment to "Before Game Start", round 0
-                    // but in a game in-progress, deploy at the start of next round
-                    final int deployRound = client.getGame().getRoundCount()
-                            + ((client.getGame().getPhase() == GamePhase.LOUNGE) ? 0 : 1);
+            try {
+                // Read the units from the file.
+                final Vector<Entity> loadedUnits = new MULParser(unitFile, getClient().getGame().getOptions())
+                        .getEntities();
 
-                    // Add the units from the file.
-                    for (Entity entity : loadedUnits) {
-                        entity.setOwner(player);
-                        if (reinforce) {
-                            entity.setDeployRound(deployRound);
-                            entity.setGame(client.getGame());
-                            // Set these to true, otherwise units reinforced in
-                            // the movement turn are considered selectable
-                            entity.setDone(true);
-                            entity.setUnloaded(true);
-                            if (entity instanceof IBomber && (client.getGame().getPhase() != GamePhase.LOUNGE)) {
-                                // Only apply bombs when we're going straight into the game; doing this in the lounge
-                                // breaks the bombs completely.
-                                ((IBomber) entity).applyBombs();
-                            }
+                // in the Lounge, set default deployment to "Before Game Start", round 0
+                // but in a game in-progress, deploy at the start of next round
+                final int deployRound = client.getGame().getRoundCount()
+                        + ((client.getGame().getPhase() == GamePhase.LOUNGE) ? 0 : 1);
+
+                // Add the units from the file.
+                for (Entity entity : loadedUnits) {
+                    entity.setOwner(player);
+                    if (reinforce) {
+                        entity.setDeployRound(deployRound);
+                        entity.setGame(client.getGame());
+                        // Set these to true, otherwise units reinforced in
+                        // the movement turn are considered selectable
+                        entity.setDone(true);
+                        entity.setUnloaded(true);
+                        if (entity instanceof IBomber && (client.getGame().getPhase() != GamePhase.LOUNGE)) {
+                            // Only apply bombs when we're going straight into the game; doing this in the lounge
+                            // breaks the bombs completely.
+                            ((IBomber) entity).applyBombs();
                         }
                     }
-
-                    if (!loadedUnits.isEmpty()) {
-                        client.sendAddEntity(loadedUnits);
-                        String msg = client.getLocalPlayer() + " loaded MUL file for player: " + player.getName() + " ["
-                                + loadedUnits.size() + " units]";
-                        client.sendServerChat(Player.PLAYER_NONE, msg);
-                        addedUnits = true;
-                    }
-                } catch (Exception ex) {
-                    LogManager.getLogger().error("", ex);
-                    doAlertDialog(Messages.getString("ClientGUI.errorLoadingFile"), ex.getMessage());
                 }
+
+                if (!loadedUnits.isEmpty()) {
+                    client.sendAddEntity(loadedUnits);
+                    String msg = client.getLocalPlayer() + " loaded MUL file for player: " + player.getName() + " ["
+                            + loadedUnits.size() + " units]";
+                    client.sendServerChat(Player.PLAYER_NONE, msg);
+                    addedUnits = true;
+                }
+            } catch (Exception ex) {
+                LogManager.getLogger().error("", ex);
+                doAlertDialog(Messages.getString("ClientGUI.errorLoadingFile"), ex.getMessage());
             }
+
 
             // If we've added reinforcements, then we need to set the round deployment up
             // again.
@@ -2265,8 +2266,10 @@ public class ClientGUI extends JPanel implements BoardViewListener,
 
         @Override
         public void gamePlayerDisconnected(GamePlayerDisconnectedEvent evt) {
-            doAlertDialog(Messages.getString("ClientGUI.Disconnected.message"),
-                    Messages.getString("ClientGUI.Disconnected.title"), JOptionPane.ERROR_MESSAGE);
+            if(!disconnectQuietly) {
+                doAlertDialog(Messages.getString("ClientGUI.Disconnected.message"),
+                        Messages.getString("ClientGUI.Disconnected.title"), JOptionPane.ERROR_MESSAGE);
+            }
             frame.setVisible(false);
             die();
         }
