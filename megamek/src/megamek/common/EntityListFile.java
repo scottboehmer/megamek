@@ -16,6 +16,7 @@ package megamek.common;
 import megamek.MMConstants;
 import megamek.client.Client;
 import megamek.codeUtilities.StringUtility;
+import megamek.common.equipment.WeaponMounted;
 import megamek.common.force.Force;
 import megamek.common.options.OptionsConstants;
 import megamek.common.options.PilotOptions;
@@ -76,7 +77,7 @@ public class EntityListFile {
      *            available to absorb additional critical hits.
      * @return a <code>String</code> describing the slot.
      */
-    private static String formatSlot(String index, Mounted mount, boolean isHit, boolean isDestroyed,
+    private static String formatSlot(String index, Mounted<?> mount, boolean isHit, boolean isDestroyed,
                                      boolean isRepairable, boolean isMissing, int indentLvl) {
         StringBuilder output = new StringBuilder();
 
@@ -103,7 +104,7 @@ public class EntityListFile {
                 if (mount.getEntity().usesWeaponBays()
                         || (mount.getEntity() instanceof Dropship)) {
                     output.append("\" " + MULParser.ATTR_CAPACITY + "=\"")
-                        .append(mount.getSize());
+                            .append(mount.getSize());
                 }
             }
 
@@ -119,7 +120,7 @@ public class EntityListFile {
                 for (Mounted ammo = mount.getLinked(); ammo != null; ammo = ammo.getLinked()) {
                     if (((AmmoType) ammo.getType()).getMunitionType().contains(AmmoType.Munitions.M_INFERNO)) {
                         output.append("\" " + MULParser.ATTR_INFERNO + "=\"").append(ammo.getBaseShotsLeft())
-                            .append(":").append(ammo.getOriginalShots());
+                                .append(":").append(ammo.getOriginalShots());
                     } else {
                         output.append("\" " + MULParser.ATTR_STANDARD + "=\"").append(ammo.getBaseShotsLeft())
                                 .append(":").append(ammo.getOriginalShots());
@@ -242,7 +243,7 @@ public class EntityListFile {
 
                 if (entity.hasRearArmor(loc)
                         && (entity.getOArmor(loc, true) != entity
-                                .getArmorForReal(loc, true))) {
+                        .getArmorForReal(loc, true))) {
                     thisLoc.append(indentStr(indentLvl + 1) + "<" + MULParser.ELE_ARMOR + " " + MULParser.ATTR_POINTS + "=\"");
                     thisLoc.append(EntityListFile.formatArmor(entity
                             .getArmorForReal(loc, true)));
@@ -259,7 +260,7 @@ public class EntityListFile {
             }
 
             //
-            Map<Mounted, Integer> baySlotMap = new HashMap<>();
+            Map<WeaponMounted, Integer> baySlotMap = new HashMap<>();
 
             // Walk through the slots in this location.
             for (int loop = 0; loop < entity.getNumberOfCriticals(loc); loop++) {
@@ -284,16 +285,16 @@ public class EntityListFile {
                 } else {
 
                     // Yup. If the equipment isn't a system, get it.
-                    Mounted mount = null;
+                    Mounted<?> mount = null;
                     if (CriticalSlot.TYPE_EQUIPMENT == slot.getType()) {
                         mount = slot.getMount();
                     }
 
                     // if the "equipment" is a weapons bay,
                     // then let's make a note of it
-                    if (entity.usesWeaponBays() && (mount != null)
-                            && !mount.getBayAmmo().isEmpty()) {
-                        baySlotMap.put(slot.getMount(), loop + 1);
+                    if (entity.usesWeaponBays() && (mount instanceof WeaponMounted)
+                            && !((WeaponMounted) mount).getBayAmmo().isEmpty()) {
+                        baySlotMap.put((WeaponMounted) slot.getMount(), loop + 1);
                     }
 
                     if ((mount != null) && (mount.getType() instanceof BombType)) {
@@ -346,7 +347,7 @@ public class EntityListFile {
 
                         String bayIndex = "";
 
-                        for (Mounted bay : baySlotMap.keySet()) {
+                        for (WeaponMounted bay : baySlotMap.keySet()) {
                             if (bay.ammoInBay(entity.getEquipmentNum(mount))) {
                                 bayIndex = String.valueOf(baySlotMap.get(bay));
                             }
@@ -568,10 +569,10 @@ public class EntityListFile {
             if (entity.getOwner().getId() == client.getLocalPlayer().getId()) {
                 living.add(entity);
             } else if (entity.getOwner().isEnemyOf(client.getLocalPlayer())) {
-                 if (!entity.canEscape()) {
-                     kills.put(entity.getDisplayName(),  MULParser.VALUE_NONE);
-                 }
-                 salvage.add(entity);
+                if (!entity.canEscape()) {
+                    kills.put(entity.getDisplayName(),  MULParser.VALUE_NONE);
+                }
+                salvage.add(entity);
             } else {
                 allied.add(entity);
             }
@@ -746,15 +747,18 @@ public class EntityListFile {
                 output.write("\" " + MULParser.ATTR_QUIRKS + "=\"");
                 output.write(String.valueOf(entity.getQuirkList("::")));
             }
-            if (entity.getC3Master() != null) {
-                output.write("\" " + MULParser.ATTR_C3MASTERIS + "=\"");
-                output.write(entity.getGame()
-                        .getEntity(entity.getC3Master().getId())
-                        .getC3UUIDAsString());
+            if ((entity.getGame() != null) && (entity.getC3Master() != null)) {
+                Entity entityC3MAster = entity.getGame().getEntity(entity.getC3Master().getId());
+                if (entityC3MAster.getC3UUIDAsString() != null) {
+                    output.write("\" " + MULParser.ATTR_C3MASTERIS + "=\"");
+                    output.write(entityC3MAster.getC3UUIDAsString());
+                }
             }
             if (entity.hasC3() || entity.hasC3i() || entity.hasNavalC3()) {
-                output.write("\" " + MULParser.ATTR_C3UUID + "=\"");
-                output.write(entity.getC3UUIDAsString());
+                if (entity.getC3UUIDAsString() != null) {
+                    output.write("\" " + MULParser.ATTR_C3UUID + "=\"");
+                    output.write(entity.getC3UUIDAsString());
+                }
             }
             if (!entity.getCamouflage().hasDefaultCategory()) {
                 output.write("\" " + MULParser.ATTR_CAMO_CATEGORY + "=\"");
@@ -995,7 +999,8 @@ public class EntityListFile {
                 while (c3iList.hasNext()) {
                     final Entity C3iEntity = c3iList.next();
 
-                    if (C3iEntity.onSameC3NetworkAs(entity, true)) {
+                    if ((C3iEntity.getC3UUIDAsString() != null) &&
+                            C3iEntity.onSameC3NetworkAs(entity, true)) {
                         output.write(indentStr(indentLvl + 1) + "<" + MULParser.ELE_C3ILINK + " " + MULParser.ATTR_LINK + "=\"");
                         output.write(C3iEntity.getC3UUIDAsString());
                         output.write("\"/>\n");
@@ -1011,7 +1016,8 @@ public class EntityListFile {
                 while (NC3List.hasNext()) {
                     final Entity NC3Entity = NC3List.next();
 
-                    if (NC3Entity.onSameC3NetworkAs(entity, true)) {
+                    if ((NC3Entity.getC3UUIDAsString() != null) &&
+                            NC3Entity.onSameC3NetworkAs(entity, true)) {
                         output.write(indentStr(indentLvl + 1) + "<" + MULParser.ELE_NC3LINK + " " + MULParser.ATTR_LINK + "=\"");
                         output.write(NC3Entity.getC3UUIDAsString());
                         output.write("\"/>\n");
@@ -1123,6 +1129,7 @@ public class EntityListFile {
         output.write("\" " + MULParser.ATTR_NICK + "=\"");
         output.write(crew.getNickname(pos).replaceAll("\"", "&quot;"));
         output.write("\" " + MULParser.ATTR_GENDER + "=\"" + crew.getGender(pos).name());
+        output.write("\" " + MULParser.ATTR_CLANPILOT + "=\"" + crew.isClanPilot(pos));
 
         if ((null != entity.getGame())
                 && entity.getGame().getOptions().booleanOption(OptionsConstants.RPG_RPG_GUNNERY)) {
@@ -1141,7 +1148,7 @@ public class EntityListFile {
         if (crew instanceof LAMPilot) {
             writeLAMAeroAttributes(output, (LAMPilot) crew,
                     (null != entity.getGame())
-                    && entity.getGame().getOptions().booleanOption(OptionsConstants.RPG_RPG_GUNNERY));
+                            && entity.getGame().getOptions().booleanOption(OptionsConstants.RPG_RPG_GUNNERY));
         }
         if ((null != entity.getGame())
                 && entity.getGame().getOptions().booleanOption(OptionsConstants.RPG_ARTILLERY_SKILL)) {
@@ -1152,6 +1159,11 @@ public class EntityListFile {
         if (crew.getToughness(0) != 0) {
             output.write("\" " + MULParser.ATTR_TOUGH + "=\"");
             output.write(String.valueOf(crew.getToughness(pos)));
+        }
+
+        if (crew.getCrewFatigue(0) != 0) {
+            output.write("\" " + MULParser.ATTR_FATIGUE + "=\"");
+            output.write(String.valueOf(crew.getCrewFatigue(pos)));
         }
 
         if (crew.isDead(pos) || (crew.getHits(pos) > 5)) {
@@ -1183,7 +1195,7 @@ public class EntityListFile {
     }
 
     private static void writeLAMAeroAttributes(Writer output, final LAMPilot crew,
-            boolean rpgGunnery) throws IOException {
+                                               boolean rpgGunnery) throws IOException {
         output.write("\" " + MULParser.ATTR_GUNNERYAERO + "=\"");
         output.write(String.valueOf(crew.getGunneryAero()));
         if (rpgGunnery) {
@@ -1235,7 +1247,8 @@ public class EntityListFile {
             } else {
                 output.write("\" " + MULParser.ATTR_AUTOEJECT + "=\"false");
             }
-            if (entity.game.getOptions().booleanOption(OptionsConstants.RPG_CONDITIONAL_EJECTION)) {
+            if ((null != entity.getGame())
+                    && (entity.getGame().getOptions().booleanOption(OptionsConstants.RPG_CONDITIONAL_EJECTION))) {
                 if (((Mech) entity).isCondEjectAmmo()) {
                     output.write("\" " + MULParser.ATTR_CONDEJECTAMMO + "=\"true");
                 } else {

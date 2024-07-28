@@ -88,6 +88,11 @@ public class GUIPreferences extends PreferenceStoreProxy {
     public static final String BOARD_TRANSLUCENT_HIDDEN_UNITS = "BoardTranslucentHiddenUnits";
     public static final String BOARD_TMM_PIP_MODE = "BoardTmmPipMode";
 
+    public static final String SHOW_ARTILLERY_MISSES = "ShowArtilleryMisses";
+    public static final String SHOW_ARTILLERY_DRIFTS = "ShowArtilleryHits";
+    public static final String SHOW_BOMB_MISSES = "ShowBombMisses";
+    public static final String SHOW_BOMB_DRIFTS = "ShowBombDrifts";
+
     public static final String UNIT_OVERVIEW_TEXT_SHADOW_COLOR = "UnitOverviewTextShadowColor";
     public static final String UNIT_OVERVIEW_CONDITION_SHADOW_COLOR = "UnitOverviewConditionShadowColor";
 
@@ -119,12 +124,14 @@ public class GUIPreferences extends PreferenceStoreProxy {
     public static final String MMSYMBOL = "MmSymbol";
     public static final String SOFTCENTER = "SoftCenter";
     public static final String AUTOCENTER = "AutoCenter";
+    public static final String AUTO_SELECT_NEXT = "AutoSelectNextUnit";
     public static final String AUTO_END_FIRING = "AutoEndFiring";
     public static final String AUTO_DECLARE_SEARCHLIGHT = "AutoDeclareSearchlight";
 
     public static final String WARNING_COLOR = "WarningColor";
     public static final String CAUTION_COLOR = "CautionColor";
     public static final String PRECAUTION_COLOR = "PrecautionColor";
+    public static final String OK_COLOR = "OkColor";
 
     public static final String CUSTOM_UNIT_HEIGHT = "CustomUnitDialogSizeHeight";
     public static final String CUSTOM_UNIT_WIDTH = "CustomUnitDialogSizeWidth";
@@ -194,7 +201,6 @@ public class GUIPreferences extends PreferenceStoreProxy {
     public static final String UNIT_TOOLTIP_BLOCK_FGCOLOR = "UnitToolTipBlockFGColor";
     public static final String UNIT_TOOLTIP_TERRAIN_FGCOLOR = "UnitToolTipTerainFGColor";
     public static final String UNIT_TOOLTIP_BGCOLOR = "UnitToolTipBGColor";
-    public static final String UNIT_TOOLTIP_LIGHT_BGCOLOR = "UnitToolTipLightBGColor";
     public static final String UNIT_TOOLTIP_BUILDING_BGCOLOR = "UnitToolTipBuildingBGColor";
     public static final String UNIT_TOOLTIP_ALT_BGCOLOR = "UnitToolTipAltBGColor";
     public static final String UNIT_TOOLTIP_BLOCK_BGCOLOR = "UnitToolTipBlockBGColor";
@@ -258,6 +264,10 @@ public class GUIPreferences extends PreferenceStoreProxy {
     public static final String MINI_REPORT_AUTO_DISPLAY_NONREPORT_PHASE = "MiniReportAutoDisplayNonReportPhase";
     public static final String MINI_REPORT_LOCATION = "MiniReportLocation";
     public static final String MINI_REPORT_COLOR_LINK = "MiniReportColorLink";
+    public static final String MINI_REPORT_COLOR_SUCCESS = "MiniReportColorSuccess";
+    public static final String MINI_REPORT_COLOR_MISS = "MiniReportColorMiss";
+    public static final String MINI_REPORT_COLOR_INFO = "MiniReportColorInfo";
+    public static final String MINI_REPORT_FONT_TYPE = "MiniReportFontType";
     public static final String MINI_ROUND_REPORT_SPRITES = "MiniRoundReportSprites";
 
     public static final String PLAYER_LIST_POS_X = "PlayerListPosX";
@@ -451,6 +461,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
         setDefault(WARNING_COLOR, DEFAULT_RED);
         setDefault(CAUTION_COLOR, Color.yellow);
         setDefault(PRECAUTION_COLOR, Color.orange);
+        setDefault(OK_COLOR, DEFAULT_GREEN);
 
         setDefault(PlayerColour.PLAYERCOLOUR_BLUE, new Color(0x8686BF));
         setDefault(PlayerColour.PLAYERCOLOUR_RED, new Color(0xCC6666));
@@ -478,7 +489,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
         setDefault(PlayerColour.PLAYERCOLOUR_YELLOW, new Color(0xF2F261));
 
         setDefault(BOARD_MOVE_DEFAULT_CLIMB_MODE, true);
-        setDefault(BOARD_MOVE_DEFAULT_COLOR, DEFAULT_CYAN.CYAN);
+        setDefault(BOARD_MOVE_DEFAULT_COLOR, Color.CYAN);
         setDefault(BOARD_MOVE_ILLEGAL_COLOR, DEFAULT_DARK_GRAY);
         setDefault(BOARD_MOVE_JUMP_COLOR, DEFAULT_RED);
         setDefault(BOARD_MOVE_MASC_COLOR, DEFAULT_ORANGE);
@@ -511,6 +522,12 @@ public class GUIPreferences extends PreferenceStoreProxy {
         store.setDefault(BOARD_DARKEN_MAP_AT_NIGHT, true);
         store.setDefault(BOARD_TRANSLUCENT_HIDDEN_UNITS, true);
         setDefault(BOARD_TMM_PIP_MODE, 2); // show pips with colors based on move type
+
+        store.setDefault(SHOW_ARTILLERY_MISSES, true);
+        store.setDefault(SHOW_ARTILLERY_DRIFTS, true);
+        store.setDefault(SHOW_BOMB_MISSES, true);
+        store.setDefault(SHOW_BOMB_DRIFTS, false);
+
 
         setDefault(UNIT_OVERVIEW_TEXT_SHADOW_COLOR, Color.black);
         setDefault(UNIT_OVERVIEW_CONDITION_SHADOW_COLOR, Color.darkGray);
@@ -546,6 +563,8 @@ public class GUIPreferences extends PreferenceStoreProxy {
         store.setDefault(FORCE_DISPLAY_AUTO_DISPLAY_REPORT_PHASE, 2);
         store.setDefault(FORCE_DISPLAY_AUTO_DISPLAY_NONREPORT_PHASE, 2);
         store.setDefault(FORCE_DISPLAY_ENABLED, false);
+        store.setDefault(FORCE_DISPLAY_SIZE_HEIGHT, 500);
+        store.setDefault(FORCE_DISPLAY_SIZE_WIDTH, 300);
 
         store.setDefault(UNIT_DISPLAY_SIZE_HEIGHT, 500);
         store.setDefault(UNIT_DISPLAY_SIZE_WIDTH, 300);
@@ -600,7 +619,6 @@ public class GUIPreferences extends PreferenceStoreProxy {
         setDefault(UNIT_TOOLTIP_BLOCK_FGCOLOR, new Color(0xEEE6D9));
         setDefault(UNIT_TOOLTIP_TERRAIN_FGCOLOR, new Color(0x000000));
         setDefault(UNIT_TOOLTIP_BGCOLOR, new Color(0x313131));
-        setDefault(UNIT_TOOLTIP_LIGHT_BGCOLOR, new Color(0x999999));
         setDefault(UNIT_TOOLTIP_BUILDING_BGCOLOR, new Color(0xCCCC99));
         setDefault(UNIT_TOOLTIP_ALT_BGCOLOR, new Color(0x003333));
         setDefault(UNIT_TOOLTIP_BLOCK_BGCOLOR, new Color(0x000060));
@@ -663,6 +681,10 @@ public class GUIPreferences extends PreferenceStoreProxy {
         store.setDefault(MINI_REPORT_AUTO_DISPLAY_NONREPORT_PHASE, 0);
         store.setDefault(MINI_REPORT_LOCATION, 0);
         setDefault(MINI_REPORT_COLOR_LINK, DEFAULT_REPORT_LINK_COLOR);
+        setDefault(MINI_REPORT_COLOR_SUCCESS, new Color(0x008000));
+        setDefault(MINI_REPORT_COLOR_MISS, new Color(0x808080));
+        setDefault(MINI_REPORT_COLOR_INFO, new Color(0x0000FF));
+        setDefault(MINI_REPORT_FONT_TYPE, "Segoe UI");
         store.setDefault(MINI_ROUND_REPORT_SPRITES, true);
 
         store.setDefault(PLAYER_LIST_ENABLED, true);
@@ -740,6 +762,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
         store.setDefault(SKIN_FILE, "BW - Default.xml");
         store.setDefault(SOFTCENTER, false);
         store.setDefault(AUTOCENTER, true);
+        store.setDefault(AUTO_SELECT_NEXT, true);
         store.setDefault(UI_THEME, "com.formdev.flatlaf.FlatDarculaLaf");
 
         store.setDefault(RAT_TECH_LEVEL, 0);
@@ -1040,7 +1063,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
         return store.getBoolean(FOCUS);
     }
 
-    public boolean getFiringSolutions() {
+    public boolean getShowFiringSolutions() {
         return store.getBoolean(FIRING_SOLUTIONS);
     }
 
@@ -1551,6 +1574,14 @@ public class GUIPreferences extends PreferenceStoreProxy {
         return store.getBoolean(AUTOCENTER);
     }
 
+    public boolean getAutoSelectNextUnit() {
+        return store.getBoolean(AUTO_SELECT_NEXT);
+    }
+
+    public void setAutoSelectNextUnit(boolean autoSelectNextUnit) {
+        store.setValue(AUTO_SELECT_NEXT, autoSelectNextUnit);
+    }
+
     public boolean getNoSaveNag() {
         return store.getBoolean(ADVANCED_NO_SAVE_NAG);
     }
@@ -1858,7 +1889,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
         store.setValue(FOCUS, state);
     }
 
-    public void setFiringSolutions(boolean state) {
+    public void setShowFiringSolutions(boolean state) {
         store.setValue(FIRING_SOLUTIONS, state);
     }
 
@@ -2499,6 +2530,14 @@ public class GUIPreferences extends PreferenceStoreProxy {
         store.setValue(PRECAUTION_COLOR, getColorString(color));
     }
 
+    public Color getOkColor() {
+        return getColor(OK_COLOR);
+    }
+
+    public void setOkColor(Color color) {
+        store.setValue(OK_COLOR, getColorString(color));
+    }
+
     public boolean getMoveDefaultClimbMode() {
         return getBoolean(BOARD_MOVE_DEFAULT_CLIMB_MODE);
     }
@@ -2723,11 +2762,11 @@ public class GUIPreferences extends PreferenceStoreProxy {
         store.setValue(BOARD_UNIT_TEXT_COLOR, getColorString(color));
     }
 
-    public int getAttachArrowTransparency() {
+    public int getAttackArrowTransparency() {
         return getInt(BOARD_ATTACK_ARROW_TRANSPARENCY);
     }
 
-    public void setAttachArrowTransparency(int i) {
+    public void setAttackArrowTransparency(int i) {
         store.setValue(BOARD_ATTACK_ARROW_TRANSPARENCY, i);
     }
 
@@ -2754,6 +2793,35 @@ public class GUIPreferences extends PreferenceStoreProxy {
     public void setTranslucentHiddenUnits(boolean b) {
         store.setValue(BOARD_TRANSLUCENT_HIDDEN_UNITS, b);
     }
+
+    public void setShowArtilleryMisses(boolean b){
+        store.setValue(SHOW_ARTILLERY_MISSES, b);
+    }
+    public boolean getShowArtilleryMisses(){
+        return getBoolean(SHOW_ARTILLERY_MISSES);
+    }
+
+    public void setShowArtilleryDrifts(boolean b) {
+        store.setValue(SHOW_ARTILLERY_DRIFTS, b);
+    }
+    public boolean getShowArtilleryDrifts(){
+        return getBoolean(SHOW_ARTILLERY_DRIFTS);
+    }
+
+    public void setShowBombMisses(boolean b) {
+        store.setValue(SHOW_BOMB_MISSES, b);
+    }
+    public boolean getShowBombMisses(){
+        return getBoolean(SHOW_BOMB_MISSES);
+    }
+
+    public void setShowBombDrifts(boolean b) {
+        store.setValue(SHOW_BOMB_DRIFTS, b);
+    }
+    public boolean getShowBombDrifts(){
+        return getBoolean(SHOW_BOMB_DRIFTS);
+    }
+
 
     public int getTMMPipMode() {
         return getInt(BOARD_TMM_PIP_MODE);
@@ -2791,6 +2859,22 @@ public class GUIPreferences extends PreferenceStoreProxy {
         return getColor(MINI_REPORT_COLOR_LINK);
     }
 
+    public Color getReportSuccessColor() {
+        return getColor(MINI_REPORT_COLOR_SUCCESS);
+    }
+
+    public Color getReportMissColor() {
+        return getColor(MINI_REPORT_COLOR_MISS);
+    }
+
+    public Color getReportInfoColor() {
+        return getColor(MINI_REPORT_COLOR_INFO);
+    }
+
+    public String getReportFontType() {
+        return getString(MINI_REPORT_FONT_TYPE);
+    }
+
     public int getUnitToolTipSeenByResolution() {
         return getInt(UNIT_TOOLTIP_SEENBYRESOLUTION);
     }
@@ -2825,7 +2909,7 @@ public class GUIPreferences extends PreferenceStoreProxy {
     public Color getUnitToolTipFGColor() {
         return getColor(UNIT_TOOLTIP_FGCOLOR);
     }
-    public Color getUnitToolTipLightFGColor() {
+    public Color getToolTipLightFGColor() {
         return getColor(UNIT_TOOLTIP_LIGHT_FGCOLOR);
     }
 
@@ -2847,9 +2931,6 @@ public class GUIPreferences extends PreferenceStoreProxy {
 
     public Color getUnitToolTipBGColor() {
         return getColor(UNIT_TOOLTIP_BGCOLOR);
-    }
-    public Color getUnitToolTipLightBGColor() {
-        return getColor(UNIT_TOOLTIP_LIGHT_BGCOLOR);
     }
 
     public Color getUnitToolTipBuildingBGColor() {
@@ -2898,6 +2979,22 @@ public class GUIPreferences extends PreferenceStoreProxy {
 
     public void setReportLinkColor(Color color) {
         store.setValue(MINI_REPORT_COLOR_LINK, getColorString(color));
+    }
+
+    public void setReportSuccessColor(Color color) {
+        store.setValue(MINI_REPORT_COLOR_SUCCESS, getColorString(color));
+    }
+
+    public void setReportMissColor(Color color) {
+        store.setValue(MINI_REPORT_COLOR_MISS, getColorString(color));
+    }
+
+    public void setReportrInfoColo(Color color) {
+        store.setValue(MINI_REPORT_COLOR_INFO, getColorString(color));
+    }
+
+    public void setReportFontType(String font) {
+        store.setValue(MINI_REPORT_FONT_TYPE, font);
     }
 
     public Color getPlanetaryConditionsColorTitle() {
@@ -3045,10 +3142,6 @@ public class GUIPreferences extends PreferenceStoreProxy {
 
     public void setUnitToolTipBGColor(Color c) {
         store.setValue(UNIT_TOOLTIP_BGCOLOR, getColorString(c));
-    }
-
-    public void setUnitTooltipLightBGColor(Color c) {
-        store.setValue(UNIT_TOOLTIP_LIGHT_BGCOLOR, getColorString(c));
     }
 
     public void setUnitTooltipBuildingBGColor(Color c) {
@@ -3227,7 +3320,6 @@ public class GUIPreferences extends PreferenceStoreProxy {
 
     /** @return True when the MM suite supports the given laf, currently all formdev "Flat ..." and the system default. */
     public static boolean isSupportedLookAndFeel(UIManager.LookAndFeelInfo lookAndFeelInfo) {
-        return lookAndFeelInfo.getClassName().toLowerCase().contains("formdev")
-                || UIManager.getSystemLookAndFeelClassName().equals(lookAndFeelInfo.getClassName());
+        return lookAndFeelInfo.getClassName().toLowerCase().contains("formdev");
     }
 }

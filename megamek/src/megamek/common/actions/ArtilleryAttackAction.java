@@ -13,20 +13,14 @@
  */
 package megamek.common.actions;
 
-import java.io.Serializable;
-import java.util.Vector;
-
-import megamek.common.Board;
-import megamek.common.Compute;
-import megamek.common.Coords;
-import megamek.common.EquipmentType;
-import megamek.common.Game;
-import megamek.common.Mounted;
-import megamek.common.RangeType;
-import megamek.common.WeaponType;
+import megamek.common.*;
+import megamek.common.equipment.WeaponMounted;
 import megamek.common.options.OptionsConstants;
 import megamek.common.weapons.bayweapons.CapitalMissileBayWeapon;
 import megamek.common.weapons.capitalweapons.CapitalMissileWeapon;
+
+import java.io.Serializable;
+import java.util.Vector;
 
 /**
  * ArtilleryAttackAction Holds the data needed for an artillery attack in
@@ -51,11 +45,10 @@ public class ArtilleryAttackAction extends WeaponAttackAction implements Seriali
         distance = (int) Math.floor((double) distance / game.getPlanetaryConditions().getGravity());
         EquipmentType eType = getEntity(game).getEquipment(weaponId).getType();
         WeaponType wType = (WeaponType) eType;
-        Mounted mounted = getEntity(game).getEquipment(weaponId);
+        WeaponMounted mounted = (WeaponMounted) getEntity(game).getEquipment(weaponId);
         if (getEntity(game).usesWeaponBays() && wType.getAtClass() == WeaponType.CLASS_ARTILLERY) {
-            for (int wId : game.getEntity(entityId).getEquipment(weaponId).getBayWeapons()) {
-                Mounted bayW = game.getEntity(entityId).getEquipment(wId);
-                WeaponType bayWType = ((WeaponType) bayW.getType());
+            for (WeaponMounted bayW : mounted.getBayWeapons()) {
+                WeaponType bayWType = bayW.getType();
                 if (bayWType.hasFlag(WeaponType.F_CRUISE_MISSILE)) {
                     // See TO p181. Cruise missile flight time is (1 + (Mapsheets / 5, round down)
                     turnsTilHit = 1 + (distance / Board.DEFAULT_BOARD_HEIGHT / 5);

@@ -31,6 +31,7 @@ import java.util.Vector;
  *
  * Note that Player should be usable for any type of game (TW, AS, BF, SBF) and therefore should not
  * make any direct use of Game, Entity, AlphaStrikeElement etc., instead using IGame and InGameObject if necessary.
+ * Note that two Players are equal if their ID is equal.
  */
 public final class Player extends TurnOrdered {
 
@@ -188,7 +189,7 @@ public final class Player extends TurnOrdered {
         this.camouflage = camouflage;
     }
 
-    public void setGame(Game game) {
+    public void setGame(IGame game) {
         this.game = game;
     }
 

@@ -8,6 +8,7 @@ import java.awt.Rectangle;
 import java.awt.image.ImageObserver;
 
 import megamek.client.ui.Messages;
+import megamek.client.ui.swing.tileset.HexTileset;
 import megamek.client.ui.swing.tooltip.EntityActionLog;
 import megamek.client.ui.swing.util.StraightArrowPolygon;
 import megamek.common.*;
@@ -131,13 +132,13 @@ class AttackSprite extends Sprite {
         // directly
         // in the centes of hex and hiding mek under.
 
-        a.x = a.x + (int) ((BoardView.HEX_W / 2) * this.boardView1.scale)
+        a.x = a.x + (int) ((HexTileset.HEX_W / 2) * this.boardView1.scale)
                 + (int) Math.round(Math.cos(an) * (int) (18 * this.boardView1.scale));
-        t.x = (t.x + (int) ((BoardView.HEX_W / 2) * this.boardView1.scale))
+        t.x = (t.x + (int) ((HexTileset.HEX_W / 2) * this.boardView1.scale))
                 - (int) Math.round(Math.cos(an) * (int) (18 * this.boardView1.scale));
-        a.y = a.y + (int) ((BoardView.HEX_H / 2) * this.boardView1.scale)
+        a.y = a.y + (int) ((HexTileset.HEX_H / 2) * this.boardView1.scale)
                 + (int) Math.round(Math.sin(an) * (int) (18 * this.boardView1.scale));
-        t.y = (t.y + (int) ((BoardView.HEX_H / 2) * this.boardView1.scale))
+        t.y = (t.y + (int) ((HexTileset.HEX_H / 2) * this.boardView1.scale))
                 - (int) Math.round(Math.sin(an) * (int) (18 * this.boardView1.scale));
 
         // Checking if given attack is mutual. In this case we building
@@ -185,7 +186,7 @@ class AttackSprite extends Sprite {
      * Cheking if attack is mutual and changing target arrow to half-arrow
      */
     private boolean isMutualAttack() {
-        for (AttackSprite sprite : this.boardView1.attackSprites) {
+        for (AttackSprite sprite : this.boardView1.getAttackSprites()) {
             if ((sprite.getEntityId() == targetId)
                     && (sprite.getTargetId() == entityId)) {
                 sprite.rebuildToHalvedPolygon();

@@ -18,12 +18,12 @@
  */
 package megamek.client.ui.swing;
 
-import megamek.client.ui.swing.util.CommandAction;
+import megamek.client.ui.swing.boardview.TurnDetailsOverlay;
 import megamek.client.ui.swing.util.KeyCommandBind;
 import megamek.client.ui.swing.util.UIUtil;
 import megamek.client.ui.swing.widget.MegamekButton;
 import megamek.client.ui.swing.widget.SkinSpecification;
-import megamek.common.Report;
+import megamek.common.Entity;
 import megamek.common.annotations.Nullable;
 import megamek.common.preference.PreferenceChangeEvent;
 
@@ -35,19 +35,26 @@ import java.util.List;
 import static megamek.client.ui.swing.util.UIUtil.guiScaledFontHTML;
 
 public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
+
     protected MegamekButton butSkipTurn;
-    private boolean isDoingAction = false;
+
+    /** The currently selected unit for taking action. Not necessarily equal to the unit shown in the unit viewer. */
+    protected int currentEntity = Entity.NONE;
+
     private boolean ignoreNoActionNag = false;
+
+    protected final ClientGUI clientgui;
 
     protected ActionPhaseDisplay(ClientGUI cg) {
         super(cg);
+        clientgui = cg;
     }
 
     @Override
     protected UIUtil.FixedXPanel setupDonePanel() {
         var donePanel = super.setupDonePanel();
         butSkipTurn = new MegamekButton("SKIP", SkinSpecification.UIComponents.PhaseDisplayDoneButton.getComp());
-        butSkipTurn.setPreferredSize(new Dimension(UIUtil.scaleForGUI(DONE_BUTTON_WIDTH), MIN_BUTTON_SIZE.height * 1));
+        butSkipTurn.setPreferredSize(new Dimension(UIUtil.scaleForGUI(DONE_BUTTON_WIDTH), MIN_BUTTON_SIZE.height));
         String f = guiScaledFontHTML(UIUtil.uiLightViolet()) +  KeyCommandBind.getDesc(KeyCommandBind.DONE_NO_ACTION)+ "</FONT>";
         butSkipTurn.setToolTipText("<html><body>" + f + "</body></html>");
         addToDonePanel(donePanel, butSkipTurn);
@@ -65,45 +72,35 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
                             || (clientgui.getClient().getGame().getTurn() == null)
                             || (clientgui.getClient().getGame().getPhase().isReport())) {
                         // act like Done button
-                        ignoreNoActionNag = true;
-                        ready();
-                        // When the turn is ended, we could miss a key release
-                        // event
+                        performDoneNoAction();
+                        // When the turn is ended, we could miss a key release event
                         // This will ensure no repeating keys are stuck down
                         clientgui.controller.stopAllRepeating();
                     }
                 }
             });
 
-            final AbstractPhaseDisplay display = this;
-            // Register the action for DONE
-            clientgui.controller.registerCommandAction(KeyCommandBind.DONE_NO_ACTION.cmd,
-                    new CommandAction() {
-                        @Override
-                        public boolean shouldPerformAction() {
-                            if (((!clientgui.getClient().isMyTurn()
-                                    && (clientgui.getClient().getGame().getTurn() != null)
-                                    && (!clientgui.getClient().getGame().getPhase().isReport())))
-                                    || clientgui.getBoardView().getChatterBoxActive()
-                                    || display.isIgnoringEvents()
-                                    || !display.isVisible()
-                                    || !(butDone.isEnabled() || butSkipTurn.isEnabled())) {
-                                return false;
-                            } else {
-                                return true;
-                            }
-                        }
-
-                        @Override
-                        public void performAction() {
-                            ignoreNoActionNag = true;
-                            ready();
-                        }
-                    });
+            clientgui.controller.registerCommandAction(KeyCommandBind.DONE_NO_ACTION, this::shouldReceiveDoneKeyCommand,
+                    this::performDoneNoAction);
         }
 
         updateDonePanel();
         return donePanel;
+    }
+
+    private void performDoneNoAction() {
+        ignoreNoActionNag = true;
+        ready();
+    }
+
+    public boolean shouldReceiveDoneKeyCommand() {
+        return ((clientgui.getClient().isMyTurn()
+                || (clientgui.getClient().getGame().getTurn() == null)
+                || (clientgui.getClient().getGame().getPhase().isReport())))
+                && !clientgui.getBoardView().getChatterBoxActive()
+                && !isIgnoringEvents()
+                && isVisible()
+                && (butDone.isEnabled() || butSkipTurn.isEnabled());
     }
 
     @Override
@@ -113,14 +110,13 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
         adaptToGUIScale();
     }
 
-    protected void initDonePanelForNewTurn()
-    {
+    protected void initDonePanelForNewTurn() {
         ignoreNoActionNag = false;
         updateDonePanel();
     }
 
     /** called to reset, show, hide and relabel the Done panel buttons. Override to change button labels and states,
-     * being sure to call {@link #updateDonePanelButtons(String,String,boolean) UpdateDonePanelButtons}
+     * being sure to call {@link #updateDonePanelButtons(String, String, boolean, List)}
      * to set the button labels and states
      */
     abstract protected void updateDonePanel();
@@ -327,14 +323,13 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
             return;
         }
 
-        this.isDoingAction = isDoingAction;
         if (GUIP.getNagForNoAction()) {
             butDone.setText("<html><b>" + doneButtonLabel + "</b></html>");
             butSkipTurn.setText("<html><b>" + skipButtonLabel + "</b></html>");
         } else {
             // toggle the text on the done button, butIgnoreNag is not used
             butSkipTurn.setVisible(false);
-            if (this.isDoingAction) {
+            if (isDoingAction) {
                 butDone.setText("<html><b>" + doneButtonLabel + "</b></html>");
             } else {
                 butDone.setText("<html><b>" + skipButtonLabel + "</b></html>");
@@ -343,10 +338,12 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
         butSkipTurn.setText("<html><b>" + skipButtonLabel + "</b></html>");
 
         // point blank shots don't have the "isMyTurn()" characteristic
-        if (!clientgui.getClient().isMyTurn() && !clientgui.isProcessingPointblankShot()) {
+        if ((currentEntity == Entity.NONE)
+                || getClientgui().getClient().getGame().getInGameObject(currentEntity).isEmpty()
+                || (!clientgui.getClient().isMyTurn() && !clientgui.isProcessingPointblankShot())) {
             butDone.setEnabled(false);
             butSkipTurn.setEnabled(false);
-        } else if (this.isDoingAction || ignoreNoActionNag) {
+        } else if (isDoingAction || ignoreNoActionNag) {
             butDone.setEnabled(true);
             butSkipTurn.setEnabled(false);
         } else {
@@ -354,12 +351,26 @@ public abstract class ActionPhaseDisplay extends StatusBarPhaseDisplay {
             butSkipTurn.setEnabled(true);
         }
 
-        if (clientgui.getBoardView().turnDetailsOverlay != null) {
-            clientgui.getBoardView().turnDetailsOverlay.setLines(turnDetails);
+        TurnDetailsOverlay turnDetailsOverlay = clientgui.getBoardView().getTurnDetailsOverlay();
+        if (turnDetailsOverlay != null) {
+            turnDetailsOverlay.setLines(turnDetails);
         }
     }
 
     private void adaptToGUIScale() {
-        butSkipTurn.setPreferredSize(new Dimension(UIUtil.scaleForGUI(DONE_BUTTON_WIDTH), MIN_BUTTON_SIZE.height * 1));
+        butSkipTurn.setPreferredSize(new Dimension(UIUtil.scaleForGUI(DONE_BUTTON_WIDTH), MIN_BUTTON_SIZE.height));
     }
+
+    /**
+     * @return The currently selected entity, if any, or null. A null check is **always** required, as displays
+     * are active when it's not the player's turn and when the setting to not auto-select a unit for the
+     * player is active, no unit may be selected even in a player's turn.
+     * Note that this is not necessarily equal to the currently *viewed* unit in the unit display.
+     *
+     * @see ClientGUI#getDisplayedUnit()
+     */
+    protected final Entity ce() {
+        return clientgui.getClient().getGame().getEntity(currentEntity);
+    }
+
 }

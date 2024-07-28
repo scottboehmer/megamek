@@ -66,7 +66,7 @@ public class ConvFighter extends AeroSpaceFighter {
 
     @Override
     public int getFuelUsed(int thrust) {
-        if (!hasEngine() || getEngine().isSolar()) {
+        if (!hasEngine() || !requiresFuel()) {
             return 0;
         }
         int overThrust = Math.max(thrust - getWalkMP(), 0);
@@ -130,5 +130,10 @@ public class ConvFighter extends AeroSpaceFighter {
     @Override
     public long getEntityType() {
         return Entity.ETYPE_AERO | Entity.ETYPE_CONV_FIGHTER;
+    }
+
+    @Override
+    public int getGenericBattleValue() {
+        return (int) Math.round(Math.exp(2.943 + 0.795*Math.log(getWeight())));
     }
 }

@@ -111,7 +111,8 @@ public class OffBoardTargetOverlay implements IDisplayable {
         for (Entity entity : getCurrentGame().getAllOffboardEnemyEntities(getCurrentPlayer())) {
             if (entity.isOffBoardObserved(getCurrentPlayer().getTeam()) &&
                     (entity.getOffBoardDirection() == direction) &&
-                        (targetingPhaseDisplay.ce().isOffBoard() ||
+                        (targetingPhaseDisplay.ce() != null && 
+                        		targetingPhaseDisplay.ce().isOffBoard() ||
                         weaponFacingInDirection(selectedArtilleryWeapon, direction))) {
                 return true;
             }
@@ -207,28 +208,28 @@ public class OffBoardTargetOverlay implements IDisplayable {
         if (showDirectionalElement(OffBoardDirection.NORTH, selectedArtilleryWeapon)) {
             button = generateRectangle(OffBoardDirection.NORTH, rect);
             buttons.put(OffBoardDirection.NORTH, button);
-            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView());
+            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView().getPanel());
         }
 
         // draw left icon, if necessary
         if (showDirectionalElement(OffBoardDirection.WEST, selectedArtilleryWeapon)) {
             button = generateRectangle(OffBoardDirection.WEST, rect);
             buttons.put(OffBoardDirection.WEST, button);
-            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView());
+            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView().getPanel());
         }
 
         // draw bottom icon, if necessary
         if (showDirectionalElement(OffBoardDirection.SOUTH, selectedArtilleryWeapon)) {
             button = generateRectangle(OffBoardDirection.SOUTH, rect);
             buttons.put(OffBoardDirection.SOUTH, button);
-            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView());
+            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView().getPanel());
         }
 
         // draw right icon, if necessary. This one is hairy because of the unit overview pane
         if (showDirectionalElement(OffBoardDirection.EAST, selectedArtilleryWeapon)) {
             button = generateRectangle(OffBoardDirection.EAST, rect);
             buttons.put(OffBoardDirection.EAST, button);
-            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView());
+            graph.drawImage(offBoardTargetImage, button.x, button.y, button.width, button.height, clientgui.getBoardView().getPanel());
         }
 
         // be nice, leave the color as we found it

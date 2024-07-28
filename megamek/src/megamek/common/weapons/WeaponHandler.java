@@ -16,10 +16,13 @@
 package megamek.common.weapons;
 
 import megamek.common.*;
+import megamek.common.actions.ArtilleryAttackAction;
 import megamek.common.actions.TeleMissileAttackAction;
 import megamek.common.actions.WeaponAttackAction;
 import megamek.common.enums.AimingMode;
 import megamek.common.enums.GamePhase;
+import megamek.common.equipment.AmmoMounted;
+import megamek.common.equipment.WeaponMounted;
 import megamek.common.options.OptionsConstants;
 import megamek.common.planetaryconditions.PlanetaryConditions;
 import megamek.server.GameManager;
@@ -33,6 +36,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Vector;
 
 /**
@@ -59,7 +63,7 @@ public class WeaponHandler implements AttackHandler, Serializable {
     protected WeaponType wtype;
     protected AmmoType atype;
     protected String typeName;
-    protected Mounted weapon;
+    protected WeaponMounted weapon;
     protected Entity ae;
     protected Targetable target;
     protected int subjectId;
@@ -137,9 +141,8 @@ public class WeaponHandler implements AttackHandler, Serializable {
                     AttackHandler ah = i.nextElement();
                     WeaponAttackAction prevAttack = ah.getWaa();
                     if (prevAttack.getEntityId() == e.getId()) {
-                        Mounted prevWeapon = e.getEquipment(prevAttack.getWeaponId());
-                        for (int wId : prevWeapon.getBayWeapons()) {
-                            Mounted bayW = e.getEquipment(wId);
+                        WeaponMounted prevWeapon = (WeaponMounted) e.getEquipment(prevAttack.getWeaponId());
+                        for (WeaponMounted bayW : prevWeapon.getBayWeapons()) {
                             totalheat += bayW.getCurrentHeat();
                         }
                     }
@@ -149,7 +152,7 @@ public class WeaponHandler implements AttackHandler, Serializable {
                     AttackHandler ah = i.nextElement();
                     WeaponAttackAction prevAttack = ah.getWaa();
                     if (prevAttack.getEntityId() == e.getId()) {
-                        Mounted prevWeapon = e.getEquipment(prevAttack.getWeaponId());
+                        Mounted<?> prevWeapon = e.getEquipment(prevAttack.getWeaponId());
                         totalheat += prevWeapon.getCurrentHeat();
                     }
                 }
@@ -190,7 +193,7 @@ public class WeaponHandler implements AttackHandler, Serializable {
      * See also TeleMissileAttackAction, which contains a modified version of this to work against
      * a TeleMissile entity in the physical phase
      */
-    protected boolean canEngageCapitalMissile(Mounted counter) {
+    protected boolean canEngageCapitalMissile(WeaponMounted counter) {
         return true;
     }
 
@@ -232,11 +235,11 @@ public class WeaponHandler implements AttackHandler, Serializable {
         double pdAV = 0;
         Entity entityTarget = (Entity) target;
         // any AMS bay attacks by the target?
-        ArrayList<Mounted> lCounters = waa.getCounterEquipment();
+        List<WeaponMounted> lCounters = waa.getCounterEquipment();
         // We need to know how much heat has been assigned to offensive weapons fire by the defender this round
         int weaponHeat = getLargeCraftHeat(entityTarget) + entityTarget.heatBuildup;
         if (null != lCounters) {
-            for (Mounted counter : lCounters) {
+            for (WeaponMounted counter : lCounters) {
                 // Point defenses only fire vs attacks against the arc they protect
                 Entity pdEnt = counter.getEntity();
                 boolean isInArc;
@@ -254,8 +257,7 @@ public class WeaponHandler implements AttackHandler, Serializable {
                     continue;
                 }
                 // Point defenses can't fire if they're not ready for any other reason
-                if (!(counter.getType() instanceof WeaponType)
-                         || !counter.isReady() || counter.isMissing()
+                if (!counter.isReady() || counter.isMissing()
                             // shutdown means no Point defenses
                             || pdEnt.isShutDown()) {
                         continue;
@@ -280,10 +282,9 @@ public class WeaponHandler implements AttackHandler, Serializable {
                 // First, reset the temporary damage counters
                 amsAV = 0;
                 pdAV = 0;
-                for (int wId : counter.getBayWeapons()) {
-                    Mounted bayW = pdEnt.getEquipment(wId);
-                    Mounted bayWAmmo = bayW.getLinked();
-                    WeaponType bayWType = ((WeaponType) bayW.getType());
+                for (WeaponMounted bayW : counter.getBayWeapons()) {
+                    AmmoMounted bayWAmmo = bayW.getLinkedAmmo();
+                    WeaponType bayWType = bayW.getType();
 
                     // build up some heat
                     // First Check to see if we have enough heat capacity to fire
@@ -436,6 +437,12 @@ public class WeaponHandler implements AttackHandler, Serializable {
         gameManager = (GameManager) Server.getServerInstance().getGameManager();
     }
 
+    protected TargetRoll getFireTNRoll() {
+        int targetNumber = (atype == null) ? wtype.getFireTN()
+            : Math.min(wtype.getFireTN(), atype.getFireTN());
+        return new TargetRoll(targetNumber, wtype.getName());
+    }
+
     /**
      * @return a <code>boolean</code> value indicating whether or not this attack
      *         needs further calculating, like a missed shot hitting a building,
@@ -449,9 +456,13 @@ public class WeaponHandler implements AttackHandler, Serializable {
         if ((entityTarget != null)
                 && !entityTarget.isAirborne()
                 && !entityTarget.isAirborneVTOLorWIGE()
-                && ((bldg == null) && (wtype.getFireTN() != TargetRoll.IMPOSSIBLE))) {
+                && ((bldg == null) && (
+                        wtype.getFireTN() != TargetRoll.IMPOSSIBLE
+                        && (atype == null || atype.getFireTN() != TargetRoll.IMPOSSIBLE)
+                )
+        )) {
             gameManager.tryIgniteHex(target.getPosition(), subjectId, false, false,
-                    new TargetRoll(wtype.getFireTN(), wtype.getName()), 3,
+                    getFireTNRoll(), 3,
                     vPhaseReport);
         }
 
@@ -1643,7 +1654,7 @@ public class WeaponHandler implements AttackHandler, Serializable {
             r.newlines = 0;
             vPhaseReport.addElement(r);
         }
-        TargetRoll tn = new TargetRoll(wtype.getFireTN(), wtype.getName());
+        TargetRoll tn = getFireTNRoll();
         if (tn.getValue() != TargetRoll.IMPOSSIBLE) {
             Report.addNewline(vPhaseReport);
             gameManager.tryIgniteHex(target.getPosition(), subjectId, false, false,
@@ -1678,7 +1689,7 @@ public class WeaponHandler implements AttackHandler, Serializable {
         // you do a normal ignition as though for intentional fires
         if ((bldg != null)
                 && gameManager.tryIgniteHex(target.getPosition(), subjectId, false, false,
-                        new TargetRoll(wtype.getFireTN(), wtype.getName()), 5, vPhaseReport)) {
+                        getFireTNRoll(), 5, vPhaseReport)) {
             return;
         }
         Vector<Report> clearReports = gameManager.tryClearHex(target.getPosition(), nDamage, subjectId);
@@ -1754,9 +1765,10 @@ public class WeaponHandler implements AttackHandler, Serializable {
         waa = w;
         game = g;
         ae = game.getEntity(waa.getEntityId());
-        weapon = ae.getEquipment(waa.getWeaponId());
+        weapon = (WeaponMounted) ae.getEquipment(waa.getWeaponId());
         wtype = (WeaponType) weapon.getType();
-        atype = (weapon.getLinked() != null) ? (AmmoType) weapon.getLinked().getType() : null;
+        atype = (weapon.getLinked() != null && weapon.getLinked().getType() instanceof AmmoType)
+                ? (AmmoType) weapon.getLinked().getType() : null;
         typeName = wtype.getInternalName();
         target = game.getTarget(waa.getTargetType(), waa.getTargetId());
         gameManager = m;
@@ -1944,8 +1956,8 @@ public class WeaponHandler implements AttackHandler, Serializable {
             return nDamage;
         }
 
-        weapon = ae.getEquipment(waa.getWeaponId());
-        wtype = (WeaponType) weapon.getType();
+        weapon = ae.getWeapon(waa.getWeaponId());
+        wtype = weapon.getType();
 
         if (!wtype.hasFlag(WeaponType.F_ENERGY)) {
             return nDamage;
@@ -2198,6 +2210,38 @@ public class WeaponHandler implements AttackHandler, Serializable {
             r.subject = ae.getId();
             r.newlines = 0;
             vPhaseReport.addElement(r);
+        }
+    }
+
+    /**
+     * Used by certain artillery handlers to draw drift markers with "hit" graphics if
+     * anything is caught in the blast, or "drift" marker if nothing is damaged.
+     * No-op for direct hits.
+     * @param targetPos
+     * @param finalPos
+     * @param aaa
+     * @param hitIds
+     */
+    protected void handleArtilleryDriftMarker(Coords targetPos, Coords finalPos, ArtilleryAttackAction aaa, Vector<Integer> hitIds) {
+        if (bMissed) {
+            String msg = Messages.getString("ArtilleryMessage.drifted") + " " + targetPos.getBoardNum();
+            final SpecialHexDisplay shd;
+            if (hitIds.isEmpty()) {
+                shd = new SpecialHexDisplay(
+                        SpecialHexDisplay.Type.ARTILLERY_DRIFT, game
+                        .getRoundCount(), game
+                        .getPlayer(aaa.getPlayerId()),
+                        msg
+                );
+            } else {
+                shd = new SpecialHexDisplay(
+                        SpecialHexDisplay.Type.ARTILLERY_HIT, game
+                        .getRoundCount(), game
+                        .getPlayer(aaa.getPlayerId()),
+                        msg
+                );
+            }
+            game.getBoard().addSpecialHexDisplay(finalPos, shd);
         }
     }
 }

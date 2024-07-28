@@ -15,9 +15,7 @@ package megamek.client.ui.swing;
 
 import megamek.client.event.BoardViewEvent;
 import megamek.client.ui.Messages;
-import megamek.client.ui.swing.util.CommandAction;
 import megamek.client.ui.swing.util.KeyCommandBind;
-import megamek.client.ui.swing.util.MegaMekController;
 import megamek.client.ui.swing.widget.MegamekButton;
 import megamek.client.ui.swing.widget.SkinSpecification;
 import megamek.common.*;
@@ -94,12 +92,15 @@ public class SelectArtyAutoHitHexDisplay extends StatusBarPhaseDisplay {
 
     private int startingHexes;
 
+    protected final ClientGUI clientgui;
+
     /**
      * Creates and lays out a new select designated hex phase display for the specified
      * clientgui.getClient().
      */
     public SelectArtyAutoHitHexDisplay(ClientGUI clientgui) {
         super(clientgui);
+        this.clientgui = clientgui;
         clientgui.getClient().getGame().addGameListener(this);
 
         clientgui.getBoardView().addBoardViewListener(this);
@@ -355,58 +356,19 @@ public class SelectArtyAutoHitHexDisplay extends StatusBarPhaseDisplay {
         buttons.get(ArtyAutoHitCommand.SET_HIT_HEX).setEnabled(nbr > 0);
     }
 
-    /**
-     * Stop just ignoring events and actually stop listening to them.
-     */
     @Override
     public void removeAllListeners() {
         clientgui.getClient().getGame().removeGameListener(this);
         clientgui.getBoardView().removeBoardViewListener(this);
     }
 
-    /**
-     * Register all of the <code>CommandAction</code>s for this panel display.
-     */
+    private void toggleShowDeployment() {
+        clientgui.getBoardView().showAllDeployment = !clientgui.getBoardView().showAllDeployment;
+        clientgui.getBoardView().getPanel().repaint();
+    }
+
     private void registerKeyCommands() {
-        MegaMekController controller = clientgui.controller;
-
-        final StatusBarPhaseDisplay display = this;
-        // Register the action for AUTO_ARTY_DEPLOYMENT_ZONE
-        controller.registerCommandAction(KeyCommandBind.AUTO_ARTY_DEPLOYMENT_ZONE.cmd,
-                new CommandAction() {
-
-            @Override
-            public boolean shouldPerformAction() {
-                if (!clientgui.getClient().isMyTurn()
-                        || clientgui.getBoardView().getChatterBoxActive()
-                        || display.isIgnoringEvents()
-                        || !display.isVisible()) {
-                    return false;
-                } else {
-                    return true;
-                }
-            }
-
-            private boolean thisKeyPressed = false;
-
-            @Override
-            public void performAction() {
-                if (!thisKeyPressed) {
-                    clientgui.getBoardView().showAllDeployment = !clientgui.getBoardView().showAllDeployment;
-                    clientgui.getBoardView().repaint();
-                }
-                thisKeyPressed = true;
-            }
-
-            @Override
-            public void releaseAction() {
-                thisKeyPressed = false;
-            }
-
-            @Override
-            public boolean hasReleaseAction() {
-                return true;
-            }
-        });
+        clientgui.controller.registerCommandAction(KeyCommandBind.AUTO_ARTY_DEPLOYMENT_ZONE,
+                this, this::toggleShowDeployment);
     }
 }

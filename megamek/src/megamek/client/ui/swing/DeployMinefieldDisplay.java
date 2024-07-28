@@ -92,12 +92,15 @@ public class DeployMinefieldDisplay extends StatusBarPhaseDisplay {
     private Player p;
     private Vector<Minefield> deployedMinefields = new Vector<>();
 
+    protected final ClientGUI clientgui;
+
     /**
      * Creates and lays out a new deployment phase display for the specified
      * clientgui.getClient().
      */
     public DeployMinefieldDisplay(ClientGUI clientgui) {
         super(clientgui);
+        this.clientgui = clientgui;
         clientgui.getClient().getGame().addGameListener(this);
 
         setupStatusBar(Messages
@@ -518,9 +521,6 @@ public class DeployMinefieldDisplay extends StatusBarPhaseDisplay {
         buttons.get(DeployMinefieldCommand.REMOVE_MINES).setEnabled(enable);
     }
 
-    /**
-     * Stop just ignoring events and actually stop listening to them.
-     */
     @Override
     public void removeAllListeners() {
         clientgui.getClient().getGame().removeGameListener(this);

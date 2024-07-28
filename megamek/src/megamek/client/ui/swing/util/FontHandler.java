@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 - The MegaMek Team. All Rights Reserved.
+ * Copyright (c) 2023-2024 - The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMek.
  *
@@ -21,7 +21,7 @@ package megamek.client.ui.swing.util;
 import megamek.MMConstants;
 import megamek.client.ui.swing.CommonSettingsDialog;
 import megamek.common.preference.PreferenceManager;
-import org.apache.logging.log4j.LogManager;
+import megamek.logging.MMLogger;
 
 import java.awt.*;
 import java.io.File;
@@ -37,6 +37,8 @@ import java.util.List;
  */
 public final class FontHandler {
 
+    private static final MMLogger logger = MMLogger.create(FontHandler.class);
+
     private static final FontHandler instance = new FontHandler();
     private static final String SYMBOL_TEST_STRING = "abcdefgnzABCDEFGNZ1234567890/()[]";
 
@@ -50,9 +52,7 @@ public final class FontHandler {
      * read from the GraphicsEnvironment once and then not updated while the application is running.
      */
     public static List<String> getAvailableNonSymbolFonts() {
-        if (!instance.initialized) {
-            initialize();
-        }
+        ensureInitialization();
         return instance.nonSymbolFontNames;
     }
 
@@ -61,9 +61,7 @@ public final class FontHandler {
      * then not updated while the application is running.
      */
     public static List<String> getAvailableFonts() {
-        if (!instance.initialized) {
-            initialize();
-        }
+        ensureInitialization();
         return instance.allFontNames;
     }
 
@@ -79,17 +77,41 @@ public final class FontHandler {
         }
     }
 
+    /**
+     * @return A standardized symbols font ("Material Symbols"). This font has a load of useful
+     * icons. They are centered in a way that makes them less aesthetic to use within normal text, so
+     * their primary use is for standalone symbols like marking hexes. Look for the symbol unicodes on
+     * the linked website.
+     *
+     * @see <a href="https://fonts.google.com/icons">(Google) Material Symbols</a>
+     */
+    public static Font symbolFont() {
+        ensureInitialization();
+        return new Font("Material Symbols Rounded", Font.PLAIN, 12);
+    }
+
+    /**
+     * @return The Noto Sans font which is included with the distribution and can be safely used everywhere.
+     * It is advertised to have a wide language support.
+     *
+     * @see <a href="https://fonts.google.com/icons">(Google) Material Symbols</a>
+     */
+    public static Font notoFont() {
+        ensureInitialization();
+        return new Font("Noto Sans", Font.PLAIN, 14);
+    }
+
     private void initializeFonts() {
-        LogManager.getLogger().info("Loading fonts from " + MMConstants.FONT_DIRECTORY);
-        parseFontsInDirectory(new File(MMConstants.FONT_DIRECTORY));
+        logger.info("Loading fonts from " + MMConstants.FONT_DIRECTORY);
+        parseFontsInDirectory(MMConstants.FONT_DIRECTORY);
 
         String userDir = PreferenceManager.getClientPreferences().getUserDir();
         if (!userDir.isBlank()) {
-            LogManager.getLogger().info("Loading fonts from " + userDir);
+            logger.info("Loading fonts from {}", userDir);
             parseFontsInDirectory(userDir);
         }
 
-        LogManager.getLogger().info("Loading fonts from Java's GraphicsEnvironment");
+        logger.info("Loading fonts from Java's GraphicsEnvironment");
         for (String fontName : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
             allFontNames.add(fontName);
             Font font = Font.decode(fontName);
@@ -117,12 +139,23 @@ public final class FontHandler {
      * @param directory the directory to parse
      */
     public static void parseFontsInDirectory(final File directory) {
+        List<String> errors = new ArrayList<>();
         for (String fontFile : CommonSettingsDialog.filteredFilesWithSubDirs(directory, MMConstants.TRUETYPE_FONT)) {
             try (InputStream fis = new FileInputStream(fontFile)) {
-                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(Font.createFont(Font.TRUETYPE_FONT, fis));
+                Font font = Font.createFont(Font.TRUETYPE_FONT, fis);
+                if (!GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font)) {
+                    errors.add("    Failed to register font " + fontFile);
+                }
             } catch (Exception ex) {
-                LogManager.getLogger().error("Failed to parse font", ex);
+                errors.add("    Failed to read font " + fontFile);
             }
+        }
+        logger.warn("Could not register some fonts\n{}", String.join("\n", errors));
+    }
+
+    private static void ensureInitialization() {
+        if (!instance.initialized) {
+            initialize();
         }
     }
 }

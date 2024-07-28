@@ -15,16 +15,13 @@
 package megamek.common;
 
 import java.math.BigInteger;
+import java.util.List;
+import java.util.Set;
 
 import megamek.common.alphaStrike.AlphaStrikeElement;
-import megamek.common.weapons.AlamoMissileWeapon;
-import megamek.common.weapons.AltitudeBombAttack;
-import megamek.common.weapons.DiveBombAttack;
-import megamek.common.weapons.LegAttack;
-import megamek.common.weapons.SpaceBombAttack;
-import megamek.common.weapons.StopSwarmAttack;
-import megamek.common.weapons.SwarmAttack;
-import megamek.common.weapons.SwarmWeaponAttack;
+import megamek.common.equipment.AmmoMounted;
+import megamek.common.equipment.WeaponMounted;
+import megamek.common.weapons.*;
 import megamek.common.weapons.artillery.*;
 import megamek.common.weapons.autocannons.*;
 import megamek.common.weapons.battlearmor.*;
@@ -414,11 +411,11 @@ public class WeaponType extends EquipmentType {
         } else if (hasFlag(F_FLAMER)) {
             return 4;
         } else if (hasFlag(F_PLASMA)) {
-            return 2;
+            return TargetRoll.AUTOMATIC_SUCCESS;
         } else if (hasFlag(F_PLASMA_MFUK)) {
-            return 2;
+            return TargetRoll.AUTOMATIC_SUCCESS;
         } else if (hasFlag(F_INFERNO)) {
-            return 2;
+            return TargetRoll.AUTOMATIC_SUCCESS;
         } else if (hasFlag(F_INCENDIARY_NEEDLES)) {
             return 6;
         } else if (hasFlag(F_PPC) || hasFlag(F_LASER)) {
@@ -607,30 +604,30 @@ public class WeaponType extends EquipmentType {
         return waterExtremeRange;
     }
 
-    public int getMaxRange(Mounted weapon) {
+    public int getMaxRange(WeaponMounted weapon) {
         if (weapon == null) {
             return getMaxRange();
         }
-        return getMaxRange(weapon, weapon.getLinked());
+        return getMaxRange(weapon, weapon.getLinkedAmmo());
     }
 
     public int getMaxRange() {
         return maxRange;
     }
 
-    public int getMaxRange(Mounted weapon, Mounted ammo) {
-        if (getAmmoType() == AmmoType.T_ATM) {
-            AmmoType ammoType = (AmmoType) ammo.getType();
-            if ((ammoType.getAmmoType() == AmmoType.T_ATM)
-                    && (ammoType.getMunitionType().contains(AmmoType.Munitions.M_EXTENDED_RANGE))) {
-                return RANGE_EXT;
-            } else if ((ammoType.getAmmoType() == AmmoType.T_ATM)
-                    && (ammoType.getMunitionType().contains(AmmoType.Munitions.M_HIGH_EXPLOSIVE))) {
-                return RANGE_SHORT;
+    public int getMaxRange(WeaponMounted weapon, AmmoMounted ammo) {
+        if (weapon.getType().getAtClass() == CLASS_ATM) {
+            AmmoType ammoType = ammo.getType();
+            if (List.of(AmmoType.T_ATM, AmmoType.T_IATM).contains(ammoType.getAmmoType())) {
+                if (ammoType.getMunitionType().contains(AmmoType.Munitions.M_EXTENDED_RANGE)) {
+                    return RANGE_EXT;
+                } else if (ammoType.getMunitionType().contains(AmmoType.Munitions.M_HIGH_EXPLOSIVE)) {
+                    return RANGE_SHORT;
+                }
             }
         }
         if (getAmmoType() == AmmoType.T_MML) {
-            AmmoType ammoType = (AmmoType) ammo.getType();
+            AmmoType ammoType = ammo.getType();
             if (ammoType.hasFlag(AmmoType.F_MML_LRM) || (getAmmoType() == AmmoType.T_LRM_TORPEDO)) {
                 return RANGE_LONG;
             } else {
@@ -1574,21 +1571,6 @@ public class WeaponType extends EquipmentType {
         EquipmentType.addType(new InfantryPulseLaserPistolNWW12());
         EquipmentType.addType(new InfantryPulseLaserPistolRDISunSwarmPulsar());
 
-        EquipmentType.addType(new InfantryLaserPistolAA75L());
-        EquipmentType.addType(new InfantryLaserPistolAWAWilibyMk4LaserPistol());
-        EquipmentType.addType(new InfantryLaserPistolBR25());
-        EquipmentType.addType(new InfantryLaserPistolBrightStarL12());
-        EquipmentType.addType(new InfantryLaserPistolBrightStarL15());
-        EquipmentType.addType(new InfantryLaserPistolBrightStarL7());
-        EquipmentType.addType(new InfantryLaserPistolDarklightIVLaserPistol());
-        EquipmentType.addType(new InfantryLaserPistolKelvin000Lancer3MM());
-        EquipmentType.addType(new InfantryLaserPistolXingShan());
-        EquipmentType.addType(new InfantryLaserPistolXingShanER());
-        EquipmentType.addType(new InfantryPulseLaserPistolMedusaIII());
-        EquipmentType.addType(new InfantryPulseLaserPistolMedusaIV());
-        EquipmentType.addType(new InfantryPulseLaserPistolNWW12());
-        EquipmentType.addType(new InfantryPulseLaserPistolRDISunSwarmPulsar());
-
         // Clan Pistols - Commented out can be considered Obsolete
         EquipmentType.addType(new InfantryPistolClanERLaserPistolWeapon());
         EquipmentType.addType(new InfantryPistolClanGaussPistolWeapon());
@@ -1719,19 +1701,6 @@ public class WeaponType extends EquipmentType {
         EquipmentType.addType(new InfantrySniperRifleRadiumLaserWeapon());
         EquipmentType.addType(new InfantrySniperStalkerWeapon());
         EquipmentType.addType(new InfantrySniperRifleMinolta9000Weapon());
-
-        // Shrapnel Laser Rifles
-        EquipmentType.addType(new InfantryLaserCarbineBrightstarL15());
-        EquipmentType.addType(new InfantryLaserRifleDarkLightCLLight());
-        EquipmentType.addType(new InfantryLaserRifleDWSL5S());
-        EquipmentType.addType(new InfantryLaserRifleScorcherVIBlazerRifle());
-        EquipmentType.addType(new InfantryLaserRifleSyrtisFirebolt12Repaired());
-        EquipmentType.addType(new InfantryLaserRifleSyrtisFirebolt12Unrepaired());
-        EquipmentType.addType(new InfantryLaserRifleWolfBaronSunraker());
-        EquipmentType.addType(new InfantryLaserRifleYangLie());
-        EquipmentType.addType(new InfantryPulseLaserRifleDWSL5C());
-        EquipmentType.addType(new InfantryPulseLaserRifleGaul());
-        EquipmentType.addType(new InfantryPulseLaserRifleTirbuni());
 
         // Shrapnel Laser Rifles
         EquipmentType.addType(new InfantryLaserCarbineBrightstarL15());

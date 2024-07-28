@@ -1,22 +1,24 @@
 /*
-* Copyright (c) 2014-2022 - The MegaMek Team. All Rights Reserved.
-*
-* This program is free software; you can redistribute it and/or modify it under
-* the terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 2 of the License, or (at your option) any later
-* version.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-* FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-* details.
-*/
+ * Copyright (c) 2014-2022 - The MegaMek Team. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ * details.
+ */
 package megamek.common;
 
 import megamek.client.generator.RandomNameGenerator;
 import megamek.codeUtilities.StringUtility;
 import megamek.common.annotations.Nullable;
 import megamek.common.enums.Gender;
+import megamek.common.equipment.AmmoMounted;
+import megamek.common.equipment.WeaponMounted;
 import megamek.common.options.GameOptions;
 import megamek.common.options.OptionsConstants;
 import megamek.common.weapons.infantry.InfantryWeapon;
@@ -117,7 +119,7 @@ public class MULParser {
     private static final String ATTR_CURRENTSIZE = "currentsize";
     public static final String ATTR_EXT_ID = "externalId";
     public static final String ATTR_PICKUP_ID = "pickUpId";
-    private static final String ATTR_CLANPILOT = "clanperson";
+    public static final String ATTR_CLANPILOT = "clanperson";
     public static final String ATTR_NICK = "nick";
     public static final String ATTR_GENDER = "gender";
     public static final String ATTR_CAT_PORTRAIT = "portraitCat";
@@ -129,6 +131,7 @@ public class MULParser {
     public static final String ATTR_PILOTING = "piloting";
     public static final String ATTR_ARTILLERY = "artillery";
     public static final String ATTR_TOUGH = "toughness";
+    public static final String ATTR_FATIGUE = "fatigue";
     public static final String ATTR_INITB = "initB";
     public static final String ATTR_COMMANDB = "commandB";
     public static final String ATTR_HITS = "hits";
@@ -615,7 +618,7 @@ public class MULParser {
                 || chassis.equals(EjectedCrew.SPACE_EJECT_NAME)) {
             return new EjectedCrew();
         } else if (chassis.equals(EjectedCrew.PILOT_EJECT_NAME)
-                    || chassis.equals(EjectedCrew.MW_EJECT_NAME)) {
+                || chassis.equals(EjectedCrew.MW_EJECT_NAME)) {
             return new MechWarrior();
         } else if (chassis.equals(EscapePods.POD_EJECT_NAME)) {
             return new EscapePods();
@@ -1317,6 +1320,16 @@ public class MULParser {
                 }
             }
 
+            // fatigue
+            int fatigueVal = 0;
+
+            if ((options != null) && options.booleanOption(OptionsConstants.ADVANCED_TACOPS_FATIGUE)
+                    && (attributes.containsKey(ATTR_FATIGUE)) && !attributes.get(ATTR_FATIGUE).isBlank()) {
+                try {
+                    fatigueVal = Integer.parseInt(attributes.get(ATTR_FATIGUE));
+                } catch (NumberFormatException ignored) {}
+            }
+
             int artVal = gunVal;
             if ((options != null) && options.booleanOption(OptionsConstants.RPG_ARTILLERY_SKILL)
                     && (attributes.containsKey(ATTR_ARTILLERY)) && !attributes.get(ATTR_ARTILLERY).isBlank()) {
@@ -1339,6 +1352,7 @@ public class MULParser {
             crew.setArtillery(artVal, slot);
             crew.setPiloting(pilotVal, slot);
             crew.setToughness(toughVal, slot);
+            crew.setCrewFatigue(fatigueVal, slot);
 
             if ((attributes.containsKey(ATTR_NAME)) && !attributes.get(ATTR_NAME).isBlank()) {
                 crew.setName(attributes.get(ATTR_NAME), slot);
@@ -1441,7 +1455,7 @@ public class MULParser {
 
             if (loc < 0) {
                 warning.append(
-                        "Found invalid index value for location: ")
+                                "Found invalid index value for location: ")
                         .append(index).append(".\n");
                 return;
             } else if (loc >= entity.locations()) {
@@ -1500,7 +1514,7 @@ public class MULParser {
      * @param loc
      */
     private void parseArmor(Element armorTag, Entity entity, int loc) {
-     // Look for the element's attributes.
+        // Look for the element's attributes.
         String points = armorTag.getAttribute(ATTR_POINTS);
         String type = armorTag.getAttribute(ATTR_TYPE);
 
@@ -1624,13 +1638,13 @@ public class MULParser {
                     EquipmentType newLoad = EquipmentType.get(type);
                     if (newLoad instanceof AmmoType) {
                         int counter = -1;
-                        Iterator<Mounted> ammo = entity.getAmmo()
+                        Iterator<AmmoMounted> ammo = entity.getAmmo()
                                 .iterator();
                         while (ammo.hasNext()
                                 && (counter < locAmmoCount)) {
 
                             // Is this mounted in the current location?
-                            Mounted mounted = ammo.next();
+                            AmmoMounted mounted = ammo.next();
                             if (mounted.getLocation() == loc) {
 
                                 // Increment the loop counter.
@@ -1657,8 +1671,8 @@ public class MULParser {
                                     if (shots.equals(VALUE_NA)) {
                                         shotsVal = IArmorState.ARMOR_NA;
                                         warning.append(
-                                                "Expected to find number of " +
-                                                "shots for ")
+                                                        "Expected to find number of " +
+                                                                "shots for ")
                                                 .append(type)
                                                 .append(", but found ")
                                                 .append(shots)
@@ -1666,8 +1680,8 @@ public class MULParser {
                                     } else if ((shotsVal < 0)
                                             || (shotsVal > 200)) {
                                         warning.append(
-                                                "Found invalid shots value " +
-                                                "for slot: ")
+                                                        "Found invalid shots value " +
+                                                                "for slot: ")
                                                 .append(shots)
                                                 .append(".\n");
                                     } else {
@@ -1805,7 +1819,7 @@ public class MULParser {
                 mounted.setRapidfire(Boolean.parseBoolean(rfmg));
 
                 // Is the mounted a type of ammo?
-                if (mounted.getType() instanceof AmmoType) {
+                if (mounted instanceof AmmoMounted) {
                     // Get the saved ammo load.
                     EquipmentType newLoad = EquipmentType.get(type);
                     if (newLoad instanceof AmmoType) {
@@ -1819,35 +1833,35 @@ public class MULParser {
                         if (shots.equals(VALUE_NA)) {
                             shotsVal = IArmorState.ARMOR_NA;
                             warning.append(
-                                    "Expected to find number of shots for ")
+                                            "Expected to find number of shots for ")
                                     .append(type)
                                     .append(", but found ")
                                     .append(shots)
                                     .append(" instead.\n");
                         } else if ((shotsVal < 0) || (shotsVal > 200)) {
                             warning.append(
-                                    "Found invalid shots value for slot: ")
+                                            "Found invalid shots value for slot: ")
                                     .append(shots).append(".\n");
                         } else {
 
                             // Change to the saved ammo type and shots.
-                            mounted.changeAmmoType((AmmoType) newLoad);
+                            ((AmmoMounted) mounted).changeAmmoType((AmmoType) newLoad);
                             mounted.setShotsLeft(shotsVal);
 
                         } // End have-good-shots-value
                         try {
                             double capVal = Double.parseDouble(capacity);
-                            mounted.setAmmoCapacity(capVal);
+                            ((AmmoMounted) mounted).setAmmoCapacity(capVal);
                         } catch (NumberFormatException excep) {
                             // Handled by the next if test.
                         }
                         if (capacity.equals(VALUE_NA)) {
                             if (entity.hasETypeFlag(Entity.ETYPE_BATTLEARMOR)
                                     || entity.hasETypeFlag(Entity.ETYPE_PROTOMECH)) {
-                                mounted.setAmmoCapacity(mounted.getOriginalShots()
-                                         * ((AmmoType) mounted.getType()).getKgPerShot() * 1000);
+                                ((AmmoMounted) mounted).setAmmoCapacity(mounted.getOriginalShots()
+                                        * ((AmmoType) mounted.getType()).getKgPerShot() * 1000);
                             } else {
-                                mounted.setAmmoCapacity(mounted.getOriginalShots()
+                                ((AmmoMounted) mounted).setAmmoCapacity(mounted.getOriginalShots()
                                         * mounted.getTonnage()
                                         / ((AmmoType) mounted.getType()).getShots());
                             }
@@ -1893,8 +1907,7 @@ public class MULParser {
                     // Make sure munition is a type of ammo.
                     if (munType instanceof AmmoType) {
                         // Change to the saved munition type.
-                        mounted.getLinked().changeAmmoType(
-                                (AmmoType) munType);
+                        ((AmmoMounted) mounted.getLinked()).changeAmmoType((AmmoType) munType);
                     } else {
                         // Bad XML equipment.
                         warning.append("XML file expects")
@@ -2166,7 +2179,7 @@ public class MULParser {
             warning.append("Could not find index for bay.\n");
             return;
         } else {
-        // Try to get a good index value.
+            // Try to get a good index value.
             bay = -1;
             try {
                 bay = Integer.parseInt(index);
@@ -2179,9 +2192,9 @@ public class MULParser {
                 return;
             } else if (entity.getBayById(bay) == null) {
                 warning.append("The entity, ")
-                    .append(entity.getShortName())
-                    .append(" does not have a bay at index: ")
-                    .append(bay).append(".\n");
+                        .append(entity.getShortName())
+                        .append(" does not have a bay at index: ")
+                        .append(bay).append(".\n");
                 return;
             }
         }
@@ -2665,9 +2678,9 @@ public class MULParser {
         // 3: add the ammo to a crit slot on the bay's location
 
         int bayCritIndex = Integer.parseInt(bayIndex);
-        Mounted bay = entity.getCritical(loc, bayCritIndex - 1).getMount();
+        WeaponMounted bay = (WeaponMounted) entity.getCritical(loc, bayCritIndex - 1).getMount();
 
-        Mounted ammo = new Mounted(entity, AmmoType.get(type));
+        Mounted<?> ammo = Mounted.createMounted(entity, AmmoType.get(type));
 
         try {
             entity.addEquipment(ammo, loc, bay.isRearMounted());

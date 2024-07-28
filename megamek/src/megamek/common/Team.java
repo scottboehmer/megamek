@@ -19,6 +19,7 @@
  */
 package megamek.common;
 
+import megamek.client.ratgenerator.FactionRecord;
 import megamek.common.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public final class Team extends TurnOrdered {
 
     private final List<Player> players = new ArrayList<>();
     private final int id;
+    private String faction = FactionRecord.IS_GENERAL_KEY;
 
     public Team(int newID) {
         id = newID;
@@ -176,7 +178,7 @@ public final class Team extends TurnOrdered {
     public int getSmallCraftTurns() {
         return players.stream().mapToInt(Player::getSmallCraftTurns).sum();
     }
-    
+
     @Override
     public int getTeleMissileTurns() {
         return players.stream().mapToInt(Player::getTeleMissileTurns).sum();
@@ -199,12 +201,12 @@ public final class Team extends TurnOrdered {
         final Team other = (Team) object;
         return (id == other.id) && Objects.equals(players, other.players);
     }
-    
+
     @Override
     public int hashCode() {
         return Objects.hash(id, players);
     }
-    
+
     @Override
     public String toString() {
         return (getId() == Player.TEAM_NONE) ? "No Team" : "Team " + getId();
@@ -214,18 +216,18 @@ public final class Team extends TurnOrdered {
     public int getTotalInitBonus(boolean bInitiativeCompensationBonus) {
         int dynamicBonus = Integer.MIN_VALUE;
         int constantBonus = Integer.MIN_VALUE;
-        
+
         for (Player player : players) {
             dynamicBonus = Math.max(dynamicBonus, player.getTurnInitBonus());
             dynamicBonus = Math.max(dynamicBonus, player.getCommandBonus());
-            
+
             // this is a special case: it's an arbitrary bonus associated with a player
             constantBonus = Math.max(constantBonus, player.getConstantInitBonus());
         }
-        
+
         return constantBonus + dynamicBonus + getInitCompensationBonus(bInitiativeCompensationBonus);
     }
-    
+
     @Override
     public int getInitCompensationBonus() {
         return getInitCompensationBonus(true);
@@ -242,5 +244,32 @@ public final class Team extends TurnOrdered {
     @Override
     public void setInitCompensationBonus(int initCompBonus) {
         players.forEach(p -> p.setInitCompensationBonus(initCompBonus));
+    }
+
+    public void setFaction(String fac) {
+        faction = fac;
+    }
+
+    public String getFaction() {
+        return faction;
+    }
+
+    /**
+     * Determine if another team is an enemy of this team
+     * @param t
+     * @return
+     */
+    public boolean isEnemyOf(Team t) {
+        boolean enemy = true;
+        if (t.equals(this)) {
+            enemy = false;
+        } else if (t.isObserverTeam()) {
+            enemy = false;
+        } else if (players.isEmpty()) {
+            enemy = false;
+        } else if (t.players().stream().noneMatch(p -> p.isEnemyOf(players.get(0)))) {
+            enemy = false;
+        }
+        return enemy;
     }
 }

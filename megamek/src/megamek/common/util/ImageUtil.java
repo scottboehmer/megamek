@@ -22,9 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Hashtable;
+import java.util.*;
 import java.util.List;
 
 import megamek.MMConstants;
@@ -488,7 +486,7 @@ public final class ImageUtil {
     /**
      * creates a ? image, used when units are hidden in double blind
      */
-    public static void createDoubleBlindHiddenImage(Hashtable<Integer, String> imgCache) {
+    public static void createDoubleBlindHiddenImage(Map<Integer, String> imgCache) {
         BufferedImage image = new BufferedImage(56, 48, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         UIUtil.setHighQualityRendering(graphics);
@@ -502,5 +500,36 @@ public final class ImageUtil {
         String base64Text = base64TextEncodeImage(image);
         String img = "<img src='data:image/png;base64," + base64Text + "'>";
         imgCache.put(Report.HIDDEN_ENTITY_NUM, img);
+    }
+
+    /**
+     * Returns a square normalized Kernel for a Gaussian Blur. The Kernel is has width x width elements.
+     * Sigma gives its Gauss sharpness. A high sigma of e.g. 1000 returns a flat Kernel of equal elements
+     * (= 1 / width ^ 2); sigma should not be smaller than about 0.2 (will lead to an exception).
+     * Normal sigma values are in the area of 1 to 5.
+     *
+     * @param width The length and height of the Kernel
+     * @param sigma The extent of the Gaussian
+     * @return A Kernel
+     * @see ConvolveOp
+     */
+    public static Kernel getGaussKernel(int width, float sigma) {
+        float[] data = new float[width * width];
+        float mean = width / 2f;
+        float sum = 0;
+        for (int x = 0; x < width; ++x) {
+            for (int y = 0; y < width; ++y) {
+                float value = (float) (Math.exp(-0.5 * (Math.pow((x - mean) / sigma, 2.0) + Math.pow((y - mean) / sigma, 2.0)))
+                        / (2 * Math.PI * sigma * sigma));
+                data[y * width + x] = value;
+                sum += value;
+            }
+        }
+
+        // Normalize the kernel
+        for (int i = 0; i < width * width; i++) {
+            data[i] /= sum;
+        }
+        return new Kernel(width, width, data);
     }
 }

@@ -23,7 +23,6 @@ import megamek.common.enums.MPBoosters;
 import megamek.common.options.OptionsConstants;
 import megamek.common.pathfinder.CachedEntityState;
 import megamek.common.planetaryconditions.Atmosphere;
-import megamek.common.planetaryconditions.Light;
 import megamek.common.planetaryconditions.PlanetaryConditions;
 import org.apache.logging.log4j.LogManager;
 
@@ -1922,7 +1921,7 @@ public class MoveStep implements Serializable {
 
             // check the fuel requirements
             if (game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_FUEL_CONSUMPTION)
-                    && entity.hasEngine() && !entity.getEngine().isSolar()) {
+                    && entity.hasEngine() && a.requiresFuel()) {
                 int fuelUsed = mpUsed + Math.max(mpUsed - cachedEntityState.getWalkMP(), 0);
                 if (fuelUsed > a.getCurrentFuel()) {
                     return;
@@ -3008,11 +3007,16 @@ public class MoveStep implements Serializable {
                 default:
             }
 
-            // Light
+            // Light TO:AR 6th ed. p. 34
             if (!entity.isNightwalker()) {
                 switch (conditions.getLight()) {
                     case FULL_MOON:
                         if (!isLightSpecialist && !en.isUsingSearchlight()) {
+                            mp += 1;
+                        }
+                        break;
+                    case GLARE:
+                        if (!isLightSpecialist) {
                             mp += 1;
                         }
                         break;
@@ -3021,6 +3025,13 @@ public class MoveStep implements Serializable {
                             break;
                         }
 
+                        if (!isLightSpecialist) {
+                            mp += 2;
+                        } else {
+                            mp += 1;
+                        }
+                        break;
+                    case SOLAR_FLARE:
                         if (!isLightSpecialist) {
                             mp += 2;
                         } else {
@@ -3036,7 +3047,7 @@ public class MoveStep implements Serializable {
                         break;
                     default:
                 }
-            } else if (conditions.getLight().isDarkerThan(Light.DUSK)) {
+            } else if (conditions.getLight().isFullMoonOrGlareOrMoonlessOrSolarFlareOrPitchBack()) {
                 setRunProhibited(true);
             }
         }
@@ -3983,6 +3994,9 @@ public class MoveStep implements Serializable {
 
     public boolean dueFreeTurn() {
         Entity en = getEntity();
+        if (en.isSpaceborne()) {
+            return false;
+        }
         int straight = getNStraight();
         int vel = getVelocity();
         int thresh = 99;

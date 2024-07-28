@@ -44,6 +44,22 @@ public class BoardUtilities {
      * @param height the height of each individual board, before the combine
      * @param sheetWidth how many sheets wide the combined map is
      * @param sheetHeight how many sheets tall the combined map is
+     * @param boards a list of the boards to be combined
+     * @param isRotated Flag that determines if any of the maps are rotated
+     * @param medium Sets the medium the map is in (ie., ground, atmo, space)
+     */
+    public static Board combine(int width, int height, int sheetWidth, int sheetHeight,
+                                List<Board> boards, List<Boolean> isRotated, int medium) {
+        return combine(width, height, sheetWidth, sheetHeight, boards.toArray(new Board[0]), isRotated, medium);
+    }
+
+    /**
+     * Combines one or more boards into one huge megaboard!
+     *
+     * @param width the width of each individual board, before the combine
+     * @param height the height of each individual board, before the combine
+     * @param sheetWidth how many sheets wide the combined map is
+     * @param sheetHeight how many sheets tall the combined map is
      * @param boards an array of the boards to be combined
      * @param isRotated Flag that determines if any of the maps are rotated
      * @param medium Sets the medium the map is in (ie., ground, atmo, space)
@@ -56,7 +72,6 @@ public class BoardUtilities {
 
         Hex[] resultData = new Hex[resultWidth * resultHeight];
         boolean roadsAutoExit = true;
-        boolean boardListContainsBackground = false;
         // Copy the data from the sub-boards.
         for (int i = 0; i < sheetHeight; i++) {
             for (int j = 0; j < sheetWidth; j++) {
@@ -73,7 +88,6 @@ public class BoardUtilities {
                 if (!boards[i * sheetWidth + j].getRoadsAutoExit()) {
                     roadsAutoExit = false;
                 }
-                boardListContainsBackground |= b.hasBoardBackground();
             }
         }
 
@@ -81,17 +95,6 @@ public class BoardUtilities {
         result.setRoadsAutoExit(roadsAutoExit);
         // Initialize all hexes - buildings, exits, etc
         result.newData(resultWidth, resultHeight, resultData, null);
-        if (boardListContainsBackground) {
-            result.setNumBoardsHeight(sheetHeight);
-            result.setNumBoardsWidth(sheetWidth);
-            result.setSubBoardHeight(height);
-            result.setSubBoardWidth(width);
-            ListIterator<Boolean> flipIt = isRotated.listIterator();
-            for (Board b : boards) {
-                boolean flip = flipIt.next();
-                result.addBackgroundPath(b.getBackgroundPath(), flip, flip);
-            }
-        }
 
         // assuming that the map setting and board types match
         result.setType(medium);
