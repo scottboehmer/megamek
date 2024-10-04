@@ -13,8 +13,6 @@
  */
 package megamek.common;
 
-import org.apache.logging.log4j.LogManager;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
@@ -54,28 +52,26 @@ public class GameReports implements FullGameReport<Report> {
 
     @Override
     public List<Report> get(int round) {
-        if (round == 0) {
-            // Round 0 (deployment) reports are lumped in with round one.
-            round = 1;
-        }
+        // Rounds prior to 1 (initial deployment) are lumped in with round 1
+        round = Math.max(1, round);
         if (hasReportsforRound(round)) {
             return reports.get(round - 1);
+        } else {
+            return new ArrayList<>();
         }
-
-        LogManager.getLogger().error("GameReports.get() was asked for reports of round {} which it does not have",
-                round, new RuntimeException());
-        return null;
     }
 
     /**
-     *  Returns the full set of reports. Note that the lists are fully modifiable and no copies.
+     * Returns the full set of reports. Note that the lists are fully modifiable and
+     * no copies.
      */
     public List<List<Report>> get() {
         return reports;
     }
 
     /**
-     * Replaces the entire contents of this FullGameReport with the given List of report lists.
+     * Replaces the entire contents of this FullGameReport with the given List of
+     * report lists.
      *
      * @param v The new contents
      */
