@@ -135,13 +135,18 @@ map:
       # obviously, at least one of newterrain and newlevel must be given
 
 # Optional: game options
-# when not given, user-set options are used
-options:                                    # default: MM's default options
+# when not given, the options from the latest game are used
+options:
   #from: Example_options.xml
-  #fixed: no                                 # default: yes; in this case, the Game Options Dialog is
-                                            # not shown before the scenario starts
-  # Activate options by listing them; the values must be those from OptionsConstants, as used for the game type
-  - double_blind
+  file: Example_options.xml
+  # The file is always loaded first, the following list overrides individual settings
+  on:
+    # Activate options by listing them; the values must be those from OptionsConstants, as used for the game type
+    - double_blind
+    - single_blind_bots
+  off:
+    # Deactivate settings
+    - tacops_fatigue
 
 
 # Planetary Conditions -----------------------------------------------------------------------------------
@@ -210,6 +215,23 @@ factions:
                                               # use slashes
 
     # Units are always an array (use dashes)
+
+    # Victory conditions; they always come as a list (use dashes). Victory conditions can be listed for the
+    # player that wins or outside of the factions (see below)
+    victory:
+      # a victory is mainly a trigger
+      - trigger:
+          type: fledunits
+          modify: atend
+          units: [ 101, 102, 103, 104, 105, 106 ]
+          atleast: 4
+        # the onlyatend modifier means that this victory condition will not end the game by itself; instead
+        # it will only be checked once the game has ended for any other reason, such as a game end trigger
+        # (for example, a round count end)
+        # sometimes, victory conditions and game end conditions are are easier to write when they are kept
+        # apart; other times, this modifier can be omitted; then, this condition will end the game
+        modify: onlyatend
+
     units:
 #    - include: Annihilator ANH-13.mmu
       - fullname: Atlas AS7-D
@@ -304,6 +326,36 @@ factions:
 
   - name: "Player B"
     home: "E"
+
+    # Bots can be given specific settings
+    bot:
+      # Optional: currently the only type is princess
+      type: princess
+      # Princess settings always are 0...10, see BehaviorSettings.java
+      # Optional: how worried about enemy damage am I?
+      selfpreservation: 5
+      # Optional: how much do I want to avoid failed Piloting Rolls?
+      fallshame: 5
+      # Optional: how close to I want to get to my enemies?
+      hyperaggression: 5
+      # Optional: how close do I want to stick to my teammates?
+      herdmentality: 5
+      # Optional: how quickly will I try to escape once damaged?
+      bravery: 5
+      # Optional: use forced Withdrawal, this is true by default
+      forcedwithdrawal: true
+      # Optional: the edge to retreat to, nearest by default; use south, north, west, east, nearest
+      withdrawto: nearest
+      # Optional: flee = true will try to reach the destination edge even when not crippled
+      flee: true
+      # Optional: the edge to flee to; use south, north, west, east, nearest
+      fleeto: none
+
+      #      private boolean goHome = false; // Should I immediately proceed to my home board edge?
+      #      private final Set<String> strategicBuildingTargets = new HashSet<>(); // What (besides enemy units) do I want to blow up?
+      #      private final Set<Integer> priorityUnitTargets = new HashSet<>(); // What units do I especially want to blow up?
+
+
     units:
       - fullname: Schrek PPC Carrier
         type: TW_UNIT
@@ -328,6 +380,14 @@ factions:
           name: Cpt. Rhonda Snord
           piloting: 4
           gunnery: 3
+
+events:
+  - type: princesssettings
+    trigger:
+      - type: unitkilled
+        unit: 103
+    destination: south
+    flee: true
 
 
 
@@ -388,6 +448,35 @@ messages:
       modify: [ atend, once ]
       units: [ 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112 ]
       atleast: 6
+
+# ###############################################
+# Victory conditions; they always come as a list (use dashes). Listing them outside the factions can be
+# done as an alternative or in addition to victory conditions listed with the factions. The exception
+# is a draw condition that should directly end the game which cannot be given as part of the factions
+# but must be given as described here
+victory:
+  # When a victory condition is a win, it must give the player (= Team) it applies to.
+  - player: Player A
+    trigger:
+      type: fledunits
+      modify: atend
+      units: [ 101, 102, 103, 104, 105, 106 ]
+      atleast: 4
+    # the onlyatend modifier means that this victory condition will not end the game by itself; instead
+    # it will only be checked once the game has ended for any other reason, such as a game end trigger
+    # (for example, a round count end)
+    # sometimes, victory conditions and game end conditions are are easier to write when they are kept
+    # apart; other times, this modifier can be omitted; then, this condition will end the game
+    modify: onlyatend
+
+  # When a victory condition does not give the player, it is a draw condition. In this case, it is
+  # automatically game-ending (this is because, when the game is ended, it is automatically considered
+  # a draw when no actual win condition is met. No explicit draw condition needs to be given.
+  # Draw conditions are only needed when they are supposed to also end the game). So, it should not
+  # use the onlyatend modifier
+  - trigger:
+      type: unitkilled
+      unit: 104
 
 # ###############################################
 # Triggers
@@ -488,7 +577,7 @@ trigger:
     # here, the unit 201 must be killed AND it must be the start of the movement phase for this AND trigger
     # to activate
     - type: killedunit
-      units: 201
+      unit: 201
     - type: phasestart
       phase: movement
 
@@ -500,7 +589,7 @@ trigger:
     # here, the unit 201 must be killed OR it must be the start of the movement phase for this OR trigger
     # to activate
     - type: killedunit
-      units: 201
+      unit: 201
     - type: phasestart
       phase: movement
 
@@ -634,6 +723,10 @@ area:
 area:
   # The empty area has no hexes. Can be used to prevent units from fleeing the board
   empty:
+
+area:
+  # The "all" area includes all hexes of any board
+  all:
 
 area:
   # the area can be given as a terrain type

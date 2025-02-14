@@ -18,9 +18,7 @@
  */
 package megamek.client.ui.swing.scenario;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.FlowLayout;
+import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.nio.file.Path;
@@ -39,6 +37,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
@@ -50,7 +49,6 @@ import megamek.client.ui.swing.CloseAction;
 import megamek.client.ui.swing.CommonSettingsDialog;
 import megamek.client.ui.swing.dialog.DialogButton;
 import megamek.client.ui.swing.util.ClickableLabel;
-import megamek.client.ui.swing.util.UIUtil;
 import megamek.common.Configuration;
 import megamek.common.annotations.Nullable;
 import megamek.common.preference.PreferenceManager;
@@ -80,7 +78,7 @@ public class ScenarioChooser extends AbstractButtonDialog {
         super(parentFrame, "ScenarioChooser", "ScenarioChooser.title");
         initialize();
         setMinimumSize(
-                UIUtil.scaleForGUI(ScenarioInfoPanel.BASE_MINIMUM_WIDTH, ScenarioInfoPanel.BASE_MINIMUM_HEIGHT * 3));
+                new Dimension(ScenarioInfoPanel.BASE_MINIMUM_WIDTH, ScenarioInfoPanel.BASE_MINIMUM_HEIGHT * 3));
     }
 
     /**
@@ -92,10 +90,12 @@ public class ScenarioChooser extends AbstractButtonDialog {
             return scenarioFileName;
         }
         Component selectedTab = tabbedPane.getSelectedComponent();
-        if (!(selectedTab instanceof ScenarioInfoPane) || !getResult().isConfirmed()) {
+        if (!(selectedTab instanceof ScenarioInfoPane selectedPane) || !getResult().isConfirmed()) {
             return null;
+        } else if (selectedPane.getSelectedPreset() != null) {
+            return selectedPane.getSelectedPreset().getFileName();
         } else {
-            return ((ScenarioInfoPane) selectedTab).getSelectedPreset().getFileName();
+            return null;
         }
     }
 
@@ -123,7 +123,7 @@ public class ScenarioChooser extends AbstractButtonDialog {
         buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.LINE_AXIS));
         buttonPanel.setBorder(BorderFactory.createCompoundBorder(
                 new MatteBorder(1, 0, 0, 0, UIManager.getColor("Separator.foreground")),
-                new UIUtil.ScaledEmptyBorder(10, 0, 10, 0)));
+                new EmptyBorder(10, 0, 10, 0)));
 
         Box verticalBox = Box.createVerticalBox();
         verticalBox.add(Box.createVerticalGlue());
@@ -189,14 +189,6 @@ public class ScenarioChooser extends AbstractButtonDialog {
      */
     private Map<String, List<Scenario>> sortScenarios(List<Scenario> scenarioInfos) {
         return scenarioInfos.stream().collect(Collectors.groupingBy(this::getSubDirectory, Collectors.toList()));
-    }
-
-    @Override
-    public void setVisible(boolean b) {
-        if (b) {
-            UIUtil.adjustDialog(this, UIUtil.FONT_SCALE1);
-        }
-        super.setVisible(b);
     }
 
     private void selectFromFile(MouseEvent event) {

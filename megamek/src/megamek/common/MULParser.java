@@ -13,16 +13,9 @@
  */
 package megamek.common;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.StringTokenizer;
-import java.util.Vector;
+import java.io.*;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
 
 import javax.xml.parsers.DocumentBuilder;
 
@@ -108,6 +101,7 @@ public class MULParser {
     public static final String ELE_BA_APM = "antiPersonnelMount";
     public static final String ELE_LOADED = "loaded";
     public static final String ELE_SHIP = "ship";
+    public static final String ELE_CONSTRUCTION_DATA = "construction_data";
 
     /**
      * The names of attributes generally associated with Entity tags
@@ -238,6 +232,7 @@ public class MULParser {
     public static final String ATTR_GUNNERYAEROB = "gunneryAeroB";
     public static final String ATTR_PILOTINGAERO = "pilotingAero";
     public static final String ATTR_CREWTYPE = "crewType";
+    public static final String ATTR_FILENAME = "filename";
 
     /**
      * Special values recognized by this parser.
@@ -540,8 +535,30 @@ public class MULParser {
         String chassis = entityNode.getAttribute(ATTR_CHASSIS);
         String model = entityNode.getAttribute(ATTR_MODEL);
 
-        // Create a new entity
-        Entity entity = getEntity(chassis, model);
+        Entity entity = null;
+
+        // Attempt to load the entity from the data embedded into the MUL file
+        try {
+            var cdnl = entityNode.getElementsByTagName(ELE_CONSTRUCTION_DATA);
+            if (cdnl.getLength() == 1) {
+                var cd = (Element) cdnl.item(0);
+                logger.info("Trying to load unit {} {} from embedded data instead of cache.", chassis, model);
+
+                try (
+                    var rawStream = new ByteArrayInputStream(Base64.getDecoder().decode(cd.getTextContent().trim()));
+                    var gzs = new GZIPInputStream(rawStream);
+                ) {
+                    entity = new MekFileParser(gzs, cd.getAttribute(ATTR_FILENAME)).getEntity();
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e, "Failed to load unit from embedded data.");
+        }
+
+        // Look for the entity in the unit cache if it couldn't be loaded.
+        if (entity == null) {
+            entity = getEntity(chassis, model);
+        }
 
         // Make sure we've got an Entity
         if (entity == null) {
@@ -1214,24 +1231,26 @@ public class MULParser {
             // Set the crew for this entity.
             entity.setCrew(crew);
 
-            if (attributes.containsKey(ATTR_AUTOEJECT) && !attributes.get(ATTR_AUTOEJECT).isBlank()) {
-                ((Mek) entity).setAutoEject(Boolean.parseBoolean(attributes.get(ATTR_AUTOEJECT)));
-            }
+            if (entity instanceof Mek mek) {
+                if (attributes.containsKey(ATTR_AUTOEJECT) && !attributes.get(ATTR_AUTOEJECT).isBlank()) {
+                    mek.setAutoEject(Boolean.parseBoolean(attributes.get(ATTR_AUTOEJECT)));
+                }
 
-            if (attributes.containsKey(ATTR_CONDEJECTAMMO) && !attributes.get(ATTR_CONDEJECTAMMO).isBlank()) {
-                ((Mek) entity).setCondEjectAmmo(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTAMMO)));
-            }
+                if (attributes.containsKey(ATTR_CONDEJECTAMMO) && !attributes.get(ATTR_CONDEJECTAMMO).isBlank()) {
+                    mek.setCondEjectAmmo(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTAMMO)));
+                }
 
-            if (attributes.containsKey(ATTR_CONDEJECTENGINE) && !attributes.get(ATTR_CONDEJECTENGINE).isBlank()) {
-                ((Mek) entity).setCondEjectEngine(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTENGINE)));
-            }
+                if (attributes.containsKey(ATTR_CONDEJECTENGINE) && !attributes.get(ATTR_CONDEJECTENGINE).isBlank()) {
+                    mek.setCondEjectEngine(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTENGINE)));
+                }
 
-            if (attributes.containsKey(ATTR_CONDEJECTCTDEST) && !attributes.get(ATTR_CONDEJECTCTDEST).isBlank()) {
-                ((Mek) entity).setCondEjectCTDest(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTCTDEST)));
-            }
+                if (attributes.containsKey(ATTR_CONDEJECTCTDEST) && !attributes.get(ATTR_CONDEJECTCTDEST).isBlank()) {
+                    mek.setCondEjectCTDest(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTCTDEST)));
+                }
 
-            if (attributes.containsKey(ATTR_CONDEJECTHEADSHOT) && !attributes.get(ATTR_CONDEJECTHEADSHOT).isBlank()) {
-                ((Mek) entity).setCondEjectHeadshot(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTHEADSHOT)));
+                if (attributes.containsKey(ATTR_CONDEJECTHEADSHOT) && !attributes.get(ATTR_CONDEJECTHEADSHOT).isBlank()) {
+                    mek.setCondEjectHeadshot(Boolean.parseBoolean(attributes.get(ATTR_CONDEJECTHEADSHOT)));
+                }
             }
         }
     }

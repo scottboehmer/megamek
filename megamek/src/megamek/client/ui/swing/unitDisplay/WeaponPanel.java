@@ -30,11 +30,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -229,13 +225,18 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
         @Override
         public String getElementAt(int index) {
             final WeaponMounted mounted = weapons.get(index);
-            final WeaponType wtype = (WeaponType) mounted.getType();
+            final WeaponType wtype = mounted.getType();
             Game game = null;
             if (unitDisplay.getClientGUI() != null) {
                 game = unitDisplay.getClientGUI().getClient().getGame();
             }
 
             StringBuilder wn = new StringBuilder(mounted.getDesc());
+            if ((mounted.getLinkedBy() != null)
+                    && (mounted.getLinkedBy().getType() instanceof MiscType)
+                    && (mounted.getLinkedBy().getType().hasFlag(MiscType.F_RISC_LASER_PULSE_MODULE))) {
+                wn.append("+").append(mounted.getLinkedBy().getShortName());
+            }
             wn.append(" [");
             wn.append(en.getLocationAbbr(mounted.getLocation()));
             //Check if mixedTech and add Clan or IS tag
@@ -464,7 +465,6 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
         this.add(splitPane);
 
         addListeners();
-        adaptToGUIScale();
         GUIP.addPreferenceChangeListener(this);
 
         setBackGround();
@@ -483,7 +483,6 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
         pane.setBackground(TEXT_BG);
         pane.setEditable(false);
         pane.setOpaque(true);
-        pane.setFont(new Font(MMConstants.FONT_SANS_SERIF, Font.PLAIN, 10));
     }
 
     private void addSubdisplay(JPanel parent, JComponent child, int minHeight, int fill) {
@@ -1098,6 +1097,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
                 + Math.min(max_ext_heat, en.heatFromExternal) // heat from external sources
                 + en.heatBuildup) // heat we're building up this round
                 - Math.min(9, en.coolFromExternal); // cooling from external
+
         // sources
         if (en instanceof Mek) {
             if (en.infernos.isStillBurning()) { // hit with inferno ammo
@@ -1196,12 +1196,10 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
                     && game.getPhase().isFiring()) {
                 hasFiredWeapons = true;
                 // add heat from weapons fire to heat tracker
-                if (entity.usesWeaponBays()) {
+                if (entity.isLargeCraft()) {
                     // if using bay heat option then don't add total arc
                     if (game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_HEAT_BY_BAY)) {
-                        for (WeaponMounted weapon : mounted.getBayWeapons()) {
-                            currentHeatBuildup += weapon.getCurrentHeat();
-                        }
+                        currentHeatBuildup += mounted.getHeatByBay();
                     } else {
                         // check whether arc has fired
                         int loc = mounted.getLocation();
@@ -1220,7 +1218,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
                     }
                 } else {
                     if (!mounted.isBombMounted()) {
-                        currentHeatBuildup += mounted.getCurrentHeat();
+                        currentHeatBuildup += mounted.getHeatByBay();
                     }
                 }
             }
@@ -1232,8 +1230,10 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
             currentHeatBuildup++;
         }
 
+        String cambatComputerIndicator = "";
         if (en.hasQuirk(OptionsConstants.QUIRK_POS_COMBAT_COMPUTER)) {
             currentHeatBuildup -= 4;
+            cambatComputerIndicator = " \uD83D\uDCBB";
         }
 
         // check for negative values due to extreme temp
@@ -1253,20 +1253,34 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
             sheatOverCapacity = " " + heatOverCapacity + " " + msg_over;
         }
 
+        String heatMessage = heatText + " (" + heatCapacityStr + ')' + sheatOverCapacity;
+        String tempIndicatoer = "";
+
+        if ((game != null) && (game.getPlanetaryConditions().isExtremeTemperature())) {
+            tempIndicatoer = " " + game.getPlanetaryConditions().getTemperatureIndicator();
+        }
+
+        heatMessage += cambatComputerIndicator + tempIndicatoer;
+
         currentHeatBuildupR.setForeground(GUIP.getColorForHeat(heatOverCapacity, Color.WHITE));
-        currentHeatBuildupR.setText(heatText + " (" + heatCapacityStr + ')' + sheatOverCapacity);
+        currentHeatBuildupR.setText(heatMessage);
 
         // change what is visible based on type
         if (entity.usesWeaponBays()) {
-            wArcHeatL.setVisible(true);
-            wArcHeatR.setVisible(true);
             m_chBayWeapon.setVisible(true);
             wBayWeapon.setVisible(true);
         } else {
-            wArcHeatL.setVisible(false);
-            wArcHeatR.setVisible(false);
             m_chBayWeapon.setVisible(false);
             wBayWeapon.setVisible(false);
+        }
+        if ((!entity.isLargeCraft())
+                || ((game != null) && (game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_HEAT_BY_BAY)))){
+            wArcHeatL.setVisible(false);
+            wArcHeatR.setVisible(false);
+        }
+        else {
+            wArcHeatL.setVisible(true);
+            wArcHeatR.setVisible(true);
         }
 
         wDamageTrooperL.setVisible(false);
@@ -1350,16 +1364,16 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
     }
 
     /**
-     *
-     * @return the AmmoMounted currently selected by the ammo selector combo box,
-     *         not the linked ammo per se.
+     * @return the AmmoMounted currently selected by the ammo selector combo box, if any.
+     * The returned AmmoMounted may or may not be the ammo that is linked to the weapon.
      */
-    public AmmoMounted getSelectedAmmo() {
+    public Optional<AmmoMounted> getSelectedAmmo() {
         int selected = m_chAmmo.getSelectedIndex();
-        if (selected == -1 || vAmmo == null) {
-            return null;
+        if ((selected == -1) || (vAmmo == null) || (selected >= vAmmo.size())) {
+            return Optional.empty();
+        } else {
+            return Optional.of(vAmmo.get(selected));
         }
-        return vAmmo.get(m_chAmmo.getSelectedIndex());
     }
 
     /**
@@ -1950,8 +1964,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
 
         // Update the range display to account for the selected ammo, or the loaded ammo
         // if none is selected
-        int curDisplayed = m_chAmmo.getSelectedIndex();
-        AmmoMounted mAmmo = (curDisplayed != -1 && vAmmo != null) ? vAmmo.get(curDisplayed) : mounted.getLinkedAmmo();
+        AmmoMounted mAmmo = getSelectedAmmo().orElse(mounted.getLinkedAmmo());
         if (mAmmo != null) {
             updateRangeDisplayForAmmo(mAmmo);
         }
@@ -1995,6 +2008,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
         }
 
         // update ammo selector; reset to currently-displayed item if set.
+        int currentAmmoSelectionIndex = m_chAmmo.getSelectedIndex();
         ((DefaultComboBoxModel<String>) m_chAmmo.getModel()).removeAllElements();
         WeaponMounted oldmount = mounted;
         if (wtype instanceof BayWeapon) {
@@ -2027,18 +2041,17 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
             m_chAmmo.setSelectedIndex(0);
             m_chAmmo.setEnabled(count > 0);
 
-            // this is the situation where there's some kind of ammo but it's not changeable
         } else if (wtype.hasFlag(WeaponType.F_ONESHOT)) {
+            // this is the situation where there's some kind of ammo but it's not changeable
             m_chAmmo.setEnabled(false);
             Mounted<?> mountedAmmo = mounted.getLinked();
             if (mountedAmmo != null) {
                 m_chAmmo.addItem(formatAmmo(mountedAmmo));
             }
+
         } else {
             m_chAmmo.setEnabled(true);
             vAmmo = new ArrayList<>();
-            int nCur = -1;
-            int i = 0;
             // Ammo sharing between adjacent trailers
             List<AmmoMounted> fullAmmoList = new ArrayList<>(entity.getAmmo());
             if (entity.getTowedBy() != Entity.NONE) {
@@ -2049,43 +2062,40 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
                 Entity behind = entity.getGame().getEntity(entity.getTowing());
                 fullAmmoList.addAll(behind.getAmmo());
             }
-            for (AmmoMounted mountedAmmo : fullAmmoList) {
-                AmmoType atype = mountedAmmo.getType();
-                // for all aero units other than fighters,
-                // ammo must be located in the same place to be usable
-                boolean same = true;
-                if ((entity instanceof SmallCraft)
-                        || (entity instanceof Jumpship)) {
-                    same = (mounted.getLocation() == mountedAmmo
-                            .getLocation());
+            int newSelectedIndex = -1;
+            int i = 0;
+            for (AmmoMounted ammo : fullAmmoList) {
+                AmmoType atype = ammo.getType();
+                // for all aero units other than fighters, ammo must be located in the same place to be usable
+                boolean sameLocationIfLargeAero = true;
+                if ((entity instanceof SmallCraft) || (entity instanceof Jumpship)) {
+                    sameLocationIfLargeAero = (mounted.getLocation() == ammo.getLocation());
                 }
-
                 boolean rightBay = true;
                 if (entity.usesWeaponBays() && !(entity instanceof FighterSquadron)) {
-                    rightBay = oldmount.ammoInBay(entity.getEquipmentNum(mountedAmmo));
+                    rightBay = oldmount.ammoInBay(entity.getEquipmentNum(ammo));
                 }
 
                 // covers the situation where a weapon using non-caseless ammo should
                 // not be able to switch to caseless on the fly and vice versa
                 boolean canSwitchToAmmo = AmmoType.canSwitchToAmmo(mounted, atype);
 
-                if (mountedAmmo.isAmmoUsable() && same && rightBay && canSwitchToAmmo
+                if (ammo.isAmmoUsable() && sameLocationIfLargeAero && rightBay && canSwitchToAmmo
                         && (atype.getAmmoType() == wtype.getAmmoType())
                         && (atype.getRackSize() == wtype.getRackSize())) {
 
-                    vAmmo.add(mountedAmmo);
-                    m_chAmmo.addItem(formatAmmo(mountedAmmo));
-                    if (curDisplayed != -1) {
-                        nCur = curDisplayed;
-                    } else if ((mounted.getLinked() != null) &&
-                            mounted.getLinked().equals(mountedAmmo)) {
-                        nCur = i;
+                    vAmmo.add(ammo);
+                    m_chAmmo.addItem(formatAmmo(ammo));
+                    if (currentAmmoSelectionIndex != -1) {
+                        newSelectedIndex = currentAmmoSelectionIndex;
+                    } else if ((mounted.getLinked() != null) && mounted.getLinked().equals(ammo)) {
+                        newSelectedIndex = i;
                     }
                     i++;
                 }
             }
-            if (nCur != -1 && nCur < m_chAmmo.getItemCount()) {
-                m_chAmmo.setSelectedIndex(nCur);
+            if ((newSelectedIndex != -1) && (newSelectedIndex < m_chAmmo.getItemCount())) {
+                m_chAmmo.setSelectedIndex(newSelectedIndex);
             }
         }
 
@@ -2777,16 +2787,10 @@ public class WeaponPanel extends PicMap implements ListSelectionListener, Action
         this.prevTarget = prevTarget;
     }
 
-    private void adaptToGUIScale() {
-        UIUtil.adjustContainer(panelMain, UIUtil.FONT_SCALE1);
-    }
-
     @Override
     public void preferenceChange(PreferenceChangeEvent e) {
         // Update the text size when the GUI scaling changes
-        if (e.getName().equals(GUIPreferences.GUI_SCALE)) {
-            adaptToGUIScale();
-        } else if (e.getName().equals(GUIPreferences.UNIT_DISPLAY_WEAPON_LIST_HEIGHT)) {
+        if (e.getName().equals(GUIPreferences.UNIT_DISPLAY_WEAPON_LIST_HEIGHT)) {
             tWeaponScroll.setMinimumSize(new Dimension(500, GUIP.getUnitDisplayWeaponListHeight()));
             tWeaponScroll.setPreferredSize(new Dimension(500, GUIP.getUnitDisplayWeaponListHeight()));
             tWeaponScroll.revalidate();

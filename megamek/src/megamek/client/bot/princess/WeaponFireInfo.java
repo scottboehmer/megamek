@@ -21,15 +21,15 @@ package megamek.client.bot.princess;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
+import megamek.client.ui.Messages;
 import megamek.common.*;
 import megamek.common.actions.ArtilleryAttackAction;
 import megamek.common.actions.WeaponAttackAction;
+import megamek.common.AmmoType.*;
 import megamek.common.annotations.Nullable;
+import megamek.common.enums.GamePhase;
 import megamek.common.equipment.AmmoMounted;
 import megamek.common.equipment.BombMounted;
 import megamek.common.equipment.WeaponMounted;
@@ -38,6 +38,8 @@ import megamek.common.weapons.capitalweapons.CapitalMissileWeapon;
 import megamek.common.weapons.infantry.InfantryWeapon;
 import megamek.common.weapons.infantry.InfantryWeaponHandler;
 import megamek.logging.MMLogger;
+
+import static megamek.common.AmmoType.*;
 
 /**
  * WeaponFireInfo is a wrapper around a WeaponAttackAction that includes
@@ -418,6 +420,50 @@ public class WeaponFireInfo {
             return computeExpectedBombDamage(getShooter(), weapon, getTarget().getPosition());
         }
 
+        // XXX: update this and other utility munition handling with smarter deployment, a la TAG above
+        if (preferredAmmo != null) {
+            var munitionType = preferredAmmo.getType().getMunitionType();
+            // Handle all 0-damage munitions here
+            if (
+                SMOKE_MUNITIONS.containsAll(munitionType) ||
+                FLARE_MUNITIONS.containsAll(munitionType) ||
+                MINE_MUNITIONS.containsAll(munitionType)
+            ) {
+                return 0D;
+            }
+
+            // Handle woods blocking cluster shots
+            if (game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_WOODS_COVER)) {
+                // SRMs, LB-X, Flak AC, AC-2 derivatives, MGs, smaller LRMs,
+                // and Silver Bullet Gauss are among the weapons
+                // that lose all effectiveness if this rule is
+                // on and the target is in woods/jungle.
+                if (
+                    game.getBoard().contains(target.getPosition())
+                    && game.getBoard().getHex(target.getPosition()).containsAnyTerrainOf(
+                        Terrains.WOODS, Terrains.JUNGLE
+                    )
+                ) {
+                    int woodsLevel = 2 * Math.max(
+                        game.getBoard().getHex(target.getPosition()).terrainLevel(Terrains.WOODS),
+                        game.getBoard().getHex(target.getPosition()).terrainLevel(Terrains.JUNGLE)
+                    );
+                    boolean blockedByWoods = (
+                        weapon.getType().getDamage() == WeaponType.DAMAGE_BY_CLUSTERTABLE
+                    );
+                    blockedByWoods |= weapon.getType().getRackSize() <= woodsLevel
+                        || weapon.getType().getDamage() <= woodsLevel;
+                    blockedByWoods |= preferredAmmo.getType().getMunitionType().contains(
+                        AmmoType.Munitions.M_CLUSTER
+                    );
+
+                    if (blockedByWoods) {
+                        return 0D;
+                    }
+                }
+            }
+        }
+
         // bay weapons require special consideration, by looping through all weapons and
         // adding up the damage
         // A bay's weapons may have different ranges, most noticeable in laser bays,
@@ -529,6 +575,57 @@ public class WeaponFireInfo {
         // If TAG damage exceeds the attacking unit's own max damage capacity, go for
         // it!
         return computeExpectedTAGDamage(true);
+    }
+
+    /**
+     * For some ToHitData results, add additional modifiers that may impact the actual
+     * probability of hitting with this weapon.
+     * Prime example: Homing artillery, which requires a friendly TAG-equipped unit be able to hit the
+     *                target at the appropriate time.
+     * @param realToHitData
+     * @return
+     */
+    ToHitData postProcessToHit(ToHitData realToHitData) {
+        boolean isHoming = preferredAmmo != null && preferredAmmo.isHomingAmmoInHomingMode();
+        if (isHoming) {
+            String msg = realToHitData.getCumulativePlainDesc();
+            ToHitData thd;
+            if (game.getPhase() != GamePhase.FIRING) {
+                // Check if any spotters can help us out...
+                Entity te = (target.getTargetType() == Targetable.TYPE_ENTITY) ? (Entity) target : null;
+                Entity spotter = Compute.findTAGSpotter(game, shooter, target, false);
+                if (spotter != null) {
+                    // Chance of getting a TAG spot is, at base, the spotter's gunnery skill
+                    thd = new ToHitData(spotter.getCrew().getGunnery(), msg);
+                    // Likelihood of hitting goes up as speed goes down...
+                    if (null != te) {
+                        thd.append(
+                            Compute.getTargetMovementModifier(
+                                te.getRunMP(),
+                                false,
+                                false,
+                                game));
+                    }
+                    // Replace the 4+ THD with an approximation of our TAG chances.
+                    return thd;
+                } else {
+                    // No chance to TAG means no chance to hit.
+                    return new ToHitData(ToHitData.AUTOMATIC_FAIL, msg);
+                }
+            } else {
+                // Firing direct Homing shot
+                if (Compute.isTargetTagged(target, game)) {
+                    // If the target is already TAGged, it's just the original check.
+                    return realToHitData;
+                } else {
+                    // No more chances to TAG if we're in the Firing phase, so no chance
+                    // for Homing shot to hit either.
+                    return new ToHitData(ToHitData.AUTOMATIC_FAIL, msg);
+                }
+            }
+        }
+
+        return realToHitData;
     }
 
     /**
@@ -665,7 +762,7 @@ public class WeaponFireInfo {
         getWeaponAttackAction().setAmmoId(shooter.getEquipmentNum(this.getAmmo()));
 
         if (!guess) {
-            setToHit(calcRealToHit(getWeaponAttackAction()));
+            setToHit(postProcessToHit(calcRealToHit(getWeaponAttackAction())));
         } else if (null != shooterPath) {
             setToHit(calcToHit(shooterPath, assumeUnderFlightPath));
         } else {

@@ -22,7 +22,7 @@ package megamek.client.ui.swing.lobby;
 import static megamek.client.ui.Messages.getString;
 import static megamek.client.ui.swing.lobby.LobbyMekPopupActions.resetBombChoices;
 import static megamek.client.ui.swing.lobby.LobbyUtility.isValidStartPos;
-import static megamek.client.ui.swing.util.UIUtil.guiScaledFontHTML;
+import static megamek.client.ui.swing.util.UIUtil.fontHTML;
 import static megamek.client.ui.swing.util.UIUtil.teamColor;
 import static megamek.client.ui.swing.util.UIUtil.uiYellow;
 
@@ -158,12 +158,6 @@ public class PlayerSettingsDialog extends AbstractButtonDialog {
             return o1.getName(year).compareTo(o2.getName(year));
         }
     };
-
-    @Override
-    protected void finalizeInitialization() throws Exception {
-        adaptToGUIScale();
-        super.finalizeInitialization();
-    }
 
     @Override
     protected void okAction() {
@@ -739,7 +733,10 @@ public class PlayerSettingsDialog extends AbstractButtonDialog {
             butStartPos.get(i).setActionCommand(((Integer) i).toString());
         }
 
-        var currentBoard = ServerBoardHelper.getPossibleGameBoard(clientgui.getClient().getMapSettings(), true);
+        var currentBoard =
+                clientgui.getClient().getGame().getPhase().isLounge() ?
+                ServerBoardHelper.getPossibleGameBoard(clientgui.getClient().getMapSettings(), true) :
+                clientgui.getClient().getGame().getBoard();
         var deploymentZones = currentBoard.getCustomDeploymentZones();
         int extraRowCount = (int) Math.ceil(deploymentZones.size() / 3.0);
 
@@ -802,10 +799,8 @@ public class PlayerSettingsDialog extends AbstractButtonDialog {
         for (int i : butStartPos.keySet()) {
             butText.get(i).append("<HTML><P ALIGN=CENTER>");
             if (!isValidStartPos(client.getGame(), client.getLocalPlayer(), i)) {
-                butText.get(i).append(guiScaledFontHTML(uiYellow()));
+                butText.get(i).append(UIUtil.fontHTML(uiYellow()));
                 butTT.get(i).append(Messages.getString("PlayerSettingsDialog.invalidStartPosTT"));
-            } else {
-                butText.get(i).append(guiScaledFontHTML());
             }
 
             if (i <= Board.NUM_ZONES) {
@@ -819,7 +814,7 @@ public class PlayerSettingsDialog extends AbstractButtonDialog {
         for (Player listedPlayer : client.getGame().getPlayersList()) {
             int pos = listedPlayer.getStartingPos();
             if (!listedPlayer.equals(client.getLocalPlayer()) && (pos != Board.START_ANY)) {
-                butText.get(pos).append(guiScaledFontHTML(teamColor(listedPlayer, client.getLocalPlayer())));
+                butText.get(pos).append(UIUtil.fontHTML(teamColor(listedPlayer, client.getLocalPlayer())));
                 butText.get(pos).append("\u25A0</FONT>");
                 if (!hasPlayer.containsKey(pos)) {
                     if (butTT.get(pos).length() > 0) {
@@ -832,7 +827,7 @@ public class PlayerSettingsDialog extends AbstractButtonDialog {
             }
         }
 
-        butText.get(currentPlayerStartPos).append(guiScaledFontHTML(GUIPreferences.getInstance().getMyUnitColor()));
+        butText.get(currentPlayerStartPos).append(UIUtil.fontHTML(GUIPreferences.getInstance().getMyUnitColor()));
         butText.get(currentPlayerStartPos).append("\u2B24</FONT>");
 
         for (int i : butStartPos.keySet()) {
@@ -977,10 +972,6 @@ public class PlayerSettingsDialog extends AbstractButtonDialog {
         } catch (NumberFormatException ex) {
             return 0;
         }
-    }
-
-    private void adaptToGUIScale() {
-        UIUtil.adjustDialog(this, UIUtil.FONT_SCALE1);
     }
 
     public FactionRecord getFaction() {

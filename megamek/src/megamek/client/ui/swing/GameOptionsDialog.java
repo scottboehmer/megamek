@@ -32,9 +32,6 @@ import javax.swing.filechooser.FileFilter;
 import javax.xml.parsers.DocumentBuilder;
 
 import megamek.client.ui.baseComponents.AbstractButtonDialog;
-import megamek.client.ui.swing.util.UIUtil;
-import megamek.common.preference.IPreferenceChangeListener;
-import megamek.common.preference.PreferenceChangeEvent;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
@@ -48,7 +45,7 @@ import static megamek.client.ui.swing.util.UIUtil.*;
 import static megamek.client.ui.Messages.*;
 
 /** Responsible for displaying the current game options and allowing the user to change them. */
-public class GameOptionsDialog extends AbstractButtonDialog implements ActionListener, DialogOptionListener, IPreferenceChangeListener {
+public class GameOptionsDialog extends AbstractButtonDialog implements ActionListener, DialogOptionListener {
 
     private ClientGUI clientGui;
     private JFrame frame;
@@ -107,7 +104,7 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
     public GameOptionsDialog(ClientGUI cg) {
         super(cg.frame, "GameOptionsDialog", "GameOptionsDialog.title");
         clientGui = cg;
-        init(cg.getFrame(), cg.getClient().getGame().getOptions());
+        init(cg.getFrame(), (GameOptions) cg.getClient().getGame().getOptions());
     }
 
     /**
@@ -140,10 +137,6 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
         mainPanel.add(panPassword);
         mainPanel.add(Box.createVerticalStrut(5));
         mainPanel.add(panButtons);
-
-        adaptToGUIScale();
-        GUIPreferences.getInstance().addPreferenceChangeListener(this);
-
         return mainPanel;
     }
 
@@ -165,8 +158,6 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
         panButtons.add(butDefaults);
         panButtons.add(butSave);
         panButtons.add(butLoad);
-
-        adaptToGUIScale();
 
         return panButtons;
     }
@@ -293,39 +284,28 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
 
     private void refreshSearchPanel() {
         panSearchOptions.removeAll();
-        // We need to first remove all of the DialogOptionComponents
-        // that were on the search panel
-        for (DialogOptionComponent comp : searchComps) {
-            List<DialogOptionComponent> compList = optionComps.get(comp.option.getName());
-            if (compList != null) { // Shouldn't be null...
-                compList.remove(comp);
-            }
-        }
+        searchComps.clear();
 
         // Add new DialogOptionComponents for all matching Options
         final String searchText = txtSearch.getText().toLowerCase();
         if (!searchText.isBlank()) {
             ArrayList<DialogOptionComponent> allNewComps = new ArrayList<>();
             for (List<DialogOptionComponent> comps : optionComps.values()) {
-                ArrayList<DialogOptionComponent> newComps = new ArrayList<>();
                 for (DialogOptionComponent comp : comps) {
                     String optName = comp.option.getDisplayableName().toLowerCase();
                     String optDesc = comp.option.getDescription().toLowerCase();
                     if ((optName.contains(searchText) || optDesc.contains(searchText)) && shouldShow(comp)) {
-                        DialogOptionComponent newComp = new DialogOptionComponent(this, comp.option);
-                        newComp.setEditable(comp.getEditable());
-                        searchComps.add(newComp);
-                        newComps.add(newComp);
+                        allNewComps.add(comp);
                     }
                 }
-                comps.addAll(newComps);
-                allNewComps.addAll(newComps);
             }
             Collections.sort(allNewComps);
             for (DialogOptionComponent comp : allNewComps) {
+                searchComps.add(comp);
                 panSearchOptions.add(comp);
             }
         }
+        panSearchOptions.revalidate();
         panOptions.repaint();
     }
 
@@ -380,6 +360,7 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
         panSearch.add(panSearchBar);
         panSearch.add(panSearchOptions);
         panOptions.addTab(Messages.getString("GameOptionsDialog.Search"), scrOptions);
+        refreshSearchPanel();
     }
 
     private void addOption(JPanel groupPanel, IOption option) {
@@ -491,13 +472,8 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
                 //Set to the maximum velocity if over
                 option.setValue(CapitalMissileBayWeapon.CAPITAL_MISSILE_MAX_VELOCITY);
             }
-        } else if (option.getName().equals(OptionsConstants.RPG_BEGIN_SHUTDOWN)) {
-            if ((options.getOption(OptionsConstants.RPG_MANUAL_SHUTDOWN)).booleanValue()) {
-                optionComp.setEditable(editable);
-            } else {
-                optionComp.setEditable(false);
-            }
-        } else if (option.getName().equals(OptionsConstants.ADVANCED_ALTERNATE_MASC_ENHANCED)) {
+        }
+        else if (option.getName().equals(OptionsConstants.ADVANCED_ALTERNATE_MASC_ENHANCED)) {
             if ((options.getOption(OptionsConstants.ADVANCED_ALTERNATE_MASC)).booleanValue()) {
                 optionComp.setEditable(editable);
             } else {
@@ -536,8 +512,6 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
         }
         List<DialogOptionComponent> comps = optionComps.computeIfAbsent(option.getName(), k -> new ArrayList<>());
         comps.add(optionComp);
-
-        UIUtil.adjustContainer(optionComp, UIUtil.FONT_SCALE1);
     }
 
     // Gets called when one of the option checkboxes is clicked.
@@ -739,13 +713,6 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
                 comp_i.resetToDefault();
             }
         }
-        if (option.getName().equals(OptionsConstants.RPG_MANUAL_SHUTDOWN)) {
-            comps = optionComps.get(OptionsConstants.RPG_BEGIN_SHUTDOWN);
-            for (DialogOptionComponent comp_i : comps) {
-                comp_i.setEditable(state);
-                comp_i.setSelected(false);
-            }
-        }
         if (option.getName().equals(OptionsConstants.ADVANCED_ALTERNATE_MASC)) {
             comps = optionComps.get(OptionsConstants.ADVANCED_ALTERNATE_MASC_ENHANCED);
             for (DialogOptionComponent comp_i : comps) {
@@ -918,17 +885,5 @@ public class GameOptionsDialog extends AbstractButtonDialog implements ActionLis
      */
     public boolean isEditable() {
         return editable;
-    }
-
-    private void adaptToGUIScale() {
-        UIUtil.adjustDialog(this, UIUtil.FONT_SCALE1);
-    }
-
-    @Override
-    public void preferenceChange(PreferenceChangeEvent e) {
-        // Update the text size when the GUI scaling changes
-        if (e.getName().equals(GUIPreferences.GUI_SCALE)) {
-            adaptToGUIScale();
-        }
     }
 }

@@ -30,7 +30,6 @@ import java.util.function.BiConsumer;
 import javax.swing.*;
 
 import megamek.client.ui.Messages;
-import megamek.client.ui.swing.util.UIUtil;
 import megamek.common.*;
 import megamek.common.options.OptionsConstants;
 
@@ -161,7 +160,6 @@ public class UnitEditorDialog extends JDialog {
         getRootPane().getInputMap(JComponent.WHEN_FOCUSED).put(escape, closeAction);
         getRootPane().getActionMap().put(closeAction, new CloseAction(this));
 
-        adaptToGUIScale();
         pack();
     }
 
@@ -1567,7 +1565,7 @@ public class UnitEditorDialog extends JDialog {
             }
 
             if (current > 0) {
-                for (int i = 0; i < current; i++) {
+                for (int i = 0; i < current && i < checks.size(); i++) {
                     checks.get(i).setSelected(true);
                 }
             }
@@ -1599,9 +1597,5 @@ public class UnitEditorDialog extends JDialog {
             }
 
         }
-    }
-
-    private void adaptToGUIScale() {
-        UIUtil.adjustDialog(this, UIUtil.FONT_SCALE1);
     }
 }

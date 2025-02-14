@@ -65,14 +65,14 @@ import megamek.client.ratgenerator.ModelRecord;
 import megamek.client.ratgenerator.UnitTable;
 import megamek.client.ratgenerator.UnitTable.Parameters;
 import megamek.client.ui.Messages;
-import megamek.client.ui.swing.dialog.AdvancedSearchDialog2;
+import megamek.client.ui.advancedsearch.AdvancedSearchDialog2;
 import megamek.client.ui.swing.lobby.LobbyUtility;
 import megamek.client.ui.swing.util.ScalingPopup;
 import megamek.client.ui.swing.util.UIUtil;
 import megamek.common.Entity;
 import megamek.common.EntityMovementMode;
 import megamek.common.MekFileParser;
-import megamek.common.MekSearchFilter;
+import megamek.client.ui.advancedsearch.MekSearchFilter;
 import megamek.common.MekSummary;
 import megamek.common.Player;
 import megamek.common.TechConstants;
@@ -266,8 +266,6 @@ public class RandomArmyDialog extends JDialog implements ActionListener, TreeSel
         m_pSplit.setDividerLocation(GUIP.getRndArmySplitPos());
         setSize(GUIP.getRndArmySizeWidth(), GUIP.getRndArmySizeHeight());
         setLocation(GUIP.getRndArmyPosX(), GUIP.getRndArmyPosY());
-
-        adaptToGUIScale();
 
         String closeAction = "closeAction";
         final KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
@@ -1145,7 +1143,6 @@ public class RandomArmyDialog extends JDialog implements ActionListener, TreeSel
             updateRATs();
         }
 
-        adaptToGUIScale();
         m_chPlayer.grabFocus();
         super.setVisible(show);
     }
@@ -1451,9 +1448,5 @@ public class RandomArmyDialog extends JDialog implements ActionListener, TreeSel
             }
             return null;
         }
-    }
-
-    private void adaptToGUIScale() {
-        UIUtil.adjustDialog(this, UIUtil.FONT_SCALE1);
     }
 }

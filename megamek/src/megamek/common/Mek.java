@@ -16,7 +16,6 @@
 package megamek.common;
 
 import java.io.PrintWriter;
-import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -194,6 +193,8 @@ public abstract class Mek extends Entity {
 
     public static final String FULL_HEAD_EJECT_STRING = "Full Head Ejection System";
 
+    public static final String RISC_HEAT_SINK_OVERRIDE_KIT = "RISC Heat Sink Override Kit";
+
     /**
      * Contains a mapping of locations which are blocked when carrying cargo in the
      * "key" location
@@ -296,6 +297,8 @@ public abstract class Mek extends Entity {
     private int levelsFallen = 0;
 
     private boolean fullHeadEject = false;
+
+    private boolean riscHeatSinkKit = false;
 
     protected static int[] EMERGENCY_COOLANT_SYSTEM_FAILURE = { 3, 5, 7, 10, 13, 13, 13 };
 
@@ -1346,7 +1349,7 @@ public abstract class Mek extends Entity {
     }
 
     @Override
-    public boolean isEligibleForPavementBonus() {
+    public boolean isEligibleForPavementOrRoadBonus() {
         // eligible if using Mek tracks
         return movementMode == EntityMovementMode.TRACKED;
     }
@@ -1388,7 +1391,7 @@ public abstract class Mek extends Entity {
      * Adds heat sinks to the engine. Uses clan/normal depending on the
      * currently set techLevel
      */
-    public void addEngineSinks(int totalSinks, BigInteger heatSinkFlag) {
+    public void addEngineSinks(int totalSinks, EquipmentFlag heatSinkFlag) {
         addEngineSinks(totalSinks, heatSinkFlag, isClan());
     }
 
@@ -1396,7 +1399,7 @@ public abstract class Mek extends Entity {
      * Adds heat sinks to the engine. Adds either the engine capacity, or the
      * entire number of heat sinks, whichever is less
      */
-    public void addEngineSinks(int totalSinks, BigInteger heatSinkFlag,
+    public void addEngineSinks(int totalSinks, EquipmentFlag heatSinkFlag,
             boolean clan) {
         if (heatSinkFlag == MiscType.F_DOUBLE_HEAT_SINK) {
             addEngineSinks(totalSinks, clan ? EquipmentTypeLookup.CLAN_DOUBLE_HS
@@ -3149,6 +3152,16 @@ public abstract class Mek extends Entity {
                 .setStaticTechLevel(SimpleTechLevel.STANDARD);
     }
 
+    public static TechAdvancement getRiscHeatSinkOverrideKitAdvancement() {
+        return new TechAdvancement(ITechnology.TECH_BASE_IS)
+            .setAdvancement(3134, DATE_NONE, DATE_NONE, DATE_NONE, DATE_NONE)
+            .setApproximate(false, false, false, false, false)
+            .setPrototypeFactions(F_RS)
+            .setTechRating(RATING_D)
+            .setAvailability(RATING_X, RATING_X, RATING_X, RATING_F)
+            .setStaticTechLevel(SimpleTechLevel.EXPERIMENTAL);
+    }
+
     @Override
     protected void addSystemTechAdvancement(CompositeTechLevel ctl) {
         super.addSystemTechAdvancement(ctl);
@@ -3167,6 +3180,9 @@ public abstract class Mek extends Entity {
         }
         if (hasFullHeadEject()) {
             ctl.addComponent(getFullHeadEjectAdvancement());
+        }
+        if (hasRiscHeatSinkOverrideKit()) {
+            ctl.addComponent(getRiscHeatSinkOverrideKitAdvancement());
         }
         // FIXME: Clan interface cockpit has higher tech rating
         // if (getCockpitType() == COCKPIT_INTERFACE && isClan()) {
@@ -4168,6 +4184,9 @@ public abstract class Mek extends Entity {
     @Override
     public boolean isLocationProhibited(Coords c, int currElevation) {
         Hex hex = game.getBoard().getHex(c);
+        if (hex == null) {
+            return false;
+        }
         if (hex.containsTerrain(Terrains.IMPASSABLE)) {
             return true;
         }
@@ -4258,7 +4277,6 @@ public abstract class Mek extends Entity {
     /**
      * Get an '.mtf' file representation of the Mek. This string can be
      * directly written to disk as a file and later loaded by the MtfFile class.
-     * Known missing level 3 features: mixed tech, laser heatsinks
      */
     public String getMtf() {
         StringBuilder sb = new StringBuilder();
@@ -4390,6 +4408,11 @@ public abstract class Mek extends Entity {
             sb.append(Mek.FULL_HEAD_EJECT_STRING);
             sb.append(newLine);
         }
+        if (hasRiscHeatSinkOverrideKit()) {
+            sb.append(MtfFile.HEAT_SINK_KIT);
+            sb.append(Mek.RISC_HEAT_SINK_OVERRIDE_KIT);
+            sb.append(newLine);
+        }
         sb.append(newLine);
 
         sb.append(MtfFile.HEAT_SINKS).append(heatSinks()).append(" ");
@@ -4450,7 +4473,7 @@ public abstract class Mek extends Entity {
             }
             sb.append(getLocationAbbr(element)).append(" ").append(MtfFile.ARMOR);
             if (hasPatchworkArmor()) {
-                sb.append(EquipmentType.getArmorTypeName(getArmorType(element), isClan()))
+                sb.append(EquipmentType.getArmorTypeName(getArmorType(element), TechConstants.isClan(getArmorTechLevel(element))))
                         .append('(').append(TechConstants.getTechName(getArmorTechLevel(element)))
                         .append("):");
             }
@@ -5416,7 +5439,7 @@ public abstract class Mek extends Entity {
         }
         super.destroyLocation(loc, blownOff);
         // if it's a leg, the entity falls
-        if (locationIsLeg(loc) && canFall()) {
+        if (game != null && locationIsLeg(loc) && canFall()) {
             game.addPSR(new PilotingRollData(getId(),
                     TargetRoll.AUTOMATIC_FAIL, 5, "leg destroyed"));
         }
@@ -5795,6 +5818,14 @@ public abstract class Mek extends Entity {
 
     public boolean hasFullHeadEject() {
         return fullHeadEject;
+    }
+
+    public void setRiscHeatSinkOverrideKit(boolean heatSinkKit) {
+        this.riscHeatSinkKit = heatSinkKit;
+    }
+
+    public boolean hasRiscHeatSinkOverrideKit() {
+        return riscHeatSinkKit;
     }
 
     public abstract boolean hasMPReducingHardenedArmor();

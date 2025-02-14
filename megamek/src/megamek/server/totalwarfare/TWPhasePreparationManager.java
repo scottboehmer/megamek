@@ -33,7 +33,6 @@ import megamek.common.Player;
 import megamek.common.Report;
 import megamek.common.enums.GamePhase;
 import megamek.common.options.OptionsConstants;
-import megamek.common.planetaryconditions.PlanetaryConditions;
 import megamek.common.util.EmailService;
 import megamek.logging.MMLogger;
 import megamek.server.DynamicTerrainProcessor;
@@ -178,10 +177,7 @@ public class TWPhasePreparationManager {
                 gameManager.resetEntityPhase(phase);
                 gameManager.clearReports();
                 gameManager.resolveHeat();
-                PlanetaryConditions conditions = gameManager.getGame().getPlanetaryConditions();
-                if (conditions.isBlowingSandActive()) {
-                    gameManager.addReport(gameManager.resolveBlowingSandDamage());
-                }
+                gameManager.resolveWeather();
                 gameManager.addReport(gameManager.resolveControlRolls());
                 gameManager.addReport(gameManager.checkForTraitors());
                 // write End Phase header
@@ -215,7 +211,7 @@ public class TWPhasePreparationManager {
                 // Thanks! Ralgith - 2018/03/15
                 gameManager.clearHexUpdateSet();
                 for (DynamicTerrainProcessor tp : gameManager.getTerrainProcessors()) {
-                    tp.doEndPhaseChanges(gameManager.getvPhaseReport());
+                    tp.doEndPhaseChanges(gameManager.getMainPhaseReport());
                 }
                 gameManager.sendChangedHexes();
 
@@ -243,7 +239,7 @@ public class TWPhasePreparationManager {
                 gameManager.clearReports();
                 gameManager.send(gameManager.createAllReportsPacket());
                 gameManager.prepareVictoryReport();
-                gameManager.getGame().addReports(gameManager.getvPhaseReport());
+                gameManager.getGame().addReports(gameManager.getMainPhaseReport());
                 // Before we send the full entities packet we need to loop
                 // through the fighters in squadrons and damage them.
                 for (Entity entity : gameManager.getGame().getEntitiesVector()) {
@@ -293,7 +289,7 @@ public class TWPhasePreparationManager {
                     for (var player : mailer.getEmailablePlayers(gameManager.getGame())) {
                         try {
                             var message = mailer.newReportMessage(
-                                    gameManager.getGame(), gameManager.getvPhaseReport(), player);
+                                    gameManager.getGame(), gameManager.getMainPhaseReport(), player);
                             mailer.send(message);
                         } catch (Exception ex) {
                             logger.error("Error sending email" + ex);

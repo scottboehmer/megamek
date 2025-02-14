@@ -13,18 +13,14 @@
  */
 package megamek.common.actions;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Vector;
+import java.util.*;
 
 import megamek.MMConstants;
 import megamek.client.Client;
 import megamek.client.ui.Messages;
 import megamek.common.*;
 import megamek.common.enums.AimingMode;
+import megamek.common.enums.GamePhase;
 import megamek.common.equipment.AmmoMounted;
 import megamek.common.equipment.WeaponMounted;
 import megamek.common.options.OptionsConstants;
@@ -142,6 +138,33 @@ public class WeaponAttackAction extends AbstractAttackAction {
         this.weaponId = weaponId;
         this.bombPayloads.put("internal", new int[BombType.B_NUM]);
         this.bombPayloads.put("external", new int[BombType.B_NUM]);
+    }
+
+    // Copy constructor, hopefully with enough info to generate same to-hit data.
+    public WeaponAttackAction(final WeaponAttackAction other) {
+        this(other.getEntityId(), other.getTargetType(), other.getTargetId(), other.getWeaponId());
+
+        aimedLocation = other.aimedLocation;
+        aimMode = other.aimMode;
+        ammoCarrier = other.ammoCarrier;
+        ammoId = other.ammoId;
+        ammoMunitionType = other.ammoMunitionType;
+        isHomingShot = other.isHomingShot;
+        isPointblankShot = other.isPointblankShot;
+        isStrafing = other.isStrafing;
+        isStrafingFirstShot = other.isStrafingFirstShot;
+        launchVelocity = other.launchVelocity;
+        nemesisConfused = other.nemesisConfused;
+        oldTargetId = other.oldTargetId;
+        oldTargetType = other.oldTargetType;
+        originalTargetId = other.originalTargetId;
+        originalTargetType = other.originalTargetType;
+        otherAttackInfo = other.otherAttackInfo;
+        swarmingMissiles = other.swarmingMissiles;
+        swarmMissiles = other.swarmMissiles;
+        weaponId = other.weaponId;
+        this.bombPayloads.put("internal", Arrays.copyOf(other.bombPayloads.get("internal"), BombType.B_NUM));
+        this.bombPayloads.put("external", Arrays.copyOf(other.bombPayloads.get("external"), BombType.B_NUM));
     }
 
     public int getWeaponId() {
@@ -855,7 +878,10 @@ public class WeaponAttackAction extends AbstractAttackAction {
         int aElev = ae.getElevation();
         int tElev = target.getElevation();
         int targEl;
-        if (te == null) {
+        if (target instanceof INarcPod) {
+            // brush off attached INarcs on oneself; use left arm as a placeholder here as no choice has been made
+            return BrushOffAttackAction.toHit(game, attackerId, target, BrushOffAttackAction.LEFT);
+        } else if (te == null) {
             targEl = game.getBoard().getHex(target.getPosition()).floor();
         } else {
             targEl = te.relHeight();
@@ -1027,7 +1053,7 @@ public class WeaponAttackAction extends AbstractAttackAction {
         }
 
         // are we bracing a location that's not where the weapon is located?
-        if (ae.isBracing() && (ae.braceLocation() != weapon.getLocation())) {
+        if (ae.isBracing() && weapon != null && (ae.braceLocation() != weapon.getLocation())) {
             return String.format(Messages.getString("WeaponAttackAction.BracingOtherLocation"),
                     ae.getLocationName(ae.braceLocation()), ae.getLocationName(weapon.getLocation()));
         }
@@ -1370,13 +1396,16 @@ public class WeaponAttackAction extends AbstractAttackAction {
                         // Can shoot at something in sensor range if it has
                         // been spotted by another unit
                         && (te != null) && te.hasSeenEntity(ae.getOwner()))
-                && !isArtilleryIndirect && !isIndirect && !isBearingsOnlyMissile) {
+                && !isArtilleryIndirect && !isIndirect && !isBearingsOnlyMissile
+                && !isStrafing && !target.isHexBeingBombed()) {
             boolean networkSee = false;
             if (ae.hasC3() || ae.hasC3i() || ae.hasActiveNovaCEWS()) {
                 // c3 units can fire if any other unit in their network is in
                 // visual or sensor range
                 for (Entity en : game.getEntitiesVector()) {
-                    if (!en.isEnemyOf(ae) && en.onSameC3NetworkAs(ae) && Compute.canSee(game, en, target)) {
+                    // We got here because ae can't see the target, so we need a C3 buddy that _can_
+                    // or there's no shot.
+                    if (!en.isEnemyOf(ae) && en.onSameC3NetworkAs(ae) && Compute.canSee(game, en, target, false, null, null)) {
                         networkSee = true;
                         break;
                     }
@@ -1438,7 +1467,8 @@ public class WeaponAttackAction extends AbstractAttackAction {
 
         // Airborne units cannot tag and attack
         // http://bg.battletech.com/forums/index.php?topic=17613.new;topicseen#new
-        if (ae.isAirborne() && ae.usedTag()) {
+        // Rules seem to allow multiple TAG attempts but not TAG + any other attacks
+        if (ae.isAirborne() && !isTAG && ae.usedTag()) {
             return Messages.getString("WeaponAttackAction.AeroCantTAGAndShoot");
         }
 
@@ -1483,28 +1513,30 @@ public class WeaponAttackAction extends AbstractAttackAction {
 
         // limit large craft to zero net heat and to heat by arc
         final int heatCapacity = ae.getHeatCapacity();
-        if (ae.usesWeaponBays() && (weapon != null) && !weapon.getBayWeapons().isEmpty()) {
+        if (ae.isLargeCraft() && (weapon != null)) {
             int totalHeat = 0;
 
-            // first check to see if there are any usable weapons
-            boolean usable = false;
-            for (WeaponMounted m : weapon.getBayWeapons()) {
-                WeaponType bayWType = m.getType();
-                boolean bayWUsesAmmo = (bayWType.getAmmoType() != AmmoType.T_NA);
-                if (m.canFire()) {
-                    if (bayWUsesAmmo) {
-                        if ((m.getLinked() != null) && (m.getLinked().getUsableShotsLeft() > 0)) {
+            // first check to see if there are any usable bay weapons
+            if (!weapon.getBayWeapons().isEmpty()) {
+                boolean usable = false;
+                for (WeaponMounted m : weapon.getBayWeapons()) {
+                    WeaponType bayWType = m.getType();
+                    boolean bayWUsesAmmo = (bayWType.getAmmoType() != AmmoType.T_NA);
+                    if (m.canFire()) {
+                        if (bayWUsesAmmo) {
+                            if ((m.getLinked() != null) && (m.getLinked().getUsableShotsLeft() > 0)) {
+                                usable = true;
+                                break;
+                            }
+                        } else {
                             usable = true;
                             break;
                         }
-                    } else {
-                        usable = true;
-                        break;
                     }
                 }
-            }
-            if (!usable) {
-                return Messages.getString("WeaponAttackAction.BayNotReady");
+                if (!usable) {
+                    return Messages.getString("WeaponAttackAction.BayNotReady");
+                }
             }
 
             // create an array of booleans of locations
@@ -1531,9 +1563,7 @@ public class WeaponAttackAction extends AbstractAttackAction {
                         int loc = prevWeapon.getLocation();
                         boolean rearMount = prevWeapon.isRearMounted();
                         if (game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_HEAT_BY_BAY)) {
-                            for (WeaponMounted bWeapon : prevWeapon.getBayWeapons()) {
-                                totalHeat += bWeapon.getCurrentHeat();
-                            }
+                            totalHeat += prevWeapon.getHeatByBay();
                         } else {
                             if (!rearMount) {
                                 if (!usedFrontArc[loc]) {
@@ -1557,9 +1587,7 @@ public class WeaponAttackAction extends AbstractAttackAction {
             int currentHeat = ae.getHeatInArc(loc, rearMount);
             if (game.getOptions().booleanOption(OptionsConstants.ADVAERORULES_HEAT_BY_BAY)) {
                 currentHeat = 0;
-                for (WeaponMounted bWeapon : weapon.getBayWeapons()) {
-                    currentHeat += bWeapon.getCurrentHeat();
-                }
+                currentHeat += weapon.getHeatByBay();
             }
             // check to see if this is currently the only arc being fired
             boolean onlyArc = true;
@@ -3190,8 +3218,8 @@ public class WeaponAttackAction extends AbstractAttackAction {
         }
 
         // Flat to hit modifiers defined in WeaponType
-        if (wtype.getToHitModifier() != 0) {
-            int modifier = wtype.getToHitModifier();
+        if (wtype.getToHitModifier(weapon) != 0) {
+            int modifier = wtype.getToHitModifier(weapon);
             if (wtype instanceof VariableSpeedPulseLaserWeapon) {
                 int nRange = ae.getPosition().distance(target.getPosition());
                 int[] nRanges = wtype.getRanges(weapon, ammo);
@@ -3351,6 +3379,7 @@ public class WeaponAttackAction extends AbstractAttackAction {
         }
 
         // Missile Munitions
+        boolean isIndirect = weapon.hasModes() && (weapon.curMode().isIndirect());
 
         // Apollo FCS for MRMs
         if (bApollo) {
@@ -3358,7 +3387,7 @@ public class WeaponAttackAction extends AbstractAttackAction {
         }
 
         // add Artemis V bonus
-        if (bArtemisV) {
+        if (bArtemisV && !isIndirect) {
             toHit.addModifier(-1, Messages.getString("WeaponAttackAction.ArtemisV"));
         }
 
@@ -4249,35 +4278,6 @@ public class WeaponAttackAction extends AbstractAttackAction {
             toHit.addModifier(te.getEvasionBonus(), Messages.getString("WeaponAttackAction.TeEvading"));
         }
 
-        // Hull Down
-        if ((te != null) && te.isHullDown()) {
-            if ((te instanceof Mek) && !(te instanceof QuadVee && te.getConversionMode() == QuadVee.CONV_MODE_VEHICLE)
-                    && (los.getTargetCover() > LosEffects.COVER_NONE)) {
-                toHit.addModifier(2, Messages.getString("WeaponAttackAction.HullDown"));
-            }
-            // tanks going Hull Down is different rules then 'Meks, the
-            // direction the attack comes from matters
-            else if ((te instanceof Tank
-                    || (te instanceof QuadVee && te.getConversionMode() == QuadVee.CONV_MODE_VEHICLE))
-                    && targHex.containsTerrain(Terrains.FORTIFIED)) {
-                // TODO make this a LoS mod so that attacks will come in from
-                // directions that grant Hull Down Mods
-                int moveInDirection;
-
-                if (!((Tank) te).isBackedIntoHullDown()) {
-                    moveInDirection = ToHitData.SIDE_FRONT;
-                } else {
-                    moveInDirection = ToHitData.SIDE_REAR;
-                }
-
-                if ((te.sideTable(ae.getPosition()) == moveInDirection)
-                        || (te.sideTable(ae.getPosition()) == ToHitData.SIDE_LEFT)
-                        || (te.sideTable(ae.getPosition()) == ToHitData.SIDE_RIGHT)) {
-                    toHit.addModifier(2, Messages.getString("WeaponAttackAction.HullDown"));
-                }
-            }
-        }
-
         // Infantry taking cover per TacOps special rules
         if ((te instanceof Infantry) && ((Infantry) te).isTakingCover()) {
             if (te.getPosition().direction(ae.getPosition()) == te.getFacing()) {
@@ -4426,7 +4426,11 @@ public class WeaponAttackAction extends AbstractAttackAction {
             if ((null != te) && !te.isAirborne() && !te.isSpaceborne() && (te instanceof Dropship)) {
                 immobileMod = new ToHitData(-4, Messages.getString("WeaponAttackAction.ImmobileDs"));
             } else {
-                immobileMod = Compute.getImmobileMod(target, aimingAt, aimingMode);
+                if(Compute.allowAimedShotWith(weapon, aimingMode)) {
+                    immobileMod = Compute.getImmobileMod(target, aimingAt, aimingMode);
+                } else {
+                    immobileMod = Compute.getImmobileMod(target, aimingAt, AimingMode.NONE);
+                }
             }
 
             if (immobileMod != null) {
@@ -4663,7 +4667,7 @@ public class WeaponAttackAction extends AbstractAttackAction {
         // target in partial water
                 && (targHex.terrainLevel(Terrains.WATER) == partialWaterLevel) && (targEl == 0) && (te.height() > 0)) {
             los.setTargetCover(los.getTargetCover() | LosEffects.COVER_HORIZONTAL);
-            losMods = los.losModifiers(game, eistatus, underWater);
+            toHit.append(los.losModifiers(game, eistatus, underWater));
         }
 
         // Change hit table for partial cover, accommodate for partial underwater (legs)
@@ -4696,6 +4700,35 @@ public class WeaponAttackAction extends AbstractAttackAction {
             }
         }
 
+        // Hull Down - Some cover states are dependent on LOS
+        if ((te != null) && te.isHullDown()) {
+            if ((te instanceof Mek) && !(te instanceof QuadVee && te.getConversionMode() == QuadVee.CONV_MODE_VEHICLE)
+                && (los.getTargetCover() > LosEffects.COVER_NONE)) {
+                toHit.addModifier(2, Messages.getString("WeaponAttackAction.HullDown"));
+            }
+            // tanks going Hull Down is different rules then 'Meks, the
+            // direction the attack comes from matters
+            else if ((te instanceof Tank
+                || (te instanceof QuadVee && te.getConversionMode() == QuadVee.CONV_MODE_VEHICLE))
+                && targetHexContainsFortified) {
+                // TODO make this a LoS mod so that attacks will come in from
+                // directions that grant Hull Down Mods
+                int moveInDirection;
+
+                if (!((Tank) te).isBackedIntoHullDown()) {
+                    moveInDirection = ToHitData.SIDE_FRONT;
+                } else {
+                    moveInDirection = ToHitData.SIDE_REAR;
+                }
+
+                if ((te.sideTable(ae.getPosition()) == moveInDirection)
+                    || (te.sideTable(ae.getPosition()) == ToHitData.SIDE_LEFT)
+                    || (te.sideTable(ae.getPosition()) == ToHitData.SIDE_RIGHT)) {
+                    toHit.addModifier(2, Messages.getString("WeaponAttackAction.HullDown"));
+                }
+            }
+        }
+
         // Special Equipment
 
         // BAP Targeting rule enabled - TO:AR 6th p.97
@@ -4703,10 +4736,10 @@ public class WeaponAttackAction extends AbstractAttackAction {
         // we have BAP in range or C3 member has BAP in range
         // we reduce the BTH by 1
         if (game.getOptions().booleanOption(OptionsConstants.ADVANCED_TACOPS_BAP)) {
-            boolean targetWoodsAffectModifier = te != null
-                    && !game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_WOODS_COVER)
-                    && (game.getBoard().getHex(te.getPosition()).containsTerrain(Terrains.WOODS)
-                            || game.getBoard().getHex(te.getPosition()).containsTerrain(Terrains.JUNGLE));
+            boolean targetWoodsAffectModifier = (te != null) && !te.isOffBoard() && (te.getPosition() != null)
+                && (game.getBoard().getHex(te.getPosition()) != null)
+                && game.getBoard().getHex(te.getPosition()).hasVegetation()
+                && !game.getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_WOODS_COVER);
             if (los.canSee() && (targetWoodsAffectModifier || los.thruWoods())) {
                 boolean bapInRange = Compute.bapInRange(game, ae, te);
                 boolean c3BAP = false;
@@ -5240,8 +5273,8 @@ public class WeaponAttackAction extends AbstractAttackAction {
             toHit.addModifier(ae.getHeatFiringModifier(), Messages.getString("WeaponAttackAction.Heat"));
         }
         // weapon to-hit modifier
-        if (wtype.getToHitModifier() != 0) {
-            toHit.addModifier(wtype.getToHitModifier(), Messages.getString("WeaponAttackAction.WeaponMod"));
+        if (wtype.getToHitModifier(weapon) != 0) {
+            toHit.addModifier(wtype.getToHitModifier(weapon), Messages.getString("WeaponAttackAction.WeaponMod"));
         }
         // ammo to-hit modifier
         if (usesAmmo && (atype.getToHitModifier() != 0)) {
@@ -5355,28 +5388,11 @@ public class WeaponAttackAction extends AbstractAttackAction {
             te = (Entity) target;
         }
 
-        // Homing warheads just need a flat 4 to seek out a successful TAG, but Princess
-        // needs help
-        // judging what a good homing target is.
+        // Homing warheads just need a flat 4 to seek out a successful TAG
         if (isHoming) {
             srt.setSpecialResolution(true);
             String msg = Messages.getString("WeaponAttackAction.HomingArty");
-            // Check if any spotters can help us out...
-            if (Compute.findTAGSpotter(game, ae, target, true) != null) {
-                // Likelihood of hitting goes up as speed goes down...
-                ToHitData thd = new ToHitData(4, msg);
-                if (null != te) {
-                    thd.append(
-                            Compute.getTargetMovementModifier(
-                                    te.getRunMP(),
-                                    false,
-                                    false,
-                                    game));
-                }
-                return thd;
-            } else {
-                return new ToHitData(ToHitData.AUTOMATIC_FAIL, msg);
-            }
+            return new ToHitData(4, msg);
         }
 
         // Don't bother adding up modifiers if the target hex has been hit before
@@ -5557,7 +5573,7 @@ public class WeaponAttackAction extends AbstractAttackAction {
                         toHit.addModifier(-1, Messages.getString("WeaponAttackAction.RainSpec"));
                     }
 
-                    if (conditions.getWeather().isModerateRainOrHeavyRainOrGustingRainOrDownpour()) {
+                    if (conditions.getWeather().isModerateRainOrHeavyRainOrGustingRainOrDownpourOrLightningStorm()) {
                         toHit.addModifier(-1, Messages.getString("WeaponAttackAction.RainSpec"));
                     }
                 }
