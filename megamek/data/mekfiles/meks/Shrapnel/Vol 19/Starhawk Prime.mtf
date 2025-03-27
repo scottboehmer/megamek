@@ -2,7 +2,7 @@ generator:MegaMek Suite 0.50.1-SNAPSHOT on 2024-10-02
 chassis:Starhawk
 model:Prime
 
-Config:Biped OmniMek
+Config:Biped Omnimech
 techbase:Clan
 era:3049
 source:Shrapnel 19

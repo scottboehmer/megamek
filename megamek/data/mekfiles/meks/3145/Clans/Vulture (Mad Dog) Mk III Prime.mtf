@@ -4,7 +4,7 @@ clanname:Mad Dog Mk III
 model:Prime
 mul id:6271
 
-Config:Biped OmniMek
+Config:Biped Omnimech
 techbase:Clan
 era:3109
 source:TRO: 3145 The Clans

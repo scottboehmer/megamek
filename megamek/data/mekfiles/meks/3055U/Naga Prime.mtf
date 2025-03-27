@@ -3,7 +3,7 @@ chassis:Naga
 model:Prime
 mul id:2251
 
-Config:Biped OmniMek
+Config:Biped Omnimech
 techbase:Clan
 era:2869
 source:TRO: 3055

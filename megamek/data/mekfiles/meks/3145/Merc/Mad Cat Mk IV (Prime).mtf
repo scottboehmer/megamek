@@ -4,7 +4,7 @@ clanname:Savage Wolf
 model:(Prime)
 mul id:6570
 
-Config:Biped OmniMek
+Config:Biped Omnimech
 techbase:Clan
 era:3136
 source:TRO: 3145 Mercenaries
