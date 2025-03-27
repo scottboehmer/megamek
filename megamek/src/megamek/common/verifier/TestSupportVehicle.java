@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import megamek.common.*;
 import megamek.common.annotations.Nullable;
 import megamek.common.equipment.ArmorType;
+import megamek.common.equipment.MiscMounted;
 import megamek.common.options.OptionsConstants;
 import megamek.common.util.StringUtil;
 import megamek.common.weapons.flamers.VehicleFlamerWeapon;
@@ -813,7 +814,8 @@ public class TestSupportVehicle extends TestEntity {
 
     @Override
     public double getWeightControls() {
-        return getWeightFireControl() + getWeightCrewAccommodations();
+        // No need to add Firecontrol weights here; they are included in Misc Equipment
+        return getWeightCrewAccommodations();
     }
 
     @Override
@@ -1037,6 +1039,8 @@ public class TestSupportVehicle extends TestEntity {
             buff.append(".\n\n");
             correct = false;
         }
+
+        correct &= correctArmorOverAllocation(supportVee, buff);
 
         if (supportVee.hasBARArmor(supportVee.firstArmorIndex())) {
             int bar = supportVee.getBARRating(supportVee.firstArmorIndex());
@@ -1460,7 +1464,7 @@ public class TestSupportVehicle extends TestEntity {
 
             if (!(mount.getType() instanceof AmmoType)
                     && (EquipmentType.getArmorType(mount.getType()) == EquipmentType.T_ARMOR_UNKNOWN)
-                    && !mount.getType().hasFlag(MiscType.F_JUMP_JET)) {
+                    && !((mount instanceof MiscMounted) && mount.getType().hasFlag(MiscType.F_JUMP_JET))) {
                 buff.append(StringUtil.makeLength(mount.getName(), 30));
                 buff.append(mount.getType().getSupportVeeSlots(supportVee)).append("\n");
             }

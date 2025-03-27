@@ -181,8 +181,8 @@ public final class ASConverter {
             element.getSpecialAbilities().setSUA(BattleForceSUA.AERODYNESC);
         }
         ASPointValueConverter pvConverter = ASPointValueConverter.getPointValueConverter(element, conversionReport);
-        element.setPointValue(pvConverter.getSkillAdjustedPointValue());
         element.setBasePointValue(pvConverter.getBasePointValue());
+        element.setPointValue(pvConverter.getSkillAdjustedPointValue(element.getBasePointValue()));
         element.setConversionReport(conversionReport);
         return element;
     }
@@ -213,9 +213,8 @@ public final class ASConverter {
      * Also returns false if entity is null.
      */
     public static boolean canConvert(@Nullable Entity entity) {
-        return !(entity == null) && !((entity instanceof TeleMissile) || (entity instanceof FighterSquadron)
-                || (entity instanceof EscapePods) || (entity instanceof EjectedCrew)
-                || (entity instanceof ArmlessMek));
+        return (entity != null) && !((entity instanceof TeleMissile) || (entity instanceof FighterSquadron)
+                || (entity instanceof EscapePods) || (entity instanceof EjectedCrew));
     }
 
     /**
@@ -297,7 +296,8 @@ public final class ASConverter {
         element.setTMM(ASMovementConverter.convertTMM(conversionData));
         element.setThreshold(ASArmStrConverter.convertThreshold(conversionData));
         ASPointValueConverter pvConverter = ASPointValueConverter.getPointValueConverter(element, report);
-        element.setPointValue(pvConverter.getSkillAdjustedPointValue());
+        element.setBasePointValue(pvConverter.getBasePointValue());
+        element.setPointValue(pvConverter.getSkillAdjustedPointValue(element.getBasePointValue()));
     }
 
     /**

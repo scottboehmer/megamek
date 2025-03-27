@@ -103,6 +103,8 @@ public abstract class BVCalculator {
             return new AeroBVCalculator(entity);
         } else if (entity instanceof GunEmplacement) {
             return new GunEmplacementBVCalculator(entity);
+        } else if (entity instanceof HandheldWeapon) {
+            return new HandheldWeaponBVCalculator(entity);
         } else { // Tank
             return new CombatVehicleBVCalculator(entity);
         }
@@ -333,7 +335,8 @@ public abstract class BVCalculator {
      * {@link #setRunMP()}.
      */
     protected void setJumpMP() {
-        jumpMP = entity.getJumpMP(MPCalculationSetting.BV_CALCULATION);
+        jumpMP = Math.max(entity.getJumpMP(MPCalculationSetting.BV_CALCULATION),
+              entity.getMechanicalJumpBoosterMP(MPCalculationSetting.BV_CALCULATION));
     }
 
     /**

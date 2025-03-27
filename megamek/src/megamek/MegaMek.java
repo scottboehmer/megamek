@@ -35,7 +35,6 @@ import megamek.common.preference.PreferenceManager;
 import megamek.logging.MMLogger;
 import megamek.server.DedicatedServer;
 import megamek.utilities.GifWriter;
-import megamek.utilities.PrincessFineTuning;
 import megamek.utilities.RATGeneratorEditor;
 
 import javax.swing.*;
@@ -92,7 +91,7 @@ public class MegaMek {
             final String name = t.getClass().getName();
             final String message = String.format(MMLoggingConstants.UNHANDLED_EXCEPTION, name);
             final String title = String.format(MMLoggingConstants.UNHANDLED_EXCEPTION_TITLE, name);
-            logger.error(t, message, title);
+            logger.errorDialog(t, message, title);
         });
 
         // Second, let's handle logging
@@ -139,10 +138,6 @@ public class MegaMek {
         }
         if (parser.writeGif()) {
             startGifWriter(restArgs);
-            return;
-        }
-        if (parser.aiFineTuning()) {
-            startPrincessFineTuning(restArgs);
             return;
         }
         if (parser.ratGenEditor()) {
@@ -359,10 +354,6 @@ public class MegaMek {
         } catch (IOException e) {
             logger.error(e, "Error creating GIF");
         }
-    }
-
-    private static void startPrincessFineTuning(String... args) {
-        PrincessFineTuning.main(args);
     }
 
     /**

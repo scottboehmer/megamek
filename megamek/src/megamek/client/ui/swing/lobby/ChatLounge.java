@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2000-2006 Ben Mazur (bmazur@sev.org)
  * Copyright © 2013 Edward Cullen (eddy@obsessedcomputers.co.uk)
- * Copyright (c) 2021 - The MegaMek Team. All Rights Reserved.
+ * Copyright (c) 2021-2025 - The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMek.
  *
@@ -1285,10 +1285,13 @@ public class ChatLounge extends AbstractPhaseDisplay implements
         refreshTeams();
         refreshMapSettings();
         refreshDoneButton();
+        refreshAcar();
     }
 
     public void refreshAcar() {
-        panAutoResolveInfo.setVisible(CLIENT_PREFERENCES.getShowAutoResolvePanel());
+        boolean clientEnabledAcar = CLIENT_PREFERENCES.getShowAutoResolvePanel();
+        boolean notRealBlindDrop = !game().getOptions().booleanOption(OptionsConstants.BASE_REAL_BLIND_DROP);
+        panAutoResolveInfo.setVisible(clientEnabledAcar && notRealBlindDrop);
     }
 
     /**
@@ -1494,6 +1497,71 @@ public class ChatLounge extends AbstractPhaseDisplay implements
     }
 
     /**
+     * Have the given entities detach from their tractors if it's a trailer.
+     * Entities that are modified and need an update to be sent to the server
+     * are added to the given updateCandidates.
+     */
+    void detachFromTractors(Set<Entity> trailers, Collection<Entity> updateCandidates) {
+        for (Entity trailer : trailers) {
+            detachFromTractor(trailer, updateCandidates);
+        }
+    }
+
+    /**
+     * Have the given entity detach from its tractor if it's a trailer.
+     * Entities that are modified and need an update to be sent to the server
+     * are added to the given updateCandidates.
+     */
+    void detachFromTractor(Entity trailer, Collection<Entity> updateCandidates) {
+        if (trailer.getTowedBy() == Entity.NONE) {
+            return;
+        }
+        Entity tractor = game().getEntity(trailer.getTowedBy());
+        disconnectTrain(tractor, trailer, updateCandidates);
+    }
+
+    /**
+     * Have the given entities detach their towed trailers.
+     * Entities that are modified and need an update to be sent to the server
+     * are added to the given updateCandidates.
+     */
+    void detachTrailers(Set<Entity> tractors, Collection<Entity> updateCandidates) {
+        for (Entity tractor : tractors) {
+            detachTrailer(tractor, updateCandidates);
+        }
+    }
+
+    /**
+     * Have the given entity detach a towed trailer.
+     * Entities that are modified and need an update to be sent to the server
+     * are added to the given updateCandidates.
+     */
+    void detachTrailer(Entity tractor, Collection<Entity> updateCandidates) {
+        if (tractor.getTowing() == Entity.NONE) {
+            return;
+        }
+        Entity trailer = game().getEntity(tractor.getTowing());
+        disconnectTrain(tractor, trailer, updateCandidates);
+    }
+
+    private void disconnectTrain(Entity tractor, Entity trailer, Collection<Entity> updateCandidates) {
+        if (tractor != null && trailer != null) {
+            List<Integer> otherTowedUnitIds = tractor.getAllTowedUnits();
+            tractor.disconnectUnit(trailer.getId());
+            updateCandidates.add(trailer);
+            updateCandidates.add(tractor);
+            for (int otherTowedUnitId : otherTowedUnitIds) {
+                Entity otherTowedUnit = game().getEntity(otherTowedUnitId);
+                if (otherTowedUnit != null) {
+                    updateCandidates.add(otherTowedUnit);
+                }
+            }
+        }
+    }
+
+
+
+    /**
      * Have the given entity disembark if it is carried by a unit of another player.
      * Entities that were modified and need an update to be sent to the server
      * are added to the given updateCandidate set.
@@ -1540,6 +1608,20 @@ public class ChatLounge extends AbstractPhaseDisplay implements
                 disembark(carriedUnit, updateCandidates);
             }
         }
+    }
+
+    /**
+     * Set the provided trailer to be towed by the tractor.
+     */
+    void towBy(Entity trailer, int tractorId) {
+        Entity tractor = game().getEntity(tractorId);
+        if (tractor == null || !tractor.canTow(trailer.getId())) {
+            return;
+        }
+
+        getLocalClient(trailer).sendTowEntity(trailer.getId(), tractor.getId());
+        // TODO: it would probably be a good idea
+        // to disable some settings for loaded units in customMekDialog
     }
 
     /**
@@ -2717,7 +2799,9 @@ public class ChatLounge extends AbstractPhaseDisplay implements
                         if (ms != null) {
                             Entity newEntity = ms.loadEntity();
                             if (newEntity != null) {
-                                newEntity.setOwner(localPlayer());
+                                // Change this to use the player selected in the UI if localPlayer() can do so
+                                Client c = getSelectedClient();
+                                newEntity.setOwner((c != null) ? c.getLocalPlayer() : localPlayer());
                                 newEntities.add(newEntity);
                             }
                         }
@@ -3099,7 +3183,7 @@ public class ChatLounge extends AbstractPhaseDisplay implements
                 pathObjs[index++] = force;
             }
 
-            pathObjs[index + 1] = game().getEntity(entityId);
+            pathObjs[index] = game().getEntity(entityId);
             return new TreePath(pathObjs);
         } else {
             throw new IllegalArgumentException(Messages.getString("ChatLounge.TreePath.methodRequiresEntityForce"));

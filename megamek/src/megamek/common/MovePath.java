@@ -40,6 +40,7 @@ public class MovePath implements Cloneable, Serializable {
     private Set<Coords> coordsSet = null;
     private final transient Object COORD_SET_LOCK = new Object();
     private transient CachedEntityState cachedEntityState;
+    private final Coords waypoint;
 
     public Game getGame() {
         return game;
@@ -63,6 +64,7 @@ public class MovePath implements Cloneable, Serializable {
         GET_UP(false, "Up"),
         GO_PRONE(false, "Prone"),
         START_JUMP(false, "StrJump"),
+        JUMP_MEK_MECHANICAL_BOOSTER(false, "MekMJB"),
         CHARGE(false, "Ch"),
         DFA(false, "DFA"),
         FLEE(false, "Flee"),
@@ -224,13 +226,37 @@ public class MovePath implements Cloneable, Serializable {
      * Generates a new, empty, movement path object.
      */
     public MovePath(final Game game, final Entity entity) {
+        this(game, entity, null);
+    }
+
+    /**
+     * Generates a new, empty, movement path object.
+     */
+    public MovePath(Game game, Entity entity, @Nullable Coords waypoint) {
         this.setEntity(entity);
         this.setGame(game);
+        this.waypoint = waypoint;
         // Do we care about gravity when adding steps?
         gravity = game.getPlanetaryConditions().getGravity();
         gravityConcern = ((gravity > 1.0F && cachedEntityState.getJumpMPNoGravity() > 0
-                || (gravity < 1.0F && cachedEntityState.getRunMP() > cachedEntityState.getRunMPNoGravity()))
-                && game.getBoard().onGround() && !entity.isAirborne());
+            || (gravity < 1.0F && cachedEntityState.getRunMP() > cachedEntityState.getRunMPNoGravity()))
+            && game.getBoard().onGround() && !entity.isAirborne());
+    }
+
+    /**
+     * Checks if there is a waypoint referenced by this MovePath.
+     * @return true if there is a waypoint, false otherwise.
+     */
+    public boolean hasWaypoint() {
+        return waypoint != null;
+    }
+
+    /**
+     * Returns the waypoint referenced by this MovePath.
+     * @return the waypoint, or null if there is none.
+     */
+    public @Nullable Coords getWaypoint() {
+        return waypoint;
     }
 
     public Entity getEntity() {
@@ -553,7 +579,7 @@ public class MovePath implements Cloneable, Serializable {
         } else {
             // if we're jumping without a mechanical jump booster (?)
             // or we're acting like a spheroid DropShip in the atmosphere
-            if ((isJumping() && (getEntity().getJumpType() != Mek.JUMP_BOOSTER)) ||
+            if ((isJumping() && !contains(MoveStepType.JUMP_MEK_MECHANICAL_BOOSTER)) ||
                     (Compute.useSpheroidAtmosphere(game, getEntity()) && (step.getType() != MoveStepType.HOVER))) {
                 int distance = start.distance(land);
 
@@ -1733,7 +1759,7 @@ public class MovePath implements Cloneable, Serializable {
      */
     @Override
     public MovePath clone() {
-        final MovePath copy = new MovePath(getGame(), getEntity());
+        final MovePath copy = new MovePath(getGame(), getEntity(), getWaypoint());
         copyFields(copy);
         return copy;
     }
@@ -1757,19 +1783,13 @@ public class MovePath implements Cloneable, Serializable {
     }
 
     /**
-     * Returns true if a jump using mechanical jump boosters would cause falling
-     * damage. Mechanical jump boosters are only designed to handle the stress
-     * of falls from a height equal to their jumpMP; if a jump has a fall that
-     * is further than the jumpMP of the unit, fall damage applies.
-     *
-     * @return
+     * @return true if a jump using mechanical jump boosters would cause falling damage. Mechanical jump boosters are
+     * only designed to handle the stress of falls from a height equal to their jumpMP; if a jump has a fall that is
+     * further than the jumpMP of the unit, fall damage applies.
      */
     public boolean shouldMechanicalJumpCauseFallDamage() {
-        if (isJumping() && (getEntity().getJumpType() == Mek.JUMP_BOOSTER) &&
-                (getJumpMaxElevationChange() > getEntity().getJumpMP())) {
-            return true;
-        }
-        return false;
+        return isJumping() && contains(MoveStepType.JUMP_MEK_MECHANICAL_BOOSTER) &&
+              (getJumpMaxElevationChange() > getEntity().getMechanicalJumpBoosterMP());
     }
 
     /**
@@ -1966,7 +1986,8 @@ public class MovePath implements Cloneable, Serializable {
         int mp = 0;
         for (MoveStep step : steps) {
             if (jumping && (step.getType() != MoveStepType.TURN_LEFT) &&
-                    (step.getType() != MoveStepType.TURN_RIGHT)) {
+                  (step.getType() != MoveStepType.TURN_RIGHT) &&
+                  (step.getType() != MoveStepType.JUMP_MEK_MECHANICAL_BOOSTER)) {
                 mp += step.getMp();
             } else if (!jumping) {
                 mp += step.getMp();
@@ -2133,27 +2154,24 @@ public class MovePath implements Cloneable, Serializable {
     }
 
     /**
-     *
-     * @return maximum movement based on the current movement type
-     *   include sprint if available
+     * @return The maximum MP based on the current movement type of this path, including sprint if available
      */
     public int getMaxMP() {
-        int maxMP;
-
-        if (contains(MoveStepType.START_JUMP) || contains(MoveStepType.DFA)) {
-            maxMP = getEntity().getJumpMP();
+        if (contains(MoveStepType.DFA)) {
+            return getEntity().getJumpMP();
+        } else if (contains(MoveStepType.JUMP_MEK_MECHANICAL_BOOSTER)) {
+            return (getEntity() instanceof Mek mek) ? mek.getMechanicalJumpBoosterMP() : 0;
+        } else if (contains(MoveStepType.START_JUMP)) {
+            return getEntity().getJumpMP();
         } else if (contains(MoveStepType.BACKWARDS)) {
-            maxMP = getEntity().getWalkMP();
+            return getEntity().getWalkMP();
         } else {
-            if ((getLastStep() != null) &&
-                getLastStep().canUseSprint(game)) {
-                maxMP = getEntity().getSprintMP();
+            if ((getLastStep() != null) && getLastStep().canUseSprint(game)) {
+                return getEntity().getSprintMP();
             } else {
-                maxMP = getEntity().getRunMP();
+                return getEntity().getRunMP();
             }
         }
-
-        return maxMP;
     }
 
     @Override
